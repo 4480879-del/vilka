@@ -1,0 +1,736 @@
+<link rel="stylesheet" href="https://db.sotka.one/vi.css?v=3">
+<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.22.0/dist/pocketbase.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<div id="vilka-splash-screen" class="vilka-splash">
+    <div class="vilka-splash-content" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%;">
+        <div style="transform: rotate(180deg); display: flex; margin-top: -20px;">
+            <svg class="vilka-splash-logo" style="width: 160px; height: 160px; display: block;" viewBox="0 0 25000 25000" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2155 14999 c-220 -54 -410 -208 -511 -414 -62 -127 -84 -223 -84 -360 0 -180 52 -338 156 -475 27 -36 745 -913 1595 -1950 850 -1037 2305 -2812 3234 -3945 928 -1133 1722 -2097 1764 -2142 311 -337 757 -590 1204 -683 769 -161 1571 74 2117 620 69 69 650 770 1695 2045 874 1067 1853 2262 2176 2655 322 393 1082 1320 1688 2060 607 740 1121 1375 1143 1413 68 113 100 223 106 358 5 136 -7 222 -49 331 -96 247 -300 427 -554 489 -78 18 -140 19 -2156 19 -2039 0 -2077 0 -2155 -20 -123 -31 -253 -100 -336 -178 -54 -51 -2050 -2474 -3038 -3687 -63 -77 -119 -143 -125 -148 -5 -4 -20 -6 -32 -5 -15 2 -470 551 -1548 1868 -887 1084 -1563 1901 -1613 1950 -70 69 -105 95 -182 133 -52 26 -131 56 -174 67 -78 20 -118 20 -2160 19 -2033 0 -2083 -1 -2161 -20z m5697 -2623 c852 -1039 1548 -1892 1548 -1896 0 -10 -159 -113 -278 -179 -278 -157 -578 -280 -862 -355 -300 -80 -571 -111 -880 -103 -349 10 -628 61 -950 173 -618 215 -1173 621 -1687 1234 -148 176 -2404 2932 -2418 2954 -13 19 -13 25 1 44 l15 22 1982 -2 1981 -3 1548 -1889z m9822 1872 c10 -14 12 -27 6 -37 -4 -9 -538 -662 -1185 -1451 -646 -789 -1305 -1592 -1462 -1785 -3676 -4487 -3838 -4684 -3951 -4795 -213 -210 -462 -343 -764 -411 -146 -33 -415 -38 -577 -10 -137 23 -292 72 -417 131 -160 77 -370 233 -476 354 -109 125 -2437 2970 -2433 2974 2 2 48 -7 102 -22 255 -66 543 -105 840 -113 641 -17 1270 125 1878 422 449 219 805 466 1213 838 126 115 218 226 1645 1967 832 1015 1534 1871 1560 1902 l48 58 1979 0 1979 0 15 -22z" fill="#000000" />
+            </svg>
+        </div>
+    </div>
+</div>
+
+<div class="messenger-layout" id="app-root">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="app-brand">VILKA <span>RADIO</span></div>
+            <div style="display: flex; gap: 8px;">
+                <button id="installAppHeaderBtn" onclick="window.installPWA()" title="Установить приложение" style="background: var(--primary); color: #000; border: none; border-radius: 50px; padding: 0 12px; height: 36px; display: flex; align-items: center; justify-content: center; gap: 5px; font-family: 'Unbounded', sans-serif; font-size: 10px; font-weight: 800; cursor: pointer; transition: transform 0.2s;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    APP
+                </button>
+                <a href="#openmembersbar" class="btn-circle" title="Аккаунт Сотка" style="display: flex; align-items: center; justify-content: center; color: var(--text-main); text-decoration: none;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </a>
+                <button onclick="window.app.toggleTheme()" class="btn-circle" title="Сменить тему" style="margin: 0;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.64-.746 1.64-1.667 0-.35-.125-.672-.326-.913-.232-.276-.367-.617-.367-.97 0-.853.69-1.55 1.543-1.55h2.15c3.04 0 5.5-2.46 5.5-5.5C22 7.03 17.52 2 12 2z"/></svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="tab-content active" id="tab-chats">
+            <div style="padding: 10px 20px 0 20px; font-size: 11px; color: var(--text-muted); font-family: 'Unbounded'; font-weight: 700; display:flex; justify-content:space-between; align-items:center; cursor: pointer; transition: 0.2s;" onclick="window.app.openPelotonDropdown(event)" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                <span>ВЫБОР ПЕЛОТОНА:</span>
+                <span id="currentPelotonLabel" style="color:var(--primary); display: flex; align-items: center; gap: 4px;">ВСЕ (ГЛОБАЛЬНО) <span style="font-size: 8px;">▼</span></span>
+                </div>
+            <div class="search-box">
+                <input type="text" id="chatSearch" class="search-input" placeholder="Поиск чатов..." oninput="window.app.filterChats(this.value)">
+            </div>
+            <div class="chat-list" id="chatList">
+                <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:12px;">Синхронизация...</div>
+            </div>
+            <button class="main-fab" onclick="window.app.openMobileCreateMenu()">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+        </div>
+
+        <div class="tab-content" id="tab-pelotons">
+            <div style="padding: 10px 20px 0 20px; font-size: 11px; color: var(--text-muted); font-family: 'Unbounded'; font-weight: 700;">
+                ВЫБОР ПЕЛОТОНА
+            </div>
+            <div class="search-box">
+                <input type="text" id="pelotonTabSearch" class="search-input" placeholder="Поиск пелотона..." oninput="window.app.filterPelotons(this.value)">
+            </div>
+            <div class="chat-list" id="pelotonList">
+                </div>
+        </div>
+
+        <div class="tab-content" id="tab-contacts">
+            <div class="search-box">
+                <input type="text" id="contactSearch" class="search-input" placeholder="Поиск спортсмена..." oninput="window.app.filterContacts(this.value)">
+            </div>
+            <div class="chat-list" id="contactList"></div>
+        </div>
+
+        <div class="tab-content" id="tab-profile">
+            <div id="profileTabContent" class="dash-container">
+                <div style="text-align:center; padding: 50px;"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <nav class="bottom-nav">
+            <div class="nav-item active" id="nav-btn-chats" onclick="window.app.switchTab('chats')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                Чаты
+            </div>
+            <div class="nav-item" id="nav-btn-pelotons" onclick="window.app.switchTab('pelotons')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                Пелотоны
+            </div>
+            <div class="nav-item" id="nav-btn-contacts" onclick="window.app.switchTab('contacts')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Контакты
+            </div>
+            <div class="nav-item" id="nav-btn-profile" onclick="window.app.switchTab('profile')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Профиль
+            </div>
+        </nav>
+    </aside>
+
+    <main class="chat-area" id="mainChatArea">
+        <div class="chat-header" id="chatHeader" style="display: none;">
+            <button class="back-btn" style="display:none;" onclick="window.app.closeChatMobile()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div id="activeChatAvatarContainer"></div>
+            <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; margin-left:10px;">
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <div class="chat-name" id="activeChatName">Чат</div>
+                    <button id="editChatNameBtn" style="display:none; background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0;" onclick="window.app.editCurrentChatName()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                </div>
+                <div id="activeChatMeta" style="font-size:11px; color:var(--text-muted); display:flex; gap:8px; align-items:center;"></div>
+            </div>
+            
+            <button id="leaveChatBtn" class="btn-circle" style="color:var(--warning); border-color:transparent; background:transparent; display:none;" onclick="window.app.leaveCurrentChat()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </button>
+
+            <button id="deleteChatBtn" class="btn-circle" style="color:var(--danger); border-color:transparent; background:transparent; display:none;" onclick="window.app.deleteCurrentChat()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        </div>
+
+        <div id="pinnedMessageBar" style="display:none; padding: 10px 20px; background: var(--primary-light); border-bottom: 1px solid var(--border); align-items:center; gap:12px; cursor:pointer; z-index: 5;">
+            <div style="color:var(--primary); display:flex; align-items:center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path><line x1="8.5" y1="15.5" x2="15.5" y2="8.5"></line></svg>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+                <span style="font-size:10px; color:var(--primary); font-weight:bold; font-family:'Unbounded';">ЗАКРЕПЛЕНО</span>
+                <span id="pinnedMessageText" style="font-size:13px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+            </div>
+            <button id="unpinBtn" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px;" onclick="window.app.unpinMessage(event)">✕</button>
+        </div>
+
+        <div class="messages-container-wrapper">
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-chat" id="emptyChatMsg">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:15px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    Выберите чат для общения
+                </div>
+            </div>
+            
+            <div class="scroll-bottom-btn" id="scrollBottomBtn" onclick="window.app.scrollToBottom(true)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+            </div>
+        </div>
+
+        <div class="input-wrapper" id="inputWrapper" style="display:none;">
+            <div class="reply-edit-bar" id="replyEditBar">
+                <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden;">
+                    <span id="replyEditTitle" style="color: var(--primary); font-weight: bold; font-size: 11px;"></span>
+                    <span id="replyEditText" style="color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: 13px;"></span>
+                </div>
+                <button onclick="window.app.cancelReplyEdit()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px;">✕</button>
+            </div>
+
+            <div class="input-area" id="inputArea">
+                <div id="filePreviewBox">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                    <span id="filePreviewName" style="font-size:12px; color:var(--text-main); font-family:'Inter'; font-weight:600; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+                    <span id="filePreviewCompressing" style="display:none; font-size:10px; color:var(--warning);">Сжимаем...</span>
+                    <button onclick="window.app.removeFile()" style="background:var(--danger-light); border:none; border-radius:50px; width:24px; height:24px; color:var(--danger); cursor:pointer; font-weight:bold; display:flex; justify-content:center; align-items:center;">✕</button>
+                </div>
+
+                <input type="file" id="fileInput" style="display:none;" onchange="window.app.handleFileSelect(this)">
+                
+                <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Прикрепить файл">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                </button>
+
+                <textarea id="messageInput" class="chat-input" placeholder="Написать сообщение..." rows="1" 
+                    oninput="this.style.height = '46px'; this.style.height = (this.scrollHeight) + 'px';" 
+                    onkeypress="if(event.keyCode===13 && !event.shiftKey){ window.app.sendMessage(); event.preventDefault(); }"></textarea>
+                
+                <button id="sendBtnIcon" class="send-btn" onclick="window.app.sendMessage()">
+                    <div id="vIcon" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                        <svg style="width: 28px; height: 28px; transform: rotate(180deg) scale(1.7); margin-top: 6px; margin-left: -7px;" viewBox="0 0 25000 25000" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2155 14999 c-220 -54 -410 -208 -511 -414 -62 -127 -84 -223 -84 -360 0 -180 52 -338 156 -475 27 -36 745 -913 1595 -1950 850 -1037 2305 -2812 3234 -3945 928 -1133 1722 -2097 1764 -2142 311 -337 757 -590 1204 -683 769 -161 1571 74 2117 620 69 69 650 770 1695 2045 874 1067 1853 2262 2176 2655 322 393 1082 1320 1688 2060 607 740 1121 1375 1143 1413 68 113 100 223 106 358 5 136 -7 222 -49 331 -96 247 -300 427 -554 489 -78 18 -140 19 -2156 19 -2039 0 -2077 0 -2155 -20 -123 -31 -253 -100 -336 -178 -54 -51 -2050 -2474 -3038 -3687 -63 -77 -119 -143 -125 -148 -5 -4 -20 -6 -32 -5 -15 2 -470 551 -1548 1868 -887 1084 -1563 1901 -1613 1950 -70 69 -105 95 -182 133 -52 26 -131 56 -174 67 -78 20 -118 20 -2160 19 -2033 0 -2083 -1 -2161 -20z m5697 -2623 c852 -1039 1548 -1892 1548 -1896 0 -10 -159 -113 -278 -179 -278 -157 -578 -280 -862 -355 -300 -80 -571 -111 -880 -103 -349 10 -628 61 -950 173 -618 215 -1173 621 -1687 1234 -148 176 -2404 2932 -2418 2954 -13 19 -13 25 1 44 l15 22 1982 -2 1981 -3 1548 -1889z m9822 1872 c10 -14 12 -27 6 -37 -4 -9 -538 -662 -1185 -1451 -646 -789 -1305 -1592 -1462 -1785 -3676 -4487 -3838 -4684 -3951 -4795 -213 -210 -462 -343 -764 -411 -146 -33 -415 -38 -577 -10 -137 23 -292 72 -417 131 -160 77 -370 233 -476 354 -109 125 -2437 2970 -2433 2974 2 2 48 -7 102 -22 255 -66 543 -105 840 -113 641 -17 1270 125 1878 422 449 219 805 466 1213 838 126 115 218 226 1645 1967 832 1015 1534 1871 1560 1902 l48 58 1979 0 1979 0 15 -22z" fill="currentColor" />
+                        </svg>
+                    </div>
+                    <svg id="checkIcon" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <div class="ctx-menu-overlay" id="ctxMenuOverlay" onclick="window.app.closeContextMenu(event)">
+        <div class="ctx-menu-box" id="ctxMenuBox" onclick="event.stopPropagation()">
+            <div class="ctx-reactions-row">
+                <div class="ctx-react-btn" onclick="window.app.submitContextReaction('like')"><svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(59,130,246,0.2)" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg></div>
+                <div class="ctx-react-btn" onclick="window.app.submitContextReaction('fire')"><svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(255,143,0,0.2)" stroke="#FF8F00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg></div>
+                <div class="ctx-react-btn" onclick="window.app.submitContextReaction('heart')"><svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(255,51,102,0.2)" stroke="#ff3366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>
+                <div class="ctx-react-btn" onclick="window.app.submitContextReaction('star')"><svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(168,85,247,0.2)" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
+            </div>
+            <div class="ctx-action-list">
+                <div class="ctx-action-item" onclick="window.app.ctxActionReply()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg> Ответить</div>
+                <div class="ctx-action-item" onclick="window.app.ctxActionForward()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg> Переслать</div>
+                <div class="ctx-action-item" id="ctxBtnPin" onclick="window.app.ctxActionPin()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path><line x1="8.5" y1="15.5" x2="15.5" y2="8.5"></line></svg> Закрепить</div>
+                <div class="ctx-action-item" id="ctxBtnEdit" onclick="window.app.ctxActionEdit()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Изменить</div>
+                <div class="ctx-action-item danger" id="ctxBtnDelete" onclick="window.app.ctxActionDelete()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Удалить для всех</div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="participantsModal" style="z-index: 99999;">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:10px;">
+                <h3 style="color:var(--text-main);">УЧАСТНИКИ ЧАТА</h3>
+                <button onclick="document.getElementById('participantsModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;">✕</button>
+            </div>
+            <div class="contact-list" id="participantsList"></div>
+            <div id="addMembersToPrivateBtn" style="display:none; margin-top: 15px;">
+                <button class="btn-black" onclick="window.app.openAddMembersModal()">+ ДОБАВИТЬ УЧАСТНИКА</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="addMembersModal" style="z-index: 100000;">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:10px;">
+                <h3 style="color:var(--text-main);">ПРИГЛАСИТЬ</h3>
+                <button onclick="document.getElementById('addMembersModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;">✕</button>
+            </div>
+            <input type="text" id="addMemberSearch" class="modal-input" placeholder="Поиск гонщика..." style="margin-bottom:10px;" oninput="window.app.filterAddMembers(this.value)">
+            <div id="addMembersList" style="display:flex; flex-direction:column; gap:8px; max-height:250px; overflow-y:auto; border:1px solid var(--border); padding:10px; border-radius:var(--radius-sm); margin-bottom:15px;"></div>
+            <button class="btn-black" onclick="window.app.submitAddMembers()">ДОБАВИТЬ</button>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="forwardModal" style="z-index: 100000;">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:10px;">
+                <h3 style="color:var(--text-main);">ПЕРЕСЛАТЬ</h3>
+                <button onclick="document.getElementById('forwardModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;">✕</button>
+            </div>
+            <input type="text" id="forwardSearch" class="modal-input" placeholder="Поиск чата или контакта..." style="margin-bottom:10px;" oninput="window.app.renderForwardList(this.value)">
+            <div id="forwardList" class="contact-list" style="max-height:300px;"></div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="mobileCreateMenuModal">
+        <div class="modal-box" style="padding: 20px; gap: 10px; margin-top:auto; border-bottom-left-radius:0; border-bottom-right-radius:0;">
+            <button class="btn-black" onclick="document.getElementById('mobileCreateMenuModal').style.display='none'; window.app.switchTab('contacts');" style="display:flex; align-items:center; justify-content:center; gap:8px;">НАПИСАТЬ СООБЩЕНИЕ</button>
+            <button class="btn-black" onclick="document.getElementById('mobileCreateMenuModal').style.display='none'; window.app.openCreateGroupModal();" style="display:flex; align-items:center; justify-content:center; gap:8px;">СОЗДАТЬ ГРУППУ</button>
+            <button class="btn-black" onclick="document.getElementById('mobileCreateMenuModal').style.display='none'; window.app.openCreateRadarModal();" style="display:flex; align-items:center; justify-content:center; gap:8px; background:var(--danger); color:#fff; border:none; box-shadow:0 4px 15px rgba(255,51,102,0.3);">📡 СИГНАЛ РАДАРА</button>
+            <button onclick="document.getElementById('mobileCreateMenuModal').style.display='none'" style="background:transparent; border:1px solid var(--border); color:var(--text-main); padding: 16px; border-radius: var(--radius-sm); font-family: 'Unbounded'; font-size: 12px; font-weight:800; cursor:pointer;">ОТМЕНА</button>
+            </div></div>
+            <div class="modal-overlay" id="createRadarModal" style="z-index: 100000; display: none;">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px;">
+                <h3 style="color:var(--danger); display:flex; align-items:center; gap:8px; font-family:'Unbounded'; font-weight:800; font-size:16px; margin:0;">
+                    📡 СИГНАЛ РАДАРА
+                </h3>
+                <button onclick="document.getElementById('createRadarModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:15px; line-height:1.4;">
+                Укажите причину и проверьте ваши координаты. Вы можете скорректировать их вручную, если GPS ошибся.
+            </div>
+            
+            <select id="radarTypeSelect" class="modal-select" style="border-color:var(--danger); color:var(--danger); font-weight:bold; background:rgba(255,51,102,0.05); margin-bottom: 10px;">
+                <option value="sos">🆘 НУЖНА ПОМОЩЬ (SOS)</option>
+                <option value="ride">🚴 СБОР НА ПОКАТУШКУ</option>
+            </select>
+            
+            <input type="text" id="radarMessageInput" class="modal-input" placeholder="Кратко суть (напр. Пробил колесо, нет запаски)">
+            
+            <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ВРЕМЯ АКТИВНОСТИ СИГНАЛА</div>
+            <select id="radarDurationSelect" class="modal-select" style="margin-bottom: 15px;">
+                <option value="1">1 час</option>
+                <option value="3" selected>3 часа</option>
+                <option value="6">6 часов</option>
+                <option value="12">12 часов</option>
+                <option value="24">24 часа (1 день)</option>
+                <option value="48">2 дня</option>
+                <option value="72">3 дня</option>
+                <option value="120">5 дней</option>
+            </select>
+
+            <div style="background: var(--bg-surface-hover); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 15px; margin-bottom: 15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800;">КООРДИНАТЫ (GPS)</div>
+                    <button onclick="window.app.fetchRadarGPS()" style="background:none; border:none; color:var(--primary); font-size:10px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:4px; font-family:'Unbounded';">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.13 15.57a10 10 0 1 0 3.43-10.42l-4.5 4.5"/></svg> ОБНОВИТЬ
+                    </button>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="radarLatInput" class="auth-input" style="flex:1; width:100%; padding:10px; border-radius:6px; font-family:'Roboto Mono'; font-size:12px; text-align:center; background:var(--bg-body); color:var(--text-main); border:1px solid var(--border);" placeholder="Широта (Lat)">
+                    <input type="text" id="radarLonInput" class="auth-input" style="flex:1; width:100%; padding:10px; border-radius:6px; font-family:'Roboto Mono'; font-size:12px; text-align:center; background:var(--bg-body); color:var(--text-main); border:1px solid var(--border);" placeholder="Долгота (Lon)">
+                </div>
+                <div style="text-align:center; margin-top:10px;">
+                    <a href="#" id="radarCheckMapBtn" target="_blank" style="color:var(--info); font-size:11px; text-decoration:underline; display:none; font-weight:600;">Проверить точку на карте</a>
+                </div>
+            </div>
+
+            <button class="btn-black" onclick="window.app.createRadar()" id="btnCreateRadar" style="background:var(--danger); color:#fff; box-shadow:0 5px 15px rgba(255,51,102,0.3); margin-top:5px;">🚀 ЗАПУСТИТЬ РАДАР</button>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="createGroupModal">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px;">
+                <h3 style="color:var(--text-main);">СОЗДАТЬ ГРУППУ</h3>
+                <button onclick="document.getElementById('createGroupModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;">✕</button>
+            </div>
+            <input type="text" id="groupNameInput" class="modal-input" placeholder="Название группы">
+            <select id="groupTypeSelect" class="modal-select" onchange="window.app.onGroupTypeChange()"></select>
+            <select id="groupPelotonSelect" class="modal-select"><option value="">Без привязки (Глобально)</option></select>
+            <div id="groupTeamBox" style="display:none;"><select id="groupTeamSelect" class="modal-select"></select></div>
+            <div id="groupPartContainer" style="display:none; flex-direction:column; margin-bottom:15px;">
+                <input type="text" id="groupPartSearch" class="modal-input" placeholder="Поиск гонщика..." style="margin-bottom:10px;" oninput="window.app.filterGroupParts(this.value)">
+                <div id="groupPartBox" style="display:flex; flex-direction:column; gap:8px; max-height:200px; overflow-y:auto; border:1px solid var(--border); padding:10px; border-radius:var(--radius-sm);"></div>
+            </div>
+            <button class="btn-black" onclick="window.app.createGroupChat()" id="btnCreateGroup">СОЗДАТЬ ЧАТ</button>
+        </div>
+    </div>
+    
+  <div class="modal-overlay" id="profileModal" style="z-index: 100000;">
+        <div class="modal-box" style="padding: 0; overflow: hidden; width: 600px;">
+            <div class="profile-header-close" style="background:var(--bg-surface); padding:20px 25px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink: 0;">
+                <h3 style="color:var(--text-main); font-size: 16px; margin: 0;">ПРОФИЛЬ УЧАСТНИКА</h3>
+                <button onclick="window.app.closeProfileModal()" style="background:var(--bg-surface-hover); border:1px solid var(--border); border-radius:50px; width:32px; height:32px; color:var(--text-main); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink: 0;">✕</button>
+            </div>
+            <div id="profileModalContent" class="dash-container" style="overflow-y: auto; flex: 1; padding: 25px;">
+                <div style="text-align:center; padding: 50px;"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="installGuideModal" style="z-index: 1000000;">
+        <div class="modal-box" style="width: 400px; max-width: 90%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px;">
+                <h3 style="color:var(--text-main); margin:0;">УСТАНОВКА VILKA RADIO</h3>
+                <button onclick="document.getElementById('installGuideModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;">✕</button>
+            </div>
+            <div id="installGuideContent" style="color: var(--text-main); font-size: 13px; line-height: 1.6; text-align: left;"></div>
+            <button class="btn-black" style="width:100%; margin-top: 25px;" onclick="document.getElementById('installGuideModal').style.display='none'">ПОНЯТНО</button>
+        </div>
+    </div>
+
+<div class="modal-overlay" id="liveBoardModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.85); z-index: 999999; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+    
+    <div class="modal-box" style="background: var(--bg-surface); width: 95vw; max-width: 1400px; height: 90vh; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+        
+        <div style="padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-hover);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div id="liveBoardDot" style="width: 10px; height: 10px; background: var(--danger); border-radius: 50%; animation: dot-pulse 1s infinite; box-shadow: 0 0 10px var(--danger);"></div>
+                <h2 id="liveBoardTitle" style="font-family:'Unbounded'; font-weight:800; font-size:18px; color:var(--text-main); margin:0; text-transform: uppercase;">ЗАГРУЗКА...</h2>
+            </div>
+            <button onclick="window.app.crm.closeLiveBoard()" style="background:var(--bg-body); color:var(--text-muted); border:1px solid var(--border); width: 32px; height: 32px; border-radius: 50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; transition:0.2s;">&times;</button>
+        </div>
+
+        <div style="padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: var(--bg-body); gap: 15px; overflow-x: auto; scrollbar-width: none;">
+            
+            <div style="display: flex; gap: 8px; background: var(--bg-surface); padding: 4px; border-radius: 50px; border: 1px solid var(--border); flex-shrink: 0;">
+                <button id="liveTabStart" class="tab-btn" onclick="window.app.crm.switchLiveTab('start')">СТАРТ-ЛИСТ</button>
+                <button id="liveTabResult" class="tab-btn active" onclick="window.app.crm.switchLiveTab('result')">РЕЗУЛЬТАТЫ</button>
+            </div>
+            
+            <div style="display: flex; gap: 8px; background: var(--bg-surface); padding: 4px; border-radius: 50px; border: 1px solid var(--border); flex-shrink: 0;">
+                <button id="liveSortAbs" class="tab-btn active" onclick="window.app.crm.switchLiveSort('absolute')">АБСОЛЮТ</button>
+                <button id="liveSortGrp" class="tab-btn" onclick="window.app.crm.switchLiveSort('category')">ПО ГРУППАМ</button>
+            </div>
+            
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 20px 30px; background: var(--bg-surface);">
+            <div id="liveBoardTable" style="width: 100%; min-width: 800px;">
+                </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal-overlay" id="waveStartModal" style="display: none;">
+    <div class="modal-box" style="max-height: 90vh; width: 480px;">
+        <h3 style="color: var(--text-main); font-family: 'Unbounded'; text-transform: uppercase; margin-bottom: 5px;">ВОЛНЫ СТАРТА</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-top: 0; margin-bottom: 20px;">Назначьте время старта нужным группам. Пустые поля будут проигнорированы.</p>
+        <div id="waveStartGroups" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-right: 5px;"></div>
+        <div style="display:flex; gap:12px; margin-top: 10px;">
+            <button onclick="document.getElementById('waveStartModal').style.display='none'" style="flex:1; background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); border-radius:12px; padding:16px; font-family:'Unbounded'; font-weight:800; font-size:12px; cursor:pointer; transition:0.2s;">ОТМЕНА</button>
+            <button onclick="window.app.crm.applyWaveStarts()" style="flex:1; background:var(--primary); border:none; color:#000; border-radius:12px; padding:16px; font-family:'Unbounded'; font-weight:800; font-size:12px; cursor:pointer; box-shadow:0 4px 15px rgba(255, 204, 0, 0.3); transition:0.2s;" id="btn-save-waves">НАЗНАЧИТЬ</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="createEventModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.85); z-index: 999999; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+    
+    <div class="modal-box" style="background: var(--bg-surface); width: 95vw; max-width: 900px; height: 90vh; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+        
+        <div style="padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-hover);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; background: var(--primary); color: #000; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 20px;">⚙️</div>
+                <div>
+                    <h2 id="constructorTitle" style="font-family:'Unbounded'; font-weight:800; font-size:18px; color:var(--text-main); margin:0; text-transform: uppercase;">КОНСТРУКТОР ГОНКИ</h2>
+                    <div style="font-size: 11px; color: var(--text-muted); font-family: 'Roboto Mono';">Настройка параметров события</div>
+                </div>
+            </div>
+            <button onclick="document.getElementById('createEventModal').style.display='none'" style="background:var(--bg-body); color:var(--text-muted); border:1px solid var(--border); width: 32px; height: 32px; border-radius: 50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; transition:0.2s;">&times;</button>
+        </div>
+
+        <div style="padding: 15px 30px; border-bottom: 1px solid var(--border); background: var(--bg-body); overflow-x: auto; scrollbar-width: none;">
+            <div style="display: flex; gap: 8px; min-width: max-content;">
+                <button id="stepBtn1" class="constructor-tab active" onclick="window.app.crm.switchConstructorStep(1)" style="padding: 10px 20px; border-radius: 50px; border: 1px solid var(--primary); background: var(--primary); color: #000; font-family: 'Unbounded'; font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.2s;">1. БАЗА</button>
+                <button id="stepBtn2" class="constructor-tab" onclick="window.app.crm.switchConstructorStep(2)" style="padding: 10px 20px; border-radius: 50px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: 'Unbounded'; font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.2s;">2. МАРШРУТ</button>
+                <button id="stepBtn3" class="constructor-tab" onclick="window.app.crm.switchConstructorStep(3)" style="padding: 10px 20px; border-radius: 50px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: 'Unbounded'; font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.2s;">3. ПРАВИЛА</button>
+                <button id="stepBtn4" class="constructor-tab" onclick="window.app.crm.switchConstructorStep(4)" style="padding: 10px 20px; border-radius: 50px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: 'Unbounded'; font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.2s;">4. ОРГАНИЗАЦИЯ</button>
+            </div>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 30px; background: var(--bg-surface);">
+            
+            <div id="stepContent1" style="display: block;">
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Название гонки / события *</div>
+                    <input type="text" id="evName" class="auth-input" style="width:100%; margin-bottom:20px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; font-size: 16px; outline:none;" placeholder="Например: День Победы">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div>
+                            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Уровень события</div>
+                            <select id="evLevel" class="auth-input" style="width:100%; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none;" onchange="window.app.crm.toggleEventFields()"></select>
+                        </div>
+                        <div>
+                            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Статус</div>
+                            <select id="evStatus" class="auth-input" style="width:100%; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none;">
+                                <option value="Registration">Открытая регистрация</option>
+                                <option value="Скоро">Анонс (Скоро)</option>
+                                <option value="LIVE">LIVE (Идет гонка)</option>
+                                <option value="Finished">Завершена</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Лига / Пелотон</div>
+                    <select id="evPeloton" class="auth-input" style="width:100%; margin-bottom:20px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none; display:none;"></select>
+                    <div id="dynamicCupsContainer" style="margin-bottom:20px;"></div>
+
+                    <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Дата и время старта *</div>
+                    <input type="datetime-local" id="evDate" class="auth-input" style="width:100%; margin-bottom:20px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none;">
+                </div>
+            </div>
+
+            <div id="stepContent2" style="display: none;">
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div>
+                            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Покрытие</div>
+                            <select id="evSurface" class="auth-input" style="width:100%; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none;">
+                                <option value="road">🛣️ Шоссе</option>
+                                <option value="gravel">🪨 Грэвел / Грунт</option>
+                                <option value="mtb">🌲 Кросс-кантри (MTB)</option>
+                                <option value="track">🏟️ Трек</option>
+                                <option value="virtual">💻 Virtual (Zwift/IndieVelo)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Формат гонки</div>
+                            <select id="evFormat" class="auth-input" style="width:100%; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none;">
+                                <option value="mass">Групповая (Масс-старт)</option>
+                                <option value="itt">Раздельный старт (ITT)</option>
+                                <option value="crit">Критериум (По кругам)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="evType">
+
+                    
+<div id="dynamicDistancesContainer" style="margin-bottom: 20px;"></div>
+                </div>
+            </div>
+
+            <div id="stepContent3" style="display: none;">
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Принцип деления на категории</div>
+                    <select id="evCatLogic" class="auth-input" style="width:100%; margin-bottom:20px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none;">
+                        <option value="clusters">По Кластерам (Силе: A, B, C...)</option>
+                        <option value="age">Возрастные категории (Мастерс)</option>
+                        <option value="absolute">Абсолют (Без деления, М и Ж)</option>
+                    </select>
+
+                    <div id="evAllowedTypesLabel" style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold; display:none;">Допуск к гонке</div>
+                    <select id="evAllowedTypes" class="auth-input" style="width:100%; margin-bottom:20px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none; display:none;">
+                        <option value="team,gruppetto">Все (Оф. Команды и Группетто)</option>
+                        <option value="team">Только Официальные команды (Лига)</option>
+                    </select>
+
+                    <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Лимит участников (опционально)</div>
+                    <input type="number" id="evMaxRiders" class="auth-input" style="width:100%; margin-bottom:20px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none;" placeholder="Оставьте пустым для безлимита">
+                </div>
+            </div>
+
+            <div id="stepContent4" style="display: none;">
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Главный судья гонки</div>
+                    <select id="evJudge" class="auth-input" style="width:100%; margin-bottom:20px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main); padding: 14px; outline:none; display:none;"></select>
+
+                    <label id="evIsPublicLabel" style="display:none; align-items:center; gap:12px; font-size:14px; color:var(--text-main); margin-bottom:20px; cursor:pointer; font-weight:bold; background: var(--bg-body); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+                        <input type="checkbox" id="evIsPublic" style="accent-color:var(--primary); width:20px; height:20px;"> 
+                        Сделать тренировку открытой для всех желающих
+                    </label>
+
+                    <div style="text-align: center; margin-top: 40px;">
+                        <button class="p-btn-black" style="background:var(--primary); color:#000; border:none; border-radius:50px; padding:20px 60px; font-weight:800; font-size:16px; font-family:'Unbounded'; cursor:pointer; box-shadow: 0 10px 30px rgba(255, 193, 7, 0.3); transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="window.app.crm.submitEvent()">🚀 ОПУБЛИКОВАТЬ ГОНКУ</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <div style="padding: 20px 30px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; background: var(--bg-surface-hover);">
+            <button id="btnPrevStep" class="p-btn" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); border-radius:8px; padding:12px 25px; font-weight:bold; cursor:pointer; visibility: hidden;" onclick="window.app.crm.changeStep(-1)">← НАЗАД</button>
+            <button id="btnNextStep" class="p-btn-black" style="background:var(--text-main); color:var(--bg-body); border:none; border-radius:8px; padding:12px 25px; font-weight:800; cursor:pointer;" onclick="window.app.crm.changeStep(1)">ДАЛЕЕ →</button>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal-overlay" id="createTeamModal" style="display: none;">
+    <div class="modal-box">
+        <h3 style="color: var(--text-main);">НОВАЯ КОМАНДА</h3>
+        <input type="text" id="newTeamInput" class="auth-input" placeholder="Название (напр. TITANS)">
+        <div id="newTeamPelotonCheckboxes" style="display:none; flex-direction:column; gap:10px; margin-bottom: 24px; text-align: left; max-height: 150px; overflow-y: auto; background: var(--bg-body); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);"></div>
+        <div style="display:flex; gap:12px; margin-top:auto;"><button onclick="document.getElementById('createTeamModal').style.display='none'" class="btn-action" style="background:var(--bg-body); color:var(--text-main); width:100%; height:48px;">Отмена</button><button onclick="window.app.createTeam()" class="btn-black" style="width:100%; height:48px;">Создать</button></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="captainModal" style="display: none;">
+    <div class="modal-box">
+        <h3 style="color: var(--text-main);">КАПИТАН</h3>
+        <p style="font-size:13px; color:var(--text-muted); margin-top: -15px; margin-bottom: 24px;">Команда: <b id="capModalTeamDisplay" style="color:var(--primary);"></b></p>
+        <input type="email" id="capEmailInput" class="auth-input" placeholder="Email пользователя">
+        <div style="display:flex; gap:12px; margin-top:auto;"><button onclick="document.getElementById('captainModal').style.display='none'" class="btn-action" style="background:var(--bg-body); color:var(--text-main); width:100%; height:48px;">Отмена</button><button onclick="window.app.assignCaptain()" class="btn-black" style="width:100%; height:48px;">Назначить</button></div>
+    </div>
+</div>
+
+<div id="chatCurtainEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999999; justify-content:center; align-items:center; padding:20px; box-sizing:border-box;">
+    <div class="modal-box" style="background:var(--bg-body); border:1px solid var(--border); border-radius:12px; width:100%; max-width:450px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        
+        <div style="padding:15px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg-surface);">
+            <h3 style="margin:0; font-family:'Unbounded'; font-size:14px; font-weight:800; color:var(--text-main);">НАСТРОЙКА ИНФО-ПАНЕЛИ</h3>
+            <button onclick="window.app.closeCurtainEditModal()" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+        
+        <div style="padding:20px; overflow-y:auto; flex:1;">
+            <label style="display:block; font-size:11px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:8px;">ОБЛОЖКА (ИЗОБРАЖЕНИЕ)</label>
+            <input type="file" id="curtainImgInput" accept="image/*" class="auth-input" style="margin-bottom:10px; width:100%; box-sizing:border-box;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--danger); margin-bottom:20px; cursor:pointer; font-weight:bold;">
+                <input type="checkbox" id="curtainImgDelete" style="accent-color:var(--danger); width:16px; height:16px;"> Удалить текущую обложку
+            </label>
+
+            <label style="display:block; font-size:11px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:8px;">ТЕКСТ (ПРАВИЛА, ОПИСАНИЕ)</label>
+            <textarea id="curtainTextInput" class="auth-input" style="height:120px; resize:vertical; margin-bottom:25px; font-family:'Inter'; width:100%; box-sizing:border-box; line-height:1.5; padding:12px;" placeholder="Добро пожаловать в чат! Здесь вы можете..."></textarea>
+            <label style="display:block; font-size:11px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:8px;">ИНТЕРАКТИВНАЯ КАРТА (IFRAME КОД)</label>
+            <textarea id="curtainEmbedInput" class="auth-input" style="height:60px; resize:vertical; margin-bottom:25px; font-family:'Roboto Mono'; font-size:10px; width:100%; box-sizing:border-box; padding:10px;" placeholder='<iframe src="https://mapmagic.app/..."></iframe>'></textarea>
+
+            <label style="display:block; font-size:11px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:8px;">КНОПКИ С ССЫЛКАМИ (ДО 5 ШТ)</label>
+            <div id="curtainButtonsContainer" style="display:flex; flex-direction:column; gap:12px;">
+                </div>
+        </div>
+        
+        <div style="padding:15px 20px; border-top:1px solid var(--border); display:flex; gap:10px; background:var(--bg-surface);">
+            <button class="p-btn-black" onclick="window.app.closeCurtainEditModal()" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); flex:1; width:auto;">ОТМЕНА</button>
+            <button class="p-btn-black" id="curtainSaveBtn" onclick="window.app.saveChatCurtain()" style="background:var(--primary); color:#000; flex:1; width:auto;">СОХРАНИТЬ</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="mapEmbedModal" style="z-index: 1000000; display: none;">
+        <div class="modal-box" style="width: 95vw; max-width: 1200px; height: 85vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-body);">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 15px 20px; border-bottom: 1px solid var(--border); background: var(--bg-surface);">
+                <h3 style="color:var(--text-main); font-family:'Unbounded'; font-weight:800; font-size:16px; margin:0;">🗺️ КАРТА МАРШРУТА</h3>
+                <button onclick="document.getElementById('mapEmbedModal').style.display='none'; document.getElementById('mapEmbedContainer').innerHTML='';" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div id="mapEmbedContainer" style="flex: 1; width: 100%; height: 100%; background: #000;">
+                </div>
+        </div>
+    </div>
+</div>
+<script src="https://db.sotka.one/vi.js?v=11" defer></script>
+
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Unbounded:wght@700;800&display=swap');
+
+    /* Окно скрыто по умолчанию (display: none) */
+    #sotka-auth-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15, 15, 18, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        z-index: 9999999; display: none; align-items: center; justify-content: center;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .sa-modal {
+        background: #18181b; border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px; padding: 30px 25px; width: 90%; max-width: 380px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .sa-header { text-align: center; margin-bottom: 25px; }
+    .sa-title { font-family: 'Unbounded', sans-serif; font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px; text-transform: uppercase; }
+    .sa-subtitle { font-size: 12px; color: #8a8d9b; line-height: 1.5; }
+    .sa-input-group { margin-bottom: 15px; text-align: left; }
+    .sa-label { display: block; font-size: 11px; font-weight: 600; color: #8a8d9b; margin-bottom: 6px; text-transform: uppercase; }
+    .sa-input, .sa-select {
+        width: 100%; background: #27272a; border: 1px solid #3f3f46; border-radius: 10px;
+        padding: 12px 15px; color: #fff; font-size: 14px; font-family: 'Inter', sans-serif; box-sizing: border-box;
+    }
+    .sa-input:focus, .sa-select:focus { outline: none; border-color: #ffc107; box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.1); }
+    .sa-btn {
+        width: 100%; background: #ffc107; color: #000; font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 800;
+        padding: 14px; border-radius: 10px; border: none; cursor: pointer; transition: transform 0.1s; margin-top: 10px;
+    }
+    .sa-btn:active { transform: scale(0.97); }
+    
+    .sa-link-btn { 
+        display: block; text-align: center; background: transparent; border: none; 
+        color: #8a8d9b; font-size: 12px; font-weight: 600; cursor: pointer; 
+        text-decoration: underline; padding: 10px; width: 100%; margin-top: 5px; box-sizing: border-box;
+    }
+    
+    .sa-step { display: none; }
+    .sa-step.active { display: block; animation: saFadeIn 0.3s ease; }
+    @keyframes saFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .sa-found-card { background: rgba(255, 193, 7, 0.1); border: 1px dashed #ffc107; border-radius: 10px; padding: 15px; text-align: center; margin-bottom: 20px; }
+    .sa-found-name { font-weight: 800; font-size: 16px; color: #ffc107; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+
+<div id="sotka-auth-overlay">
+    <div class="sa-modal">
+
+        <div id="sa-step-role" class="sa-step active">
+            <div class="sa-header">
+                <div class="sa-title">👋 ДОБРО ПОЖАЛОВАТЬ!</div>
+                <div class="sa-subtitle" style="margin-top: 10px;">Давайте настроим ваш профиль.<br>Вы участвуете в соревнованиях или катаетесь в свое удовольствие? При выборе имейте ввиду, что велосипедист не может участвовать в велогонках. И чтобы стать гонщиком надо будет вступить в одну из команд.</div>
+            </div>
+            <button class="sa-btn" style="padding: 16px; margin-bottom: 10px;" onclick="window.sotkaAuth.chooseRole('racer')">
+                <span style="font-size:16px; margin-right:5px;">🚴‍♂️</span> Я ГОНЩИК (УЧАСТВУЮ)
+            </button>
+            <button class="sa-btn" style="padding: 16px; background: #27272a; color: #fff; border: 1px solid #3f3f46;" onclick="window.sotkaAuth.chooseRole('cyclist')">
+                <span style="font-size:16px; margin-right:5px;">🚲</span> Я ВЕЛОСИПЕДИСТ (ДЛЯ СЕБЯ)
+            </button>
+        </div>
+        
+        <div id="sa-step-search" class="sa-step">
+            <div class="sa-header">
+                <div class="sa-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffc107" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; margin-top: -4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> АКТИВАЦИЯ</div>
+                <div class="sa-subtitle">Введите ваше имя и фамилию (на русском).</div>
+            </div>
+            <div class="sa-input-group">
+                <label class="sa-label">Фамилия</label>
+                <input type="text" id="sa-search-lastname" class="sa-input" placeholder="Например: Иванов">
+            </div>
+            <div class="sa-input-group">
+                <label class="sa-label">Имя</label>
+                <input type="text" id="sa-search-firstname" class="sa-input" placeholder="Например: Иван">
+            </div>
+            <button class="sa-btn" onclick="window.sotkaAuth.searchProfile()">НАЙТИ ПРОФИЛЬ</button>
+            <button class="sa-link-btn" onclick="window.sotkaAuth.switchStep('sa-step-role')">Назад</button>
+        </div>
+
+        <div id="sa-step-verify" class="sa-step">
+            <div class="sa-header">
+                <div class="sa-title">✅ ПРОФИЛЬ НАЙДЕН</div>
+                <div class="sa-subtitle">Мы нашли вашу карточку. Подтвердите, что это вы.</div>
+            </div>
+            <div class="sa-found-card">
+                <div class="sa-found-name" id="sa-verify-name">Иван Иванов</div>
+                <div style="font-size: 11px; color:#8a8d9b; margin-top:4px;" id="sa-verify-team">Команда: SOTKA CC</div>
+            </div>
+            <div class="sa-input-group">
+                <label class="sa-label">Введите ваш год рождения</label>
+                <input type="number" pattern="\d*" id="sa-verify-yob" class="sa-input" placeholder="ГГГГ (Например: 1990)">
+            </div>
+            <button class="sa-btn" onclick="window.sotkaAuth.verifyProfile()">ПОДТВЕРДИТЬ И ПРИВЯЗАТЬ</button>
+            <button class="sa-link-btn" onclick="window.sotkaAuth.cancelVerify()">Это не я (Назад)</button>
+        </div>
+
+        <div id="sa-step-taken" class="sa-step">
+            <div class="sa-header">
+                <div class="sa-title" style="color: #ff3366;">⚠️ ПРОФИЛЬ ЗАНЯТ</div>
+                <div class="sa-subtitle" style="margin-top:10px;">
+                    Мы нашли гонщика <b><span id="sa-taken-name"></span></b> в базе, но этот профиль уже привязан к другому аккаунту Сотка: <br>
+                    <span style="color:#fff; background:#27272a; padding:4px 8px; border-radius:4px; display:inline-block; margin-top:8px;" id="sa-taken-email"></span>
+                </div>
+            </div>
+            <div style="font-size:12px; color:#8a8d9b; text-align:center; margin-bottom:15px;">
+                Пожалуйста, авторизуйтесь в Сотке используя эту почту. Если вы потеряли к ней доступ — напишите нам.
+            </div>
+            <button class="sa-btn" style="background:#27272a; color:#fff;" onclick="window.sotkaAuth.switchStep('sa-step-search')">ИСКАТЬ ДРУГОЕ ИМЯ</button>
+            <a href="https://sotka.one/vilka?support=1" target="_blank" class="sa-link-btn">ДЕМО ВХОД И ЧАТ С ПОДДЕРЖКОЙ</a>
+        </div>
+
+        <div id="sa-step-create" class="sa-step">
+            <div class="sa-header">
+                <div class="sa-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffc107" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; margin-top: -4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> НОВАЯ КАРТОЧКА</div>                
+                <div class="sa-subtitle">Давайте заполним данные вашего профиля.</div>
+            </div>
+            
+            <div id="sa-create-warning" style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 10px; font-size: 10px; color: #e4e4e7; margin-bottom: 15px; line-height: 1.4;">
+                <b>Уже гонялись у нас?</b><br> Если да, нажмите "Назад к поиску" и попробуйте ввести имя иначе (например: <i>Александр</i> вместо <i>Саша</i>). Иначе ваш рейтинг не перенесется.
+            </div>
+            
+            <div style="display:flex; gap:10px;">
+                <div class="sa-input-group" style="flex:1;">
+                    <label class="sa-label">Фамилия</label>
+                    <input type="text" id="sa-create-lastname" class="sa-input" placeholder="Ваша фамилия">
+                </div>
+                <div class="sa-input-group" style="flex:1;">
+                    <label class="sa-label">Имя</label>
+                    <input type="text" id="sa-create-firstname" class="sa-input" placeholder="Ваше имя">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="sa-input-group" style="flex:1;">
+                    <label class="sa-label">Год рождения</label>
+                    <input type="number" pattern="\d*" id="sa-create-yob" class="sa-input" placeholder="ГГГГ">
+                </div>
+                <div class="sa-input-group" style="flex:1;">
+                    <label class="sa-label">Пол</label>
+                    <select id="sa-create-gender" class="sa-select">
+                        <option value="M">Мужской</option>
+                        <option value="F">Женский</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sa-input-group" id="sa-team-wrapper">
+                <label class="sa-label">Команда (Если есть)</label>
+                <select id="sa-create-team" class="sa-select"></select>
+            </div>
+            <button class="sa-btn" onclick="window.sotkaAuth.createProfile()">СОЗДАТЬ ПРОФИЛЬ</button>
+            <button class="sa-link-btn" onclick="window.sotkaAuth.cancelCreate()">Назад</button>
+        </div>
+
+        <div id="sa-step-loading" class="sa-step">
+            <div class="sa-header" style="margin-bottom:0; padding: 40px 0;">
+                <div style="width: 40px; height: 40px; border: 3px solid rgba(255, 193, 7, 0.2); border-top-color: #ffc107; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px auto;"></div>
+                <div class="sa-title" id="sa-loading-text">Обработка...</div>
+            </div>
+        </div>
+
+    </div>
+</div>
