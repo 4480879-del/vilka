@@ -130,7 +130,7 @@
 
         <div class="tab-content" id="tab-contacts">
             <div class="search-box">
-                <input type="text" id="contactSearch" class="search-input" placeholder="Поиск спортсмена..." oninput="window.app.filterContacts(this.value)">
+                <input type="text" id="contactSearch" class="search-input" placeholder="Поиск спортсмена или команды" oninput="window.app.filterContacts(this.value)">
             </div>
             <div class="chat-list" id="contactList"></div>
         </div>
@@ -203,12 +203,7 @@
             </div>
             
             <!-- 2. ПЕЛОТОНЫ: визуально 24x24, но прозрачная рамка 28x28 для линейки -->
-            <div class="nav-item" id="nav-btn-pelotons" onclick="window.app.switchTab('pelotons', event)">
-                <svg width="28" height="28" viewBox="-2 -2 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 2px;">
-                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line>
-                </svg>
-                CRM
-            </div>
+            
 
             <!-- 3. ДРАФТ: визуально 26x26, прозрачная рамка 28x28 -->
             <div class="nav-item" id="nav-btn-draft" onclick="window.app.switchTab('draft')" style="color: var(--primary); font-family: 'Unbounded', sans-serif; font-weight: 800;">
@@ -319,13 +314,12 @@
         oninput="this.style.height = '46px'; this.style.height = Math.min(this.scrollHeight, 250) + 'px'; window.app.saveDraft(window.app.activeChatId, this.value);" 
         onkeypress="if(event.keyCode===13 && !event.shiftKey){ window.app.sendMessage(); event.preventDefault(); }"></textarea>
     
-    <button id="sendBtnIcon" class="send-btn" onclick="window.app.sendMessage()">
-        <div id="vIcon" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-            <svg style="width: 28px; height: 28px; transform: rotate(180deg) scale(1.7); margin-top: 6px; margin-left: -7px;" viewBox="0 0 25000 25000" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2155 14999 c-220 -54 -410 -208 -511 -414 -62 -127 -84 -223 -84 -360 0 -180 52 -338 156 -475 27 -36 745 -913 1595 -1950 850 -1037 2305 -2812 3234 -3945 928 -1133 1722 -2097 1764 -2142 311 -337 757 -590 1204 -683 769 -161 1571 74 2117 620 69 69 650 770 1695 2045 874 1067 1853 2262 2176 2655 322 393 1082 1320 1688 2060 607 740 1121 1375 1143 1413 68 113 100 223 106 358 5 136 -7 222 -49 331 -96 247 -300 427 -554 489 -78 18 -140 19 -2156 19 -2039 0 -2077 0 -2155 -20 -123 -31 -253 -100 -336 -178 -54 -51 -2050 -2474 -3038 -3687 -63 -77 -119 -143 -125 -148 -5 -4 -20 -6 -32 -5 -15 2 -470 551 -1548 1868 -887 1084 -1563 1901 -1613 1950 -70 69 -105 95 -182 133 -52 26 -131 56 -174 67 -78 20 -118 20 -2160 19 -2033 0 -2083 -1 -2161 -20z m5697 -2623 c852 -1039 1548 -1892 1548 -1896 0 -10 -159 -113 -278 -179 -278 -157 -578 -280 -862 -355 -300 -80 -571 -111 -880 -103 -349 10 -628 61 -950 173 -618 215 -1173 621 -1687 1234 -148 176 -2404 2932 -2418 2954 -13 19 -13 25 1 44 l15 22 1982 -2 1981 -3 1548 -1889z m9822 1872 c10 -14 12 -27 6 -37 -4 -9 -538 -662 -1185 -1451 -646 -789 -1305 -1592 -1462 -1785 -3676 -4487 -3838 -4684 -3951 -4795 -213 -210 -462 -343 -764 -411 -146 -33 -415 -38 -577 -10 -137 23 -292 72 -417 131 -160 77 -370 233 -476 354 -109 125 -2437 2970 -2433 2974 2 2 48 -7 102 -22 255 -66 543 -105 840 -113 641 -17 1270 125 1878 422 449 219 805 466 1213 838 126 115 218 226 1645 1967 832 1015 1534 1871 1560 1902 l48 58 1979 0 1979 0 15 -22z" fill="currentColor" />
-            </svg>
-        </div>
-        <svg id="checkIcon" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    <button id="sendBtnIcon" class="send-btn" onclick="window.app.sendMessage()" style="position: relative; padding: 0 !important; overflow: hidden;">
+        <!-- Слой с уточкой натянут на 100% кнопки, картинка центрируется фоном -->
+        <div id="vIcon" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg') center center / 28px no-repeat; z-index: 1;"></div>
+        
+        <!-- Галочка сохранения -->
+        <svg id="checkIcon" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
     </button>
 </div>
         </div>
@@ -904,13 +898,13 @@
     </div>
 </div>
 
-<script src="/vilka.js?v=42" defer></script>
+<script src="/vilka.js?v=47" defer></script>
 
 
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Unbounded:wght@700;800&display=swap');
 
-    /* Окно скрыто по умолчанию (display: none) */
+    /* Окно авторизации */
     #sotka-auth-overlay {
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(15, 15, 18, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -952,8 +946,245 @@
     .sa-found-card { background: rgba(255, 193, 7, 0.1); border: 1px dashed #ffc107; border-radius: 10px; padding: 15px; text-align: center; margin-bottom: 20px; }
     .sa-found-name { font-weight: 800; font-size: 16px; color: #ffc107; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-</style>
 
+    /* 🔥 АНИМАЦИЯ УТОЧКИ ПРИ ОТПРАВКЕ СООБЩЕНИЯ */
+    @keyframes duckPulse {
+        0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 0 rgba(255,193,7,0)); }
+        50% { transform: scale(1.35) translateY(-2px) rotate(-15deg); filter: drop-shadow(0 4px 10px rgba(255,193,7,0.8)); }
+        100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 0 rgba(255,193,7,0)); }
+    }
+    .v-fly {
+        animation: duckPulse 0.4s ease-in-out infinite !important;
+    }
+
+    /* 🔥 УЗКАЯ ПОЛОСА-БЕЙДЖ НА ВСЮ ШИРИНУ КАРТОЧКИ/БАБЛА */
+    .badge-scope-banner {
+        margin: -16px -20px 12px -20px;
+        padding: 6px 20px;
+        font-family: 'Unbounded', sans-serif;
+        font-size: 9px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-sizing: border-box;
+    }
+
+    .badge-scope-banner.public {
+        background: var(--primary, #ffc107);
+        color: #000000;
+    }
+
+    .badge-scope-banner.team {
+        background: rgba(255, 193, 7, 0.25);
+        color: var(--text-main);
+        border-bottom: 1px solid rgba(255, 193, 7, 0.3);
+    }
+
+    .badge-scope-banner.direct {
+        background: rgba(236, 72, 153, 0.25);
+        color: #ec4899;
+        border-bottom: 1px solid rgba(236, 72, 153, 0.4);
+    }
+
+    .message-bubble .badge-scope-banner {
+        margin: -10px -14px 8px -14px;
+        padding: 4px 14px;
+    }
+
+    /* 🔥 КАРТОЧКА ПОСТА С РАЗМЫТИЕМ И МАСКОЙ (КАК В ВИДЖЕТЕ НА САЙТЕ) */
+    .vk-card-media {
+        position: relative;
+        width: calc(100% + 40px) !important;
+        margin: -16px -20px 16px -20px !important;
+        max-height: 380px;
+        display: flex;
+        overflow: hidden;
+        border-radius: 16px 16px 0 0;
+        cursor: pointer;
+    }
+
+    .vk-card-image {
+        width: 100%;
+        max-height: 380px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .vk-card-media-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 80px 20px 20px 20px;
+        box-sizing: border-box;
+        background: linear-gradient(to top, rgba(18, 18, 24, 0.9) 0%, rgba(18, 18, 24, 0.4) 50%, transparent 100%);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        mask-image: linear-gradient(to top, black 65%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to top, black 65%, transparent 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+
+    .vk-card-channel {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--primary, #ffc107);
+        color: #000000;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-family: 'Unbounded', sans-serif;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+        align-self: flex-start;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .vk-card-title {
+        font-family: 'Unbounded', sans-serif;
+        font-size: clamp(16px, 4vw, 20px);
+        font-weight: 800;
+        margin: 0;
+        line-height: 1.3;
+        color: #ffffff !important;
+        word-wrap: break-word;
+        text-transform: uppercase;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    /* 🔥 ЕДИНАЯ ПАНЕЛЬ СМОТРЮ / ПИШУ (АДАПТИВНАЯ) */
+    #recipientSelectorBar {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: nowrap !important;
+        gap: 8px;
+        padding: 6px 12px;
+        background: var(--bg-surface);
+        border-bottom: 1px solid var(--border);
+        border-radius: 12px 12px 0 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .chat-control-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .chat-control-group span {
+        font-size: 10px;
+        font-family: 'Unbounded', sans-serif;
+        font-weight: 700;
+    }
+
+    .chat-control-select {
+        background: var(--bg-body);
+        color: var(--primary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        outline: none;
+        cursor: pointer;
+        flex: 1;
+        min-width: 0;
+        width: 100%;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    @media (max-width: 480px) {
+        #recipientSelectorBar { gap: 4px !important; padding: 4px 6px !important; }
+        .chat-control-group { gap: 3px !important; }
+        .chat-control-group span { font-size: 8px !important; letter-spacing: -0.3px; flex-shrink: 0; }
+        .chat-control-select { font-size: 10px !important; padding: 3px 2px !important; }
+    }
+
+    /* 🔥 БРОНЕБОЙНЫЙ СКРОЛЛ ДЛЯ ТАБЛО "МОЙ 2026" */
+    #welcomeDashboardModal {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(18, 18, 24, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 16px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .board-container {
+        max-height: 92vh; 
+        overflow-y: auto;
+        box-sizing: border-box;
+        scrollbar-width: thin;
+    }
+
+    @media (max-height: 700px) {
+        .hero-yellow-card { min-height: 160px !important; padding: 16px !important; }
+        .race-row-item { padding: 8px 12px !important; }
+        .board-container { max-height: 96vh; }
+    }
+
+    /* 🔥 АНИМАЦИИ ДЛЯ ТАБЛО РЕЗУЛЬТАТОВ "МОЙ 2026" */
+    .pts-badge-animated {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-family: 'Unbounded', sans-serif;
+        font-size: 11px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        animation: ptsBadgeGlow 2s infinite ease-in-out;
+    }
+
+    @keyframes ptsBadgeGlow {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+        50% { transform: scale(1.05); box-shadow: 0 0 12px rgba(16, 185, 129, 0.4); }
+    }
+
+    .rating-counter-active {
+        color: #10b981 !important;
+        text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+        transition: color 0.3s ease;
+    }
+
+    .live-status-badge {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-family: 'Unbounded', sans-serif;
+        font-size: 10px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+</style>
 
 <div id="sotka-auth-overlay">
     <div class="sa-modal" style="position: relative;">
