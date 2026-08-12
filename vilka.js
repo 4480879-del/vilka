@@ -225,7 +225,8 @@ class LiveBoardService {
         if (b.speed && parseFloat(b.speed) > 0) {
             let speedVal = parseFloat(b.speed).toFixed(2);
             let clusterBadge = b.recCluster ? `<span style="background:var(--primary); color:#000; padding:2px 6px; border-radius:4px; font-size:9px; font-family:'Unbounded'; font-weight:800; margin-left:6px;">${b.recCluster}</span>` : '';
-            speedHtml = `<div style="font-size:11px; color:var(--text-muted); font-family:'Roboto Mono'; margin-top:4px; font-weight:bold;">${speedVal} км/ч ${clusterBadge}</div>`;
+            // 🔥 Добавлен класс live-speed-val
+            speedHtml = `<div class="live-speed-val" style="font-size:11px; color:var(--text-muted); font-family:'Roboto Mono'; margin-top:4px; font-weight:bold;">${speedVal} км/ч ${clusterBadge}</div>`;
         }
 
         let noteText = (typeof bibToNote !== 'undefined' && b.bib) ? (bibToNote[b.bib] || '') : '';
@@ -245,23 +246,23 @@ class LiveBoardService {
         // 🔥 ДАННЫЕ ДЛЯ БЫСТРОГО ПОИСКА
         let searchData = (this.app || window.app).escapeHTML(`${displayName} ${b.bib || ''}`.toLowerCase());
 
+        // 🔥 НИЖЕ ДОБАВЛЕНЫ КЛАССЫ: live-rank-cell, live-bib-cell, live-name-cell, name-title, team-title, live-hide-mobile, live-time-val
         return `<tr class="live-search-row" data-search="${searchData}" style="background:${rowBg}; border-bottom: 1px solid var(--border); transition:0.2s;" onmouseover="this.style.background='var(--bg-surface-hover)'" onmouseout="this.style.background='${rowBg}'">
-            <td style="padding:10px; text-align:center; font-weight:800; color:var(--text-main); ${rowBorder}">${rank}</td>
-            <td style="padding:10px; text-align:center; font-weight:800; color:var(--text-main); font-size:14px;">${b.bib || '-'}</td>
-            <td style="min-width:180px; padding:10px; text-align:left;">
-                <div style="font-weight:800; font-size:14px; color:var(--text-main); white-space:nowrap;">${nameHtml} <span style="font-weight:400; color:var(--text-muted); font-size:12px;">${b.yob || ''}</span> ${noteBadge}</div>
-                <div style="font-size:10px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${b.category ? b.category + ' | ' : ''}${b.team || '-'}</div>
+            <td class="live-rank-cell" style="padding:10px; text-align:center; font-weight:800; color:var(--text-main); ${rowBorder}">${rank}</td>
+            <td class="live-bib-cell" style="padding:10px; text-align:center; font-weight:800; color:var(--text-main); font-size:14px;">${b.bib || '-'}</td>
+            <td class="live-name-cell" style="min-width:180px; padding:10px; text-align:left;">
+                <div class="name-title" style="font-weight:800; font-size:14px; color:var(--text-main); white-space:nowrap;">${nameHtml} <span style="font-weight:400; color:var(--text-muted); font-size:12px;">${b.yob || ''}</span> ${noteBadge}</div>
+                <div class="team-title" style="font-size:10px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${b.category ? b.category + ' | ' : ''}${b.team || '-'}</div>
             </td>
-            <td style="padding:10px; text-align:center; font-weight:bold; color:var(--text-main);">${myLapTimes.length}</td>
+            <td class="live-hide-mobile" style="padding:10px; text-align:center; font-weight:bold; color:var(--text-main);">${myLapTimes.length}</td>
             <td style="padding:10px; text-align:left;">
-                <div style="color:${resColor}; font-weight:${resWeight}; font-size:${resSize}; font-family:'Roboto Mono', monospace;">${timeStr}</div>
+                <div class="live-time-val" style="color:${resColor}; font-weight:${resWeight}; font-size:${resSize}; font-family:'Roboto Mono', monospace;">${timeStr}</div>
                 ${speedHtml}
             </td>
-            <td style="padding:10px; font-family:'Roboto Mono'; font-size:11px; color:var(--text-muted); text-align:left;">${b.startTime || '-'}</td>
+            <td class="live-hide-mobile" style="padding:10px; font-family:'Roboto Mono'; font-size:11px; color:var(--text-muted); text-align:left;">${b.startTime || '-'}</td>
             ${lapColumns}
         </tr>`;
     }
-	
     renderStartRow(r, amIRegistered = false, squadCounts = {}) { 
         let timeStr = (r.actualStart && r.actualStart !== '-') ? `<span style="color:var(--success); font-weight:bold;">${r.actualStart}</span>` : `<span style="color:var(--text-muted);">${r.plannedStart || '-'}</span>`; 
         
@@ -307,20 +308,20 @@ class LiveBoardService {
         let searchData = (this.app || window.app).escapeHTML(`${r.name} ${r.bib || ''}`.toLowerCase());
 
         return `<tr class="live-search-row" data-search="${searchData}" style="background:${rowBg}; border-bottom: 1px solid var(--border);">
-            <td style="width:80px; padding:12px 10px; text-align:left; font-family:'Roboto Mono'; font-size: 14px; ${rowBorder}">${timeStr}</td>
-            <td style="width:60px; padding:12px 10px; text-align:center; font-weight:bold; color:var(--text-main);">${r.bib || '-'}</td>
-            <td style="min-width:180px; padding:12px 10px; text-align:left; position: relative; overflow: hidden;">
+            <td class="live-time-cell" style="width:80px; padding:12px 10px; text-align:left; font-family:'Roboto Mono'; font-size: 14px; ${rowBorder}">${timeStr}</td>
+            <td class="live-bib-cell" style="width:60px; padding:12px 10px; text-align:center; font-weight:bold; color:var(--text-main);">${r.bib || '-'}</td>
+            <td class="live-name-cell" style="min-width:180px; padding:12px 10px; text-align:left; position: relative; overflow: hidden;">
                 <div style="position: absolute; right: -5px; bottom: -5px; font-size: 38px; font-family: 'Unbounded'; font-weight: 900; color: var(--text-main); opacity: 0.04; pointer-events: none; white-space: nowrap; z-index: 0; text-transform: uppercase;">
                     ${r.team || ''}
                 </div>
-                <div style="position: relative; z-index: 1; white-space: nowrap;">
-                    <div style="font-weight:800; font-size:13px; color:var(--text-main);">${nameHtml}</div>
-                    <div style="font-size:10px; color:var(--text-muted);">${r.team || '-'}</div>
+                <div style="position: relative; z-index: 1;">
+                    <div class="name-title" style="font-weight:800; font-size:13px; color:var(--text-main);">${nameHtml}</div>
+                    <div class="team-title" style="font-size:10px; color:var(--text-muted);">${r.team || '-'}</div>
                     ${squadHtml}
                 </div>
             </td>
             <td style="padding:12px 10px; text-align:center;">
-                <span style="background:var(--bg-surface-hover); color:var(--text-main); padding:4px 8px; border-radius:4px; font-size:11px; font-weight:700;">${r.group || '-'}</span>
+                <span class="live-group-badge" style="background:var(--bg-surface-hover); color:var(--text-main); padding:4px 8px; border-radius:4px; font-size:11px; font-weight:700;">${r.group || '-'}</span>
             </td>
         </tr>`; 
     }
@@ -330,6 +331,35 @@ class LiveBoardService {
         this.cleanupLiveBoard(); 
         this.expandedRaceId = raceId; 
         this.liveDistanceFilter = 'all'; 
+
+        // 🔥 ЖЕЛЕЗОБЕТОННОЕ ВНЕДРЕНИЕ СТИЛЕЙ (Браузер больше их не проигнорирует!)
+        if (!document.getElementById('live-board-mobile-style')) {
+            const style = document.createElement('style');
+            style.id = 'live-board-mobile-style';
+            style.innerHTML = `
+                #mainLiveTable th { font-family: 'Unbounded', sans-serif; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; border-bottom: 1px solid var(--border) !important; }
+                #mainLiveTable td { border-bottom: 1px solid var(--border) !important; }
+                
+                @media (max-width: 600px) {
+                    .live-hide-mobile { display: none !important; }
+                    
+                    #mainLiveTable th, #mainLiveTable td { padding: 12px 6px !important; }
+                    
+                    .live-rank-cell { width: 22px !important; min-width: 22px !important; font-size: 11px !important; padding: 12px 2px !important; }
+                    .live-bib-cell { width: 32px !important; min-width: 32px !important; font-size: 12px !important; padding: 12px 2px !important; }
+                    .live-time-cell { width: 55px !important; min-width: 55px !important; font-size: 12px !important; padding: 12px 2px !important; }
+                    
+                    .live-name-cell { white-space: normal !important; min-width: 130px !important; max-width: 180px !important; word-wrap: break-word !important; }
+                    .live-name-cell .name-title { font-size: 13px !important; white-space: normal !important; line-height: 1.2 !important; margin-bottom: 2px !important; }
+                    .live-name-cell .team-title { font-size: 10px !important; white-space: normal !important; line-height: 1.2 !important; }
+                    
+                    .live-group-badge { font-size: 9px !important; padding: 3px 6px !important; }
+                    .live-time-val { font-size: 13px !important; }
+                    .live-speed-val { font-size: 9px !important; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
         
         document.getElementById('liveBoardModal').style.display = 'flex'; 
         const titleEl = document.getElementById('liveBoardTitle');
@@ -374,17 +404,19 @@ class LiveBoardService {
             }
             this.openedRaceDistText = distText; 
             
+            // 🔥 ШАПКА: Добавлено white-space: normal для длинных названий
             titleEl.innerHTML = `
-                <div style="display:flex; align-items:center; gap:15px; width:100%;">
-                    <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
-                        <span style="font-size:18px; font-weight:800; text-transform:uppercase; line-height:1.2; color:var(--text-main);">${this.openedRaceName}</span>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <span style="font-size:11px; color:var(--text-muted); font-family:'Roboto Mono'; font-weight:normal;">${this.openedRaceDate}</span>
-                            ${distText ? `<span style="font-size:10px; background:var(--bg-body); color:var(--primary); padding:2px 6px; border-radius:4px; font-weight:bold;">${distText}</span>` : ''}
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; width:100%; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:5px;">
+                    <div style="display:flex; flex-direction:column; gap:6px; text-align:left; flex:1; min-width:0;">
+                        <span style="font-size:15px; font-family:'Unbounded'; font-weight:800; text-transform:uppercase; line-height:1.2; color:var(--text-main); white-space:normal;">${this.openedRaceName}</span>
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            <span style="font-size:10px; color:var(--text-muted); font-family:'Roboto Mono'; font-weight:bold;">${this.openedRaceDate}</span>
+                            ${distText ? `<span style="font-size:9px; background:rgba(255,193,7,0.1); border:1px solid rgba(255,193,7,0.3); color:var(--primary); padding:2px 6px; border-radius:4px; font-family:'Unbounded'; font-weight:800;">${distText}</span>` : ''}
                         </div>
                     </div>
-                    <button class="excel-download-btn" onclick="window.app.crm.liveService.exportToExcel()" style="background:var(--bg-surface-hover); border:1px solid var(--border); color:var(--text-main); padding:8px 12px; border-radius:6px; cursor:pointer; font-family:'Unbounded'; font-size:10px; font-weight:800; display:flex; align-items:center; gap:8px; margin-left:auto; transition:0.2s;">
-                        СКАЧАТЬ
+                    <button class="excel-download-btn" onclick="window.app.crm.liveService.exportToExcel()" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-main); height:32px; padding:0 10px; border-radius:8px; cursor:pointer; font-family:'Unbounded'; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; flex-shrink:0; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)';">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span class="hide-on-mobile">СКАЧАТЬ</span>
                     </button>
                 </div>
             `;
@@ -623,10 +655,19 @@ this.currentLiveStartList.sort((a, b) => {
             if (r.squad_id) squadCounts[r.squad_id] = (squadCounts[r.squad_id] || 0) + 1;
         });
 
-        let html = searchHtml + filterHtml + `<div style="width:100%; overflow-x:auto; padding-bottom:20px;"><table id="mainLiveTable" style="width:100%; border-collapse:collapse; white-space:nowrap; font-family:'Manrope'; font-size:12px; color:var(--text-main);">`;
+        let html = searchHtml + filterHtml + `
+        <div style="width:100%; overflow-x:auto; padding-bottom:20px; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+            <table id="mainLiveTable" style="width:100%; border-collapse:collapse; white-space:nowrap; font-family:'Manrope'; font-size:12px; color:var(--text-main);">`;
 
         if (this.liveCurrentTab === 'result') {
-            html += `<thead style="background:var(--bg-surface); position:sticky; top:0; z-index:5; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"><tr><th style="padding:10px;">МЕСТО</th><th style="padding:10px;">BIB</th><th style="text-align:left; padding:10px;">ФИО</th><th style="padding:10px;">КРУГИ</th><th style="text-align:left; padding:10px;">РЕЗУЛЬТАТ</th><th style="text-align:left; padding:10px;">СТАРТ</th>`;
+            html += `<thead style="background:var(--bg-surface); position:sticky; top:0; z-index:5; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <tr>
+                    <th class="live-rank-cell" style="padding:10px;">#</th>
+                    <th class="live-bib-cell" style="padding:10px;">BIB</th>
+                    <th style="text-align:left; padding:10px;">ФИО</th>
+                    <th class="live-hide-mobile" style="padding:10px;">КР.</th>
+                    <th style="text-align:left; padding:10px;">РЕЗУЛЬТАТ</th>
+                    <th class="live-hide-mobile" style="text-align:left; padding:10px;">СТАРТ</th>`;
             for(let i=1; i<=maxLaps; i++) html += `<th style="text-align:left; padding:10px;">${i}</th>`;
             html += `</tr></thead><tbody>`;
             
@@ -644,7 +685,13 @@ this.currentLiveStartList.sort((a, b) => {
                 }
             }
         } else {
-            html += `<thead style="background:var(--bg-surface); position:sticky; top:0; z-index:5; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"><tr><th style="width:80px; text-align:left; padding:12px;">СТАРТ</th><th style="width:60px; padding:12px;">BIB</th><th style="text-align:left; padding:12px; width:100%;">ФИО</th><th style="padding:12px; white-space:nowrap;">КАТЕГОРИЯ</th></tr></thead><tbody>`;
+            html += `<thead style="background:var(--bg-surface); position:sticky; top:0; z-index:5; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <tr>
+                    <th class="live-time-cell" style="text-align:left; padding:12px;">СТАРТ</th>
+                    <th class="live-bib-cell" style="padding:12px;">BIB</th>
+                    <th style="text-align:left; padding:12px; width:100%;">ФИО</th>
+                    <th style="padding:12px; white-space:nowrap;">КАТЕГОРИЯ</th>
+                </tr></thead><tbody>`;
             if (board.length === 0) html += `<tr><td colspan="4" style="text-align:center; padding:40px; color:var(--text-muted);">Ничего не найдено</td></tr>`;
             else {
                 if (isAbs) {
@@ -971,18 +1018,18 @@ openRaceQrModal(raceId, raceName) {
                 <div style="flex: 2; min-width: 150px;">
                     <div style="font-size:9px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">Деление на группы</div>
                     <select id="newDistCatLogicInput" class="auth-input" style="width:100%; margin:0; border-radius:8px; padding: 10px; font-size:12px; outline:none;">
-                        <option value="clusters" selected>🚴 Кластеры (A+, A, B...)</option>
-                        <option value="age">🎂 Возрастные (18-22...)</option>
-                        <option value="mixed">🧬 Смешанные (AM, CF4...)</option>
-						<option value="teams">👥 Командные (М / Ж / Микст)</option>
-                        <option value="absolute">🏆 Абсолют (без групп)</option>
+                        <option value="clusters" selected>Кластеры (A+, A, B...)</option>
+                        <option value="age">Возрастные (18-22...)</option>
+                        <option value="mixed">Смешанные (AM, CF4...)</option>
+						<option value="teams">Командные (М / Ж / Микст)</option>
+                        <option value="absolute">Абсолют (без групп)</option>
                     </select>
                 </div>
 
                 <div style="flex: 3; min-width: 200px;">
                     <div style="font-size:9px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase;">Правило рейтинга</div>
                     <select id="newDistRuleInput" class="auth-input" style="width:100%; margin:0; border-radius:8px; padding: 10px; font-size:12px; outline:none;">
-                        <option value="">🌟 По умолчанию (Как у события)</option>
+                        <option value="">По умолчанию (Как у события)</option>
                     </select>
                 </div>
                 
@@ -1056,7 +1103,7 @@ openRaceQrModal(raceId, raceName) {
                 : `<span style="background:rgba(0,0,0,0.1); padding:2px 6px; border-radius:4px; font-size:9px; opacity:0.7;">⚖️ Баз. правило</span>`;
             
             const catBadge = d.cat_name 
-                ? `<span style="background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:4px; font-size:9px; margin-left:4px;">👥 ${this.app.escapeHTML(d.cat_name)}</span>`
+                ? `<span style="background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:4px; font-size:9px; margin-left:4px;">${this.app.escapeHTML(d.cat_name)}</span>`
                 : '';
 
             return `
@@ -1774,7 +1821,7 @@ const p = { id: r.id, name: r.first_name, surname: r.last_name, year: r.yob, gen
                     // 🔥 НОВАЯ КНОПКА: Управление заявками для Лайва, Анонсов и Завершенных гонок
                     let manageRosterBtn = '';
                     if (canManageRoster && r.status !== 'Registration') {
-                        manageRosterBtn = `<button style="${textBtnStyle} background:rgba(40,167,69,0.1); color:var(--success); border:1px solid rgba(40,167,69,0.3);" title="Управление заявками" onclick="window.app.crm.openRaceRoster('${r.id}', '${this.app.escapeHTML(r.name)}', '${r.type}')">👥 ЗАЯВКИ</button>`;
+                        manageRosterBtn = `<button style="${textBtnStyle} background:rgba(40,167,69,0.1); color:var(--success); border:1px solid rgba(40,167,69,0.3);" title="Управление заявками" onclick="window.app.crm.openRaceRoster('${r.id}', '${this.app.escapeHTML(r.name)}', '${r.type}')">ЗАЯВКИ</button>`;
                     }
 
                     let chatBtn = '';
@@ -1885,7 +1932,7 @@ if (posterBtn || inviteBtn || chatBtn || judgeBtn || manageRosterBtn || startPul
                         <div class="calendar-accordion-body" style="display:${displayState}; padding:0 16px 16px 16px; border-top:1px dashed var(--border); cursor:default;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; margin-bottom:15px;">
                                 <div style="font-family:'Roboto Mono'; font-weight:bold; font-size:12px; color:var(--text-main);">
-                                    ⏱ СТАРТ: ${time}
+                                    СТАРТ: ${time}
                                 </div>
 								<div style="font-size:11px; color:var(--text-muted); z-index:2; position:relative;">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
@@ -2417,12 +2464,28 @@ if (posterBtn || inviteBtn || chatBtn || judgeBtn || manageRosterBtn || startPul
             }
         }
 
+        // 🔥 ФИКС: Принудительно создаем скрытую рабочую область, если мы туда еще не заходили
+        if (typeof this.app.ensureWorkspaceExists === 'function') {
+            this.app.ensureWorkspaceExists();
+        }
+
+        // 🔥 Выводим рабочую область на передний план и прячем чат
         const ws = document.getElementById('pelotonWorkspace');
-        if (ws) ws.classList.add('mobile-open');
+        const mainChat = document.getElementById('mainChatArea');
+        if (ws) {
+            ws.style.display = 'flex';
+            ws.classList.add('mobile-open');
+        }
+        if (mainChat) {
+            mainChat.style.display = 'none';
+        }
 
         this.openedEventId = raceId; this.openedEventName = raceName; this.openedEventType = raceType || "";
+        
+        // Теперь этот контейнер гарантированно существует
         const contentArea = document.getElementById('crmContentArea');
         contentArea.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="spinner" style="width:40px; height:40px; border-width:4px; display:inline-block; border-color: var(--primary) transparent transparent transparent;"></div></div>`;
+        
         const roles = this.app.usersMap[this.app.currentRider?.email] || []; const rStr = JSON.stringify(roles);
         const currentRace = this.dataCalendar.find(r => r.id === raceId);
         
@@ -2552,10 +2615,10 @@ if (posterBtn || inviteBtn || chatBtn || judgeBtn || manageRosterBtn || startPul
             html += `<div style="display:flex; gap:8px; margin-bottom: 20px; overflow-x:auto; scrollbar-width:none; padding-bottom:4px; -webkit-overflow-scrolling:touch;">`;
             if (isOrganizer) { 
                 const btnStyle = "background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px 16px; border-radius:50px; font-family:'Unbounded'; font-weight:800; font-size:10px; cursor:pointer; flex-shrink:0; transition:0.2s;";
-                html += `<button style="${btnStyle}" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';" onclick="window.app.crm.generateBibs()">🔢 BIB-НОМЕРА</button>`;
-                html += `<button style="${btnStyle}" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';" onclick="window.app.crm.openWaveStartModal()">🌊 ВОЛНЫ (МАСС-СТАРТ)</button>`;
-                html += `<button style="${btnStyle}" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';" onclick="window.app.crm.generateITTStarts()">⏱ ITT-СТАРТЫ</button>`;
-                html += `<button style="${btnStyle}" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';" onclick="window.app.crm.triggerCsvImport('${raceId}')">📥 ИМПОРТ CSV</button>`;
+                html += `<button style="${btnStyle}" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';" onclick="window.app.crm.generateBibs()">BIB-НОМЕРА</button>`;
+                html += `<button style="${btnStyle}" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';" onclick="window.app.crm.openWaveStartModal()">ВОЛНЫ (МАСС-СТАРТ)</button>`;
+                html += `<button style="${btnStyle}" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';" onclick="window.app.crm.generateITTStarts()">ITT-СТАРТЫ</button>`;
+                html += `<button style="${btnStyle}" onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';" onclick="window.app.crm.triggerCsvImport('${raceId}')">ИМПОРТ CSV</button>`;
                 
                 if (currentRace && currentRace.status !== 'Finished' && currentRace.status !== 'LIVE') {
                     html += `<button style="background:rgba(255,51,102,0.1); color:var(--danger); border:1px solid rgba(255,51,102,0.3); padding:8px 16px; border-radius:50px; font-family:'Unbounded'; font-weight:800; font-size:10px; cursor:pointer; flex-shrink:0; transition:0.2s; margin-left:10px;" onmouseover="this.style.background='var(--danger)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,51,102,0.1)'; this.style.color='var(--danger)';" onclick="window.app.crm.startManualLiveRace('${raceId}')">🔴 СТАРТ ГОНКИ (LIVE)</button>`;
@@ -3460,7 +3523,7 @@ async generateITTStarts() {
                     await pb.collection('messages').create({
                         chat_id: raceChat.id,
                         sender_id: botRider.id,
-                        text: `⏱ ГОНКА ЗАПУЩЕНА!\n\nСтартовый протокол зафиксирован. Участники уходят на дистанцию согласно расписанию.\n\n[ACTION:LIVE:${raceId}]`
+                        text: `ГОНКА ЗАПУЩЕНА!\n\nСтартовый протокол зафиксирован. Участники уходят на дистанцию согласно расписанию.\n\n[ACTION:LIVE:${raceId}]`
                     }, { requestKey: null });
                 }
             } catch(botErr) { console.error("Ошибка отправки ботом", botErr); }
@@ -5573,7 +5636,7 @@ async submitEvent() {
                 loaderEl.style.display = 'none';
 
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
-                this.showPosterPreviewModal(dataUrl, race, shareText);
+                this.app.showPosterPreviewModal(dataUrl, race, shareText);
 
             } catch (e) {
                 console.error(e);
@@ -5594,59 +5657,7 @@ async submitEvent() {
         });
     }
 
-    showPosterPreviewModal(dataUrl, race, shareText) {
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
-        overlay.style.display = 'flex';
-        overlay.style.zIndex = '10000000';
-        overlay.innerHTML = `
-            <div class="modal-box" style="padding: 0; overflow: hidden; max-width: 400px; width: 95vw; background: var(--bg-surface); border: 1px solid var(--border);">
-                <div style="padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-hover);">
-                    <h3 style="margin: 0; color: var(--text-main); font-family: 'Unbounded'; font-size: 14px;">ПОСТЕР ГОТОВ</h3>
-                    <button id="closePosterBtn" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">&times;</button>
-                </div>
-                <div style="padding: 20px; text-align: center; background: var(--bg-body);">
-                    <img src="${dataUrl}" style="width: 100%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px; max-height: 60vh; object-fit: contain;">
-                    
-                    <div style="display: flex; gap: 10px;">
-                        <button id="sharePosterBtn" class="btn-black" style="flex: 1; padding: 14px; font-size: 12px; background: var(--primary); color: #000; border: none; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">🚀 ПОДЕЛИТЬСЯ</button>
-                        <button id="downloadPosterBtn" class="btn-black" style="flex: 1; padding: 14px; font-size: 12px; background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border);">📥 СКАЧАТЬ</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(overlay);
 
-        document.getElementById('closePosterBtn').onclick = () => document.body.removeChild(overlay);
-
-        document.getElementById('downloadPosterBtn').onclick = () => {
-            const link = document.createElement('a');
-            link.download = `vilka_poster_${race.id}.jpg`;
-            link.href = dataUrl;
-            link.click();
-        };
-
-        document.getElementById('sharePosterBtn').onclick = async () => {
-            const arr = dataUrl.split(',');
-            const mime = arr[0].match(/:(.*?);/)[1];
-            const bstr = atob(arr[1]);
-            let n = bstr.length;
-            const u8arr = new Uint8Array(n);
-            while(n--) { u8arr[n] = bstr.charCodeAt(n); }
-            const file = new File([u8arr], `vilka_${race.id}.jpg`, { type: mime });
-
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({ title: race.name, text: shareText, files: [file] });
-                } catch(err) {
-                    console.log("Пользователь отменил отправку");
-                }
-            } else {
-                alert("Ваш браузер не поддерживает прямую отправку фото в соцсети. Воспользуйтесь кнопкой СКАЧАТЬ и выложите фото вручную.");
-            }
-        };
-    }
-	
 	// ==========================================
     // 🗂️ ВЫЗОВ ШТОРКИ СОЗДАНИЯ ИСТОРИЙ (ПРЯМОЙ ЗАПРОС В БД)
     // ==========================================
@@ -6558,6 +6569,388 @@ getRadarSvg(size = 24) {
             // Возвращаем красивую кликабельную ссылку
             return `<a href="${url}" target="_blank" style="color:${color}; text-decoration:none; cursor:pointer; transition:0.2s;" onmouseover="this.style.textDecoration='underline'; this.style.color='var(--primary)';" onmouseout="this.style.textDecoration='none'; this.style.color='${color}';" onclick="event.stopPropagation();">${teamName}</a>`;
         }
+// 🔥 ГЕНЕРАТОР БРЕНДОВОГО ПОСТЕРА (STORIES) С QR-КОДОМ И АЛИАСОМ
+    async generateRadioQrPoster(chatId = null) {
+        const cId = chatId || this.activeChatId;
+        if (!cId) return;
+
+        const chat = this.chats.find(c => c.id === cId);
+        if (!chat) return;
+
+        const chatName = this.getChatName(chat) || "РАДИО КОМАНДЫ";
+        const slug = chat.slug || cId;
+        const shortLink = `https://vilka.sotka.one/#${slug}`;
+        const displayLink = `vilka.sotka.one/#${slug}`;
+
+        // 1. Показываем индикатор генерации
+        const loaderId = 'radioQrPosterLoader';
+        let loaderEl = document.getElementById(loaderId);
+        if (!loaderEl) {
+            loaderEl = document.createElement('div');
+            loaderEl.id = loaderId;
+            loaderEl.className = 'modal-overlay';
+            loaderEl.style.cssText = 'display:flex; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:10000001; justify-content:center; align-items:center; backdrop-filter:blur(5px);';
+            loaderEl.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner" style="width:45px; height:45px; border-width:4px; border-color: var(--primary) transparent transparent transparent;"></div><div style="margin-top:15px; font-family:'Unbounded'; font-size:12px; color:var(--primary); font-weight:800;">ОБРАБОТКА ПОСТЕРА...</div></div>`;
+            document.body.appendChild(loaderEl);
+        } else {
+            loaderEl.style.display = 'flex';
+        }
+
+        try {
+            // 2. Подгружаем ресурсы (QR-код и фирменную уточку)
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shortLink)}`;
+            const qrImg = await this.loadImage(qrApiUrl);
+
+            let duckImg = null;
+            try {
+                duckImg = await this.loadImage("https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg");
+            } catch(e) {}
+
+            // 3. Создаем Хост-Canvas (1080x1920 — стандарт Stories)
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1920;
+            const ctx = canvas.getContext('2d');
+
+            // 4. Тёмно-стильный градиентный фон
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGrad.addColorStop(0, '#121218');
+            bgGrad.addColorStop(0.35, '#181822');
+            bgGrad.addColorStop(0.75, '#26200f');
+            bgGrad.addColorStop(1, '#ffc107');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Мягкое неоновое свечение в центре
+            const glowGrad = ctx.createRadialGradient(540, 960, 50, 540, 960, 650);
+            glowGrad.addColorStop(0, 'rgba(255, 193, 7, 0.22)');
+            glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = glowGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Вспомогательная функция для скругленных плашек
+            const drawRoundRect = (ctx, x, y, w, h, r, fill, stroke) => {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + w - r, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.closePath();
+                if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+                if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+            };
+
+            // Верхний плавающий бейдж
+            drawRoundRect(ctx, 330, 160, 420, 64, 32, 'rgba(255, 193, 7, 0.15)', 'rgba(255, 193, 7, 0.4)');
+            ctx.font = 'bold 22px "Unbounded", sans-serif';
+            ctx.fillStyle = '#FFC107';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("📻 VILKA RADIO", 540, 192);
+
+            // Фирменная уточка
+            if (duckImg) {
+                ctx.drawImage(duckImg, 480, 260, 120, 120);
+            }
+
+            // Название Команды / Название Радио
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 54px "Unbounded", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(chatName.toUpperCase(), 540, 450);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.font = '26px "Manrope", sans-serif';
+            ctx.fillText("Официальное Радио команды", 540, 510);
+
+            // Белая карточка-подложка для QR-кода
+            const qrCardX = 190;
+            const qrCardY = 590;
+            const qrCardSize = 700;
+            drawRoundRect(ctx, qrCardX, qrCardY, qrCardSize, qrCardSize, 48, '#FFFFFF', 'rgba(255, 193, 7, 0.8)');
+
+            // Рисуем сам QR-код
+            ctx.drawImage(qrImg, qrCardX + 50, qrCardY + 50, 600, 600);
+
+            // Блок с короткой ссылкой
+            const linkBoxY = 1350;
+            drawRoundRect(ctx, 130, linkBoxY, 820, 110, 32, 'rgba(18, 18, 24, 0.85)', '#FFC107');
+            ctx.fillStyle = '#FFC107';
+            ctx.font = 'bold 36px "Roboto Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(displayLink, 540, linkBoxY + 55);
+
+            // Текст призыва к действию
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 32px "Unbounded", sans-serif';
+            ctx.fillText("НАВЕДИ КАМЕРУ ИЛИ ПЕРЕХОДИ", 540, 1540);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.font = '24px "Manrope", sans-serif';
+            ctx.fillText("Будь на связи с командой и следи за новостями", 540, 1590);
+
+            // Подпись бренда снизу
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 26px "Unbounded", sans-serif';
+            ctx.fillText("SOTKA • DUCK AND RIDE", 540, 1800);
+
+            loaderEl.style.display = 'none';
+
+            // Открываем готовый модальный просмотрщик с кнопками «Скачать» и «Поделиться»
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            this.showPosterPreviewModal(dataUrl, { id: slug, name: chatName }, `Слушай Радио команды ${chatName}: ${shortLink}`);
+
+        } catch (e) {
+            console.error("Ошибка создания постера:", e);
+            alert("Не удалось создать постер: " + e.message);
+            if (loaderEl) loaderEl.style.display = 'none';
+        }
+    }
+
+loadImage(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error("Не удалось загрузить картинку"));
+            img.src = src;
+        });
+    }
+
+showPosterPreviewModal(dataUrl, race, shareText) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = 'display:flex; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:10000002; justify-content:center; align-items:center; backdrop-filter:blur(5px);';
+        
+        overlay.innerHTML = `
+            <div class="modal-box" style="padding: 0; overflow: hidden; max-width: 400px; width: 92vw; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
+                <div style="padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-hover);">
+                    <h3 style="margin: 0; color: var(--text-main); font-family: 'Unbounded'; font-size: 13px;">ПОСТЕР ГОТОВ 📸</h3>
+                    <button id="closePosterBtn" style="background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; line-height: 1;">&times;</button>
+                </div>
+                <div style="padding: 20px; text-align: center; background: var(--bg-body);">
+                    <img src="${dataUrl}" style="width: 100%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px; max-height: 60vh; object-fit: contain;">
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button id="sharePosterBtn" class="btn-black" style="flex: 1; padding: 14px; font-size: 11px; font-family: 'Unbounded'; font-weight: 800; background: var(--primary); color: #000; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">🚀 ПОДЕЛИТЬСЯ</button>
+                        <button id="downloadPosterBtn" class="btn-black" style="flex: 1; padding: 14px; font-size: 11px; font-family: 'Unbounded'; font-weight: 800; background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">📥 СКАЧАТЬ</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('closePosterBtn').onclick = () => document.body.removeChild(overlay);
+
+        document.getElementById('downloadPosterBtn').onclick = () => {
+            const link = document.createElement('a');
+            link.download = `vilka_poster_${race.id || 'image'}.jpg`;
+            link.href = dataUrl;
+            link.click();
+        };
+
+        document.getElementById('sharePosterBtn').onclick = async () => {
+            const arr = dataUrl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while(n--) { u8arr[n] = bstr.charCodeAt(n); }
+            const file = new File([u8arr], `vilka_${race.id || 'image'}.jpg`, { type: mime });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ title: race.name || 'VILKA', text: shareText, files: [file] });
+                } catch(err) {
+                    console.log("Пользователь отменил отправку");
+                }
+            } else {
+                alert("Ваш браузер не поддерживает прямую отправку фото в соцсети. Воспользуйтесь кнопкой СКАЧАТЬ и выложите фото вручную.");
+            }
+        };
+    }
+	
+		// 🔥 ОТКРЫТИЕ ОКНА НАСТРОЙКИ АЛИАСА РАДИО
+   openAliasModal() {
+        if (!this.activeChatId) return;
+        const chat = this.chats.find(c => c.id === this.activeChatId);
+        if (!chat) return;
+
+        let modal = document.getElementById('chatAliasModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'chatAliasModal';
+            modal.className = 'modal-overlay';
+            modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:10000000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px);';
+            document.body.appendChild(modal);
+        }
+
+        const currentSlug = chat.slug || '';
+
+        modal.innerHTML = `
+            <div class="modal-box" style="max-width: 420px; width: 92vw; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); font-family: 'Manrope', sans-serif; box-sizing: border-box;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                    <div>
+                        <div style="font-family: 'Unbounded'; font-size: 13px; font-weight: 800; color: var(--primary); text-transform: uppercase;">
+                            🏷️ АЛИАС РАДИОКОМАНДЫ
+                        </div>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Персональная короткая ссылка</div>
+                    </div>
+                    <button onclick="document.getElementById('chatAliasModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer;">&times;</button>
+                </div>
+
+                <div style="font-size: 12px; color: var(--text-main); margin-bottom: 8px; line-height: 1.4;">
+                    Придумайте короткое имя (алиас) для радио <b>«${this.escapeHTML(this.getChatName(chat))}»</b>:
+                </div>
+
+                <div style="position: relative; margin-bottom: 8px;">
+                    <span style="position: absolute; left: 12px; top: 12px; font-family: 'Roboto Mono', monospace; font-size: 13px; color: var(--text-muted); pointer-events: none;">#</span>
+                    <input type="text" id="chatAliasInput" class="auth-input" value="${this.escapeHTML(currentSlug)}" placeholder="one" style="width: 100%; box-sizing: border-box; padding-left: 28px; font-family: 'Roboto Mono', monospace; font-size: 14px; font-weight: bold;" oninput="window.app.onAliasInputDebounced(this.value, '${chat.id}')">
+                </div>
+
+                <div id="chatAliasStatus" style="font-size: 11px; margin-bottom: 20px; min-height: 18px; font-family: 'Manrope', sans-serif;">
+                    <span style="color:var(--text-muted)">Разрешены латинские буквы, цифры и дефис</span>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap: 8px;">
+                    <div style="display:flex; gap: 10px;">
+                        <button id="chatAliasSaveBtn" onclick="window.app.saveChatAlias('${chat.id}')" class="btn-black" style="flex:1; background: var(--primary); color: #000; padding: 12px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; border-radius: 8px; border:none; cursor:pointer;">
+                            💾 СОХРАНИТЬ
+                        </button>
+                        <button onclick="document.getElementById('chatAliasModal').style.display='none'" style="flex:1; background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); padding: 12px; font-size: 11px; font-family: 'Unbounded'; font-weight: 800; border-radius: 8px; cursor:pointer;">
+                            ОТМЕНА
+                        </button>
+                    </div>
+
+                    <button onclick="document.getElementById('chatAliasModal').style.display='none'; window.app.generateRadioQrPoster('${chat.id}')" style="width:100%; background:rgba(168,85,247,0.15); color:#a855f7; border:1px solid rgba(168,85,247,0.4); padding:12px; font-family:'Unbounded'; font-weight:800; font-size:11px; border-radius:8px; cursor:pointer; transition:0.2s;" onmouseover="this.style.background='rgba(168,85,247,0.25)'" onmouseout="this.style.background='rgba(168,85,247,0.15)'">
+                        📸 СГЕНЕРИРОВАТЬ ПОСТЕР C QR (STORIES)
+                    </button>
+                </div>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+        
+        if (currentSlug) {
+            this.checkAliasAvailability(currentSlug, chat.id);
+        }
+    }
+	
+    // 🔥 ПРОВЕРКА С ЗАДЕРЖКОЙ (DEBOUNCE 300ms)
+    onAliasInputDebounced(value, chatId) {
+        if (this.aliasDebounceTimer) clearTimeout(this.aliasDebounceTimer);
+        this.aliasDebounceTimer = setTimeout(() => {
+            this.checkAliasAvailability(value, chatId);
+        }, 300);
+    }
+
+    // 🔥 ПРОВЕРКА УНИКАЛЬНОСТИ В БД
+    async checkAliasAvailability(value, chatId) {
+        const clean = value.trim().toLowerCase();
+        const statusEl = document.getElementById('chatAliasStatus');
+        const saveBtn = document.getElementById('chatAliasSaveBtn');
+
+        if (!statusEl || !saveBtn) return;
+
+        // Если поле пустое - разрешаем сохранить (сбросить алиас)
+        if (!clean) {
+            statusEl.innerHTML = '<span style="color:var(--text-muted)">Поле пустое — будет использоваться стандартная ID-ссылка</span>';
+            saveBtn.disabled = false;
+            saveBtn.style.opacity = '1';
+            return true;
+        }
+
+        // 1. Валидация формата (только латиница, цифры, дефис и подчеркивание)
+        const slugRegex = /^[a-z0-9_-]+$/;
+        if (!slugRegex.test(clean)) {
+            statusEl.innerHTML = '<span style="color:var(--danger)">⚠️ Разрешены только латинские буквы, цифры, дефис и _</span>';
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.5';
+            return false;
+        }
+
+        // 2. Защита зарезервированных системных слов
+        const reserved = ['chat', 'main', 'profile', 'contacts', 'pelotons', 'draft', 'page', 'newsfeed', 'calendar', 'rules', 'support'];
+        if (reserved.includes(clean)) {
+            statusEl.innerHTML = '<span style="color:var(--danger)">⛔ Это зарезервированное системное слово</span>';
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.5';
+            return false;
+        }
+
+        statusEl.innerHTML = '<span style="color:var(--primary)">🔍 Проверка свободна ли ссылка...</span>';
+
+        try {
+            // 3. Запрос к чатам (chats)
+            const existingChat = await pb.collection('chats').getFirstListItem(`slug="${clean}" && id!="${chatId}"`, { requestKey: null }).catch(() => null);
+            if (existingChat) {
+                statusEl.innerHTML = '<span style="color:var(--danger)">❌ Этот алиас уже занят другим каналом или чатом!</span>';
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = '0.5';
+                return false;
+            }
+
+            // 4. Запрос к гонкам (races)
+            const existingRace = await pb.collection('races').getFirstListItem(`slug="${clean}"`, { requestKey: null }).catch(() => null);
+            if (existingRace) {
+                statusEl.innerHTML = '<span style="color:var(--danger)">❌ Этот алиас уже занят велогонкой!</span>';
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = '0.5';
+                return false;
+            }
+
+            // Всё свободно!
+            statusEl.innerHTML = `<span style="color:var(--success)">✅ Ссылка свободна: <b>https://vilka.sotka.one/#${clean}</b></span>`;
+            saveBtn.disabled = false;
+            saveBtn.style.opacity = '1';
+            return true;
+
+        } catch(e) {
+            statusEl.innerHTML = '<span style="color:var(--danger)">Ошибка соединения при проверке</span>';
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.5';
+            return false;
+        }
+    }
+
+    // 🔥 СОХРАНЕНИЕ В POCKETBASE
+    async saveChatAlias(chatId) {
+        const inputEl = document.getElementById('chatAliasInput');
+        if (!inputEl) return;
+
+        const cleanSlug = inputEl.value.trim().toLowerCase();
+        const saveBtn = document.getElementById('chatAliasSaveBtn');
+
+        saveBtn.innerText = 'СОХРАНЕНИЕ...';
+        saveBtn.disabled = true;
+
+        try {
+            // Сохраняем в PocketBase
+            const updatedChat = await pb.collection('chats').update(chatId, { slug: cleanSlug }, { requestKey: null });
+
+            // Обновляем в локальной памяти Вилки
+            const localChat = this.chats.find(c => c.id === chatId);
+            if (localChat) {
+                localChat.slug = cleanSlug;
+            }
+
+            document.getElementById('chatAliasModal').style.display = 'none';
+            alert(`✅ Персональная ссылка обновлена!\n\nТеперь Ваше Радио доступно по ссылке:\nhttps://vilka.sotka.one/#${cleanSlug || chatId}`);
+
+        } catch (e) {
+            console.error("Ошибка сохранения алиаса:", e);
+            alert("❌ Не удалось сохранить алиас в базе данных. Проверьте права доступа.");
+        } finally {
+            saveBtn.innerText = '💾 СОХРАНИТЬ';
+            saveBtn.disabled = false;
+        }
+    }
 
 async renderChatCurtain(chat, canManage) {
         // 1. Ищем или создаем глобальный контейнер шторки под хедером
@@ -6580,12 +6973,12 @@ async renderChatCurtain(chat, canManage) {
         // Запоминаем, была ли шторка открыта до перерисовки
         const wasOpen = document.getElementById('chatCurtainPanel')?.classList.contains('open');
 
-        // 🔥 ФИКС: Уменьшаем max-height до 55vh, чтобы нижняя кнопка "СВЕРНУТЬ" НИКОГДА не уезжала за экран на мобилках!
-        let html = `<div id="chatCurtainPanel" class="chat-curtain"><div class="curtain-content" style="max-height: 55vh; overflow-y: auto; overscroll-behavior: contain; padding-top:15px; position:relative;">`;
+        // 🔥 ФИКС: Убрали жесткие инлайн-стили paddings и border-radius! Теперь CSS полностью управляет открытием и закрытием.
+        let html = `<div id="chatCurtainPanel" class="chat-curtain"><div class="curtain-content">`;
         
-        // 🔥 Возвращаем аккуратную кнопку редактирования (без дублирования "Свернуть")
+        // Кнопка редактирования
         if (canManage) {
-            html += `<button onclick="window.app.openCurtainEditModal()" style="position:absolute; top:10px; right:10px; background:var(--bg-surface-hover); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:4px 8px; font-size:10px; cursor:pointer; transition: 0.2s; z-index:5;" onmouseover="this.style.color='var(--primary)'; this.style.borderColor='var(--primary)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';">✎ Ред.</button>`;
+            html += `<button onclick="window.app.openCurtainEditModal()" style="position:absolute; top:20px; right:10px; background:var(--bg-surface-hover); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:4px 8px; font-size:10px; cursor:pointer; transition: 0.2s; z-index:5;" onmouseover="this.style.color='var(--primary)'; this.style.borderColor='var(--primary)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';">✎ Ред.</button>`;
         }
 
         // Изображение
@@ -6598,30 +6991,27 @@ async renderChatCurtain(chat, canManage) {
         let mapBtnHtml = '';
         if (data.embed_code) {
             this.currentMapEmbed = data.embed_code; 
-            mapBtnHtml = `<button class="btn-black" style="width:100%; background:var(--info); color:#fff; padding:14px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; border:none; transition:0.2s; margin-bottom:15px; box-shadow: 0 4px 15px rgba(59,130,246,0.3);" onclick="window.app.openMapModal()">🗺️ ИНТЕРАКТИВНАЯ КАРТА</button>`;
+            // 🔥 Оставили только класс btn-black и стерли все жесткие цвета. Теперь она идеально перекрашивается сама!
+            mapBtnHtml = `<button class="btn-black" style="width:100%; padding:14px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; margin-bottom:15px; border:none; transition:0.2s;" onclick="window.app.openMapModal()">🗺️ ИНТЕРАКТИВНАЯ КАРТА</button>`;
         }
 
         if (mapBtnHtml || (data.buttons && data.buttons.length > 0)) {
-            // Если картинки нет, делаем отступ от кнопки "Ред."
             html += `<div class="curtain-buttons" style="${canManage && !chat.panel_image ? 'margin-top: 25px;' : ''}">`;
             html += mapBtnHtml;
             
-            // Кастомные кнопки (Регламент, Треки и т.д.)
             if (data.buttons) {
                 data.buttons.slice(0, 5).forEach(btn => {
                     const target = btn.blank ? '_blank' : '_self';
-                    html += `<a href="${btn.url}" target="${target}" class="curtain-btn" style="margin-bottom:8px;">${this.escapeHTML(btn.label)}</a>`;
+                    // 🔥 Строгий серый стиль для дополнительных кнопок (вписывается в палитру)
+                    html += `<a href="${btn.url}" target="${target}" style="display:block; text-align:center; width:100%; box-sizing:border-box; background:var(--bg-surface-hover); color:var(--text-main); border:1px solid var(--border); padding:12px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; text-decoration:none; margin-bottom:8px; transition:0.2s;" onmouseover="this.style.borderColor='var(--text-main)';" onmouseout="this.style.borderColor='var(--border)';">${this.escapeHTML(btn.label)}</a>`;
                 });
             }
             html += `</div>`;
         }
 
-        // Текст регламента (строго под ВСЕМИ кнопками)
+        // Текст регламента
         if (data.text) {
-            // 1. Экранируем весь текст для защиты от зловредного кода (безопасность на первом месте)
             let safeText = this.escapeHTML(data.text);
-            
-            // 2. ВОЗВРАЩАЕМ наши разрешенные теги форматирования обратно к жизни
             safeText = safeText.replace(/&lt;b&gt;/gi, '<b>').replace(/&lt;\/b&gt;/gi, '</b>');
             safeText = safeText.replace(/&lt;i&gt;/gi, '<i>').replace(/&lt;\/i&gt;/gi, '</i>');
             safeText = safeText.replace(/&lt;u&gt;/gi, '<u>').replace(/&lt;\/u&gt;/gi, '</u>');
@@ -6632,7 +7022,6 @@ async renderChatCurtain(chat, canManage) {
 
         const isEmpty = !chat.panel_image && !data.text && (!data.buttons || data.buttons.length === 0);
 
-        // Если шторка пустая и мы не админ - прячем весь блок целиком
         if (isEmpty && !canManage) {
             container.style.display = 'none';
             container.innerHTML = '';
@@ -6644,20 +7033,40 @@ async renderChatCurtain(chat, canManage) {
             }
         }
 
-        html += `</div></div>`; // Закрываем .curtain-content и .chat-curtain
+        html += `</div></div>`; 
         
-        // Нижняя полоса открытия (Твоя оригинальная)
-        // 🔥 НОВЫЙ ДИЗАЙН ЯЗЫЧКА ШТОРКИ
+        // 🔥 СОЗДАЕМ КНОПКУ КОЛИЧЕСТВА УЧАСТНИКОВ ДЛЯ ШТОРКИ
+        let curtainBadgeHtml = '';
+        if (chat.type === 'global' && chat.raceObj) {
+            const pCount = chat.raceObj.rosterCount || 0;
+            // Аккуратная темная кнопка, которая висит справа от центрального текста
+            curtainBadgeHtml = `
+                <button onclick="window.app.openLiveBoard('${chat.raceObj.id}', event); event.stopPropagation();" 
+                        style="position: absolute; right: 12px; bottom: 8px; background: rgba(0,0,0,0.06); color: #000; border: 1px solid rgba(0,0,0,0.15); border-radius: 12px; padding: 6px 12px; font-family: 'Unbounded'; font-size: 9px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; z-index: 10; transition: 0.2s;"
+                        onmouseover="this.style.background='rgba(0,0,0,0.15)'" onmouseout="this.style.background='rgba(0,0,0,0.06)'"
+                        title="Открыть старт-лист">
+                    ${pCount} ГОНЩ.
+                </button>
+            `;
+        }
+
+        // 🔥 ШТОРКА (С ВАШЕЙ ПРОЗРАЧНОСТЬЮ 0.55 И НОВОЙ КНОПКОЙ)
         html += `
-        <div id="curtainToggleBar" class="curtain-toggle-bar" onclick="window.app.toggleChatCurtain()" 
-     style="cursor: pointer; background: rgba(255, 193, 7, 0.06); border-top: 1px solid rgba(255, 193, 7, 0.3); border-bottom: 1px solid rgba(255, 193, 7, 0.3); padding: 8px 0; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; user-select: none; -webkit-tap-highlight-color: transparent;"
-     onmouseover="this.style.background='rgba(255, 193, 7, 0.12)';" 
-     onmouseout="this.style.background='rgba(255, 193, 7, 0.06)';">
-    <div style="display: flex; align-items: center; gap: 6px;">
-        <span id="curtainToggleText" style="font-family: 'Unbounded'; font-size: 11px; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px;">ПОДРОБНОСТИ</span>
-    </div>
-    <div id="curtainHandle" class="curtain-handle" style="margin-top: 5px; width: 36px; height: 4px; background: var(--primary, #ffc107); border-radius: 2px; opacity: 0.8;"></div>
-</div>`;
+        <div id="curtainToggleWrapper" style="position: relative;">
+            <div id="curtainToggleBar" class="curtain-toggle-bar curtain-pill-anim" onclick="window.app.toggleChatCurtain()" 
+                 style="pointer-events: auto; cursor: pointer; width: 100%; box-sizing: border-box; background: rgba(255, 193, 7, 0.55); border: 1px solid var(--primary); border-top: none; border-radius: 0 0 20px 20px; padding: 28px 20px 8px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: background 0.3s ease; user-select: none; -webkit-tap-highlight-color: transparent; box-shadow: 0 10px 20px rgba(0,0,0,0.15); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); position: relative;"
+                 onmouseover="this.style.background='rgba(255, 193, 7, 1)';" 
+                 onmouseout="this.style.background='rgba(255, 193, 7, 0.75)';">
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="curtainToggleText" style="font-family: 'Unbounded'; font-size: 11px; font-weight: 800; color: #000000; letter-spacing: 1px; text-transform: uppercase;">ПОДРОБНОСТИ</span>
+                </div>
+                <div id="curtainHandle" class="curtain-handle" style="margin-top: 6px; width: 36px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px;"></div>
+                
+                ${curtainBadgeHtml}
+
+            </div>
+        </div>`;
 
         container.innerHTML = html;
 
@@ -6670,10 +7079,7 @@ async renderChatCurtain(chat, canManage) {
 
             if (panel) panel.classList.add('open');
             if (bar) bar.classList.add('open');
-            if (toggleText) {
-                toggleText.innerText = 'СВЕРНУТЬ';
-                toggleText.style.color = 'var(--primary)';
-            }
+            if (toggleText) toggleText.innerText = 'СВЕРНУТЬ';
             if (handle) handle.style.background = 'var(--primary)';
         }
     }
@@ -8190,6 +8596,60 @@ const r3 = getShortName(r.expand?.rider_3);
         fileInput.click();
     }
 	
+	// 🔥 ЗАГРУЗКА ЛОГОТИПА КОМАНДЫ "НА ЛЕТУ"
+    triggerTeamAvatarUpload(teamId) {
+        let fileInput = document.getElementById('teamAvatarUploadInput');
+        if (!fileInput) {
+            fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.id = 'teamAvatarUploadInput';
+            fileInput.accept = 'image/jpeg, image/png, image/webp';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+
+            fileInput.addEventListener('change', async (event) => {
+                let file = event.target.files[0];
+                if (!file) return;
+
+                const currentTeamId = fileInput.getAttribute('data-team-id');
+
+                try {
+                    // Анимация загрузки в шапке
+                    const avatarContainer = document.getElementById('activeChatAvatarContainer');
+                    if (avatarContainer) avatarContainer.style.opacity = '0.5';
+
+                    if (file.type.startsWith('image/') && typeof this.compressImage === 'function') {
+                        file = await this.compressImage(file, 1); 
+                    }
+
+                    const formData = new FormData();
+                    formData.append('avatar', file);
+
+                    // Сохраняем в БД
+                    const updatedTeam = await pb.collection('teams').update(currentTeamId, formData);
+                    
+                    // Обновляем кэш
+                    this.teamsMap[currentTeamId] = updatedTeam;
+                    if (this.crm) this.crm.loadData();
+                    
+                    // Мгновенно перерисовываем шапку
+                    this.openChat(this.activeChatId);
+                    alert("✅ Логотип команды успешно обновлен!");
+                } catch (e) {
+                    console.error("Ошибка загрузки логотипа:", e);
+                    alert("❌ Ошибка при загрузке. Проверьте права доступа.");
+                } finally {
+                    const avatarContainer = document.getElementById('activeChatAvatarContainer');
+                    if (avatarContainer) avatarContainer.style.opacity = '1';
+                    event.target.value = '';
+                }
+            });
+        }
+        
+        fileInput.setAttribute('data-team-id', teamId);
+        fileInput.click();
+    }
+	
         // ==========================================
         // 🔥 ПУБЛИЧНАЯ ВИТРИНА КОМАНДЫ (ДЛЯ ГОСТЕЙ)
         // ==========================================
@@ -8472,7 +8932,7 @@ const r3 = getShortName(r.expand?.rider_3);
         // ==========================================
         this.watchdogTimer = setTimeout(() => {
             if (!this.initialChatsLoaded) {
-                console.warn("⏱ Сторожевой пес сработал! Приложение зависло.");
+                console.warn("Сторожевой пес сработал! Приложение зависло.");
                 if (typeof hideVilkaSplash === 'function') hideVilkaSplash();
                 
                 const container = document.getElementById('chatList') || document.getElementById('messagesContainer');
@@ -8526,7 +8986,176 @@ const r3 = getShortName(r.expand?.rider_3);
                 `;
                 document.head.appendChild(style);
             }
+			
+			// ==========================================
+            // 🔥 ТЕЛЕГРАМ-СТИЛЬ И АДАПТАЦИЯ
             // ==========================================
+            if (!document.getElementById('telegram-ui-style')) {
+                const style = document.createElement('style');
+                style.id = 'telegram-ui-style';
+                style.innerHTML = `
+                    #mainChatArea { position: relative !important; }
+
+                    /* Отступы для ленты */
+                    #messagesContainer {
+                        padding-top: 140px !important;
+                        padding-bottom: 180px !important;
+                    }
+
+                    /* ПАРЯЩЕЕ ПОЛЕ ВВОДА */
+                    #inputWrapper {
+                        position: absolute !important;
+                        bottom: 20px !important;
+                        left: 50% !important;
+                        transform: translateX(-50%) !important;
+                        width: calc(100% - 24px) !important;
+                        max-width: 760px !important;
+                        background: var(--bg-surface) !important;
+                        border-radius: 28px !important;
+                        border: 1px solid var(--border) !important;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+                        z-index: 100 !important;
+                        box-sizing: border-box !important;
+                        padding: 8px 16px !important;
+                    }
+                    #messageInput { background: transparent !important; border: none !important; box-shadow: none !important; outline: none !important; }
+                    #readOnlyNotice { position: absolute !important; bottom: 20px !important; left: 50% !important; transform: translateX(-50%) !important; width: calc(100% - 24px) !important; max-width: 760px !important; border-radius: 28px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important; z-index: 100 !important; border: 1px solid var(--border) !important; box-sizing: border-box !important; margin: 0 !important; }
+
+                    /* 🔥 ПАРЯЩАЯ ШАПКА (ОРИГИНАЛ) */
+                    #chatHeader {
+                        position: absolute !important;
+                        top: 10px !important;
+                        left: 50% !important;
+                        transform: translateX(-50%) !important;
+                        width: calc(100% - 24px) !important;
+                        max-width: 760px !important;
+                        height: 60px !important;
+                        min-height: 60px !important;
+                        max-height: 60px !important;
+                        padding: 0 16px !important;
+                        background: rgba(255, 255, 255, 0.85) !important;
+                        backdrop-filter: blur(12px) !important;
+                        -webkit-backdrop-filter: blur(12px) !important;
+                        border-radius: 20px !important;
+                        border: 1px solid var(--border) !important;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+                        z-index: 103 !important; 
+                        box-sizing: border-box !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: space-between !important;
+                    }
+                    [data-theme="dark"] #chatHeader { background: rgba(39, 39, 42, 0.85) !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
+                    
+                    #chatHeader .chat-info { flex: 1 !important; min-width: 0 !important; display: flex !important; flex-direction: column !important; justify-content: center !important; height: 60px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+                    #chatHeader .chat-header-actions { display: flex !important; align-items: center !important; height: 60px !important; margin: 0 !important; padding: 0 !important; gap: 12px !important; }
+                    #chatHeader .chat-header-actions > button:not(.compact-action-btn) { margin: 0 !important; padding: 0 5px !important; height: 32px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+
+                    /* ЗАКРЕПЛЕННОЕ СООБЩЕНИЕ */
+                    #pinnedMessageBar {
+                        position: absolute !important;
+                        top: 75px !important;
+                        left: 50% !important;
+                        transform: translateX(-50%) !important;
+                        width: calc(100% - 32px) !important;
+                        max-width: 750px !important;
+                        background: rgba(255, 255, 255, 0.85) !important;
+                        backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important;
+                        border-radius: 12px !important; border: 1px solid var(--border) !important;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; z-index: 101 !important; box-sizing: border-box !important;
+                    }
+                    [data-theme="dark"] #pinnedMessageBar { background: rgba(39, 39, 42, 0.85) !important; }
+
+                    /* ПАРЯЩАЯ ШТОРКА "ПОДРОБНОСТИ" (ОРИГИНАЛ) */
+                    #curtainContainer {
+                        position: absolute !important;
+                        top: 60px !important; 
+                        left: 50% !important;
+                        transform: translateX(-50%) !important;
+                        width: calc(100% - 24px) !important; 
+                        max-width: 760px !important;
+                        z-index: 102 !important; 
+                        display: flex !important; flex-direction: column !important; align-items: center !important; pointer-events: none !important;
+                    }
+                    
+                    #chatCurtainPanel {
+                        pointer-events: auto !important; width: 100% !important; 
+                        border-radius: 0 !important; 
+                        border-left: 1px solid var(--border) !important; 
+                        border-right: 1px solid var(--border) !important; 
+                        border-top: none !important; border-bottom: none !important;
+                        margin: 0 !important; 
+                        background: var(--bg-surface) !important;
+                        position: relative; z-index: 2;
+                    }
+
+                    #chatCurtainPanel .curtain-content {
+                        max-height: 0; padding-top: 0; padding-bottom: 0; padding-left: 16px; padding-right: 16px;
+                        overflow: hidden; transition: all 0.3s ease; box-sizing: border-box; opacity: 0;
+                    }
+                    #chatCurtainPanel.open .curtain-content {
+                        max-height: 55vh; padding-top: 20px; padding-bottom: 5px; 
+                        overflow-y: auto; opacity: 1;
+                    }
+                    
+                    #curtainToggleWrapper { width: 100% !important; display: flex !important; justify-content: center !important; position: relative !important; z-index: 1 !important; }
+                    .curtain-toggle-bar { padding: 16px 20px 8px 20px !important; }
+                    .curtain-toggle-bar.open { padding: 8px 20px 8px 20px !important; }
+
+                    #curtainContainer:not(:empty) ~ #pinnedMessageBar { top: 110px !important; }
+
+                    @keyframes curtainBounce { 0% { transform: translateY(-40px); opacity: 0; } 40% { transform: translateY(10px); opacity: 1; } 70% { transform: translateY(-2px); opacity: 1; } 100% { transform: translateY(0); opacity: 1; } }
+                    .curtain-pill-anim { animation: curtainBounce 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards !important; }
+
+                    /* 🔥 ТОЛЬКО СМАРТФОНЫ: ПОДЖИМАЕМ ПУСТОТЫ И УМЕНЬШАЕМ ШРИФТЫ */
+                    @media (max-width: 600px) {
+                        .hide-on-mobile { display: none !important; }
+                        
+                        /* Сдвигаем всё ближе к краям экрана */
+                        #chatHeader { padding: 0 6px !important; gap: 4px !important; } 
+                        #chatHeader .chat-info { padding: 0 !important; }
+                        #chatHeader .chat-header-actions { gap: 6px !important; }
+
+                        /* Ужимаем системные кнопки (Стрелка и Три точки) */
+                        #chatHeader > button:first-child,
+                        #chatHeader .chat-header-actions > button:not(.compact-action-btn) {
+                            width: 28px !important;
+                            min-width: 28px !important;
+                            height: 28px !important;
+                            padding: 0 !important;
+                            margin: 0 !important;
+                        }
+
+                        /* Желтая кнопка "Заявиться" */
+                        .compact-action-btn { 
+                            width: auto !important; 
+                            height: 28px !important; 
+                            padding: 0 12px !important; 
+                            border-radius: 14px !important; 
+                            display: inline-flex !important; 
+                            align-items: center !important; 
+                            justify-content: center !important; 
+                            font-size: 9px !important; /* Делаем шрифт чуть мельче, чтобы влезло */
+                        }
+                        .compact-action-btn .btn-icon { margin-right: 4px !important; width: 14px !important; height: 14px !important; }
+                        
+                        /* Уменьшаем шрифты в шапке */
+                        .header-race-title { font-size: 13px !important; }
+                        .meta-scroller { font-size: 9px !important; gap: 4px !important; }
+                        
+                        /* 🔥 НОВОЕ: ДЕЛАЕМ КОМПАКТНЫМ ПОЛЕ ВВОДА ВНИЗУ */
+                        #inputWrapper {
+                            bottom: 8px !important; /* Прижимаем ближе к низу экрана */
+                            padding: 6px 12px !important; /* Убираем лишний воздух внутри */
+                            border-radius: 20px !important; /* Чуть острее углы, т.к. блок стал тоньше */
+                            width: calc(100% - 16px) !important; /* Чуть шире на экране */
+                        }
+                    }
+                    .meta-scroller::-webkit-scrollbar { display: none; }
+                `;
+                document.head.appendChild(style);
+            }		
+		// ==========================================
             // 🔥 ПЕРЕХВАТЧИК СБРОСА ПАРОЛЯ
             // ==========================================
             const resetToken = urlParams.get('token');
@@ -9068,11 +9697,23 @@ if (this.currentRider && !this.isGuest) {
                         const targetChat = this.chats.find(c => c.id === msgChatId);
                         if (targetChat) {
                             this.unreadCounts[msgChatId] = (this.unreadCounts[msgChatId] || 0) + 1; 
+                            
                             const searchInp = document.getElementById('chatSearch');
-                            this.renderChatList(searchInp ? searchInp.value : ''); 
+                            if (typeof this.renderChatList === 'function') this.renderChatList(searchInp ? searchInp.value : ''); 
+                            
+                            // 🔥 МГНОВЕННО РИСУЕМ СТОРИС, если открыта Рация
+                            const contactsTab = document.getElementById('tab-contacts');
+                            if (contactsTab && contactsTab.classList.contains('active') && typeof this.renderContactsTab === 'function') {
+                                this.renderContactsTab();
+                            }
+                            // 🔥 Мгновенно зажигаем кружок
+                            if (typeof this.updateNavUnreadBadges === 'function') {
+                                this.updateNavUnreadBadges();
+                            }
+
                             this.triggerNotification(e.record, msgChatId); 
                         }
-                    }   
+                    }  
                 });
                 
                 pb.collection('riders').subscribe('*', async (e) => {
@@ -9301,6 +9942,36 @@ if (this.currentRider && !this.isGuest) {
         switchCrmView(view) {
             this.crm.switchView(view);
         }
+		
+		// 🔥 ФУНКЦИЯ ДЛЯ МАРШРУТИЗАЦИИ КЛУБНЫХ ОКОН ИЗ РАЦИИ
+        openCrmView(view) {
+            this.activeChatId = 'crm_' + view; 
+            this.openChatMobile();
+            
+            // Подготавливаем рабочее пространство
+            if (typeof this.ensureWorkspaceExists === 'function') {
+                this.ensureWorkspaceExists();
+            }
+            
+            const ws = document.getElementById('pelotonWorkspace');
+            const mainChat = document.getElementById('mainChatArea');
+            
+            if (ws && mainChat) {
+                // Прячем чат, показываем нужную панель (Команда, Рейтинг или Трансферы)
+                mainChat.style.display = 'none';
+                ws.style.display = 'flex';
+                ws.classList.add('mobile-open');
+                
+                // Даем команду отрисовать саму вкладку
+                if (this.crm) {
+                    this.crm.switchView(view);
+                }
+            }
+            
+            // Скрываем шторку чата, если она была открыта
+            const curtain = document.getElementById('curtainContainer');
+            if (curtain) curtain.style.display = 'none';
+        }
 
         openChatForTeam(teamId) {
             // 🔥 ФИКС: Сначала жестко ищем именно публичный Канал команды
@@ -9428,39 +10099,55 @@ if (this.currentRider && !this.isGuest) {
             } catch(e) { return ''; }
         }
 
-       async loadUnreadCounts() {
+      async loadUnreadCounts() {
             if (!this.currentRider || !this.currentRider.id || this.isGuest) return;
 
             try {
-                if (!this.unreadCounts) this.unreadCounts = {};
-
-                if (Array.isArray(this.chats)) {
-                    this.chats.forEach(c => this.unreadCounts[c.id] = 0);
-                }
-
+                // 🔥 ФИКС: Убираем глючный фильтр read_by из базы данных!
+                // Просто качаем последние 500 чужих сообщений.
                 const res = await pb.collection('messages').getList(1, 500, {
-                    filter: `sender_id != "${this.currentRider.id}" && read_by !~ "${this.currentRider.id}"`,
-                    fields: 'chat_id',
-                    requestKey: null
+                    filter: `sender_id != "${this.currentRider.id}"`,
+                    fields: 'chat_id,read_by',
+                    sort: '-created',
+                    requestKey: 'load_unread_counts'
                 });
+
+                const newCounts = {};
+                if (Array.isArray(this.chats)) {
+                    this.chats.forEach(c => newCounts[c.id] = 0);
+                }
 
                 if (res && res.items) {
                     res.items.forEach(m => {
-                        const cId = Array.isArray(m.chat_id) ? m.chat_id[0] : m.chat_id;
-                        if (cId) {
-                            this.unreadCounts[cId] = (this.unreadCounts[cId] || 0) + 1;
+                        let rBy = m.read_by || [];
+                        if (typeof rBy === 'string') {
+                            try { rBy = JSON.parse(rBy); } catch(e) { rBy = []; }
+                        }
+                        
+                        // 🔥 Считаем непрочитанные локально (100% гарантия)
+                        if (!rBy.includes(this.currentRider.id)) {
+                            const cId = Array.isArray(m.chat_id) ? m.chat_id[0] : m.chat_id;
+                            if (cId) newCounts[cId] = (newCounts[cId] || 0) + 1;
                         }
                     });
                 }
 
-                // 🔥 Обновляем кружок на нижней кнопке "Чаты"
-                this.updateNavUnreadBadges();
+                this.unreadCounts = newCounts;
+                
+                if (this.activeChatId && this.unreadCounts[this.activeChatId]) {
+                    this.unreadCounts[this.activeChatId] = 0;
+                }
+
+                if (typeof this.updateNavUnreadBadges === 'function') {
+                    this.updateNavUnreadBadges();
+                }
 
             } catch (e) {
-                console.error("Ошибка загрузки счетчиков", e);
+                if (e.name !== 'ClientResponseError' || !e.isAbort) {
+                    console.error("Ошибка загрузки счетчиков", e);
+                }
             }
         }
-		
 // 🧠 Подсчёт непрочитанных сообщений по категориям чатов
         getUnreadCountsByCategory() {
             const counts = { races: 0, archive: 0, direct: 0, support: 0, total: 0 };
@@ -9503,28 +10190,51 @@ if (this.currentRider && !this.isGuest) {
         }
 
         // 🟡 Обновление жёлтого кружка на кнопке "Чаты" в нижней навигации
-        updateNavUnreadBadges() {
-            const catCounts = this.getUnreadCountsByCategory();
-            const chatsNavBtn = document.getElementById('nav-btn-chats') || document.querySelector('.nav-item[onclick*="chats"]');
+updateNavUnreadBadges() {
+            let racesUnread = 0;
+            let radioUnread = 0;
 
-            if (chatsNavBtn) {
-                let badge = chatsNavBtn.querySelector('.nav-unread-badge');
-                if (catCounts.total > 0) {
-                    if (!badge) {
-                        badge = document.createElement('div');
-                        badge.className = 'nav-unread-badge';
-                        badge.style.cssText = 'position: absolute; top: 2px; right: 12px; background: var(--primary, #ffc107); color: #000000; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 10px; min-width: 15px; text-align: center; font-family: "Roboto Mono", monospace; box-shadow: 0 2px 6px rgba(255,193,7,0.5); z-index: 5;';
-                        chatsNavBtn.style.position = 'relative';
-                        chatsNavBtn.appendChild(badge);
+            // 🔥 Считаем ТОЛЬКО по загруженным, реальным чатам (никаких призраков)
+            if (this.chats && this.unreadCounts) {
+                this.chats.forEach(c => {
+                    let count = this.unreadCounts[c.id] || 0;
+                    if (count > 0) {
+                        if (c.type === 'global') racesUnread += count;
+                        else radioUnread += count;
                     }
-                    badge.innerText = catCounts.total;
-                    badge.style.display = 'block';
-                } else if (badge) {
-                    badge.style.display = 'none';
+                });
+            }
+
+            const updateBadge = (btnId, keyword, count) => {
+                const btn = document.getElementById(btnId) || document.querySelector(`.nav-item[onclick*="${keyword}"]`);
+                if (btn) {
+                    let badge = btn.querySelector('.nav-unread-badge');
+                    if (count > 0) {
+                        if (!badge) {
+                            badge = document.createElement('div');
+                            badge.className = 'nav-unread-badge';
+                            badge.style.cssText = 'position: absolute; top: 2px; right: 12px; background: var(--primary, #ffc107); color: #000000; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 10px; min-width: 15px; text-align: center; font-family: "Roboto Mono", monospace; box-shadow: 0 2px 6px rgba(255,193,7,0.5); z-index: 5; pointer-events: none;';
+                            btn.style.position = 'relative';
+                            btn.appendChild(badge);
+                        }
+                        badge.innerText = count;
+                        badge.style.display = 'block';
+                    } else if (badge) {
+                        badge.style.display = 'none';
+                    }
                 }
+            };
+
+            updateBadge('nav-btn-chats', 'chats', racesUnread);
+            updateBadge('nav-btn-contacts', 'contacts', radioUnread); 
+
+            if (navigator.setAppBadge) {
+                const total = racesUnread + radioUnread;
+                if (total > 0) navigator.setAppBadge(total).catch(e => {});
+                else navigator.clearAppBadge().catch(e => {});
             }
         }
-
+		
         async loadChats() {
             try {
                 const myRole = this.getUserMaxRole(); 
@@ -9543,7 +10253,16 @@ if (this.currentRider && !this.isGuest) {
                 }
                 
                 const rawChats = await pb.collection('chats').getFullList({ filter: filterQuery, sort: '-updated', expand: 'participants,team_id', requestKey: null });
-                
+                rawChats.forEach(c => {
+                    if (c.expand && c.expand.participants) {
+                        c.expand.participants.forEach(p => {
+                            if (p && p.id && !this.ridersMap[p.id]) {
+                                this.ridersMap[p.id] = p; // Сохраняем карточку гонщика в кэш!
+                            }
+                        });
+                    }
+                });
+				
                 // 🔥 АБСОЛЮТНАЯ ЗАЩИТА: Фильтруем приватные пелотоны СРАЗУ, чтобы они не попали в память!
                 const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin'];
                 
@@ -9693,35 +10412,149 @@ if (this.currentRider && !this.isGuest) {
                     localStorage.setItem('vilka_chats_cache', JSON.stringify(this.chats));
                 } catch(e) {}			
                 this.renderChatList(document.getElementById('chatSearch').value);
+            await this.loadUnreadCounts();
+                this.initialChatsLoaded = true;
+                if (this.watchdogTimer) clearTimeout(this.watchdogTimer);
+                try {
+                    localStorage.setItem('vilka_chats_cache', JSON.stringify(this.chats));
+                } catch(e) {}			
+                
+                this.renderChatList(document.getElementById('chatSearch')?.value || "");
+                
+                // 🔥 ФИКС: Если мы на вкладке Рация, перерисовываем Сториз после синхронизации чатов с сервером
+                const contactsTab = document.getElementById('tab-contacts');
+                if (contactsTab && contactsTab.classList.contains('active') && typeof this.renderContactsTab === 'function') {
+                    this.renderContactsTab();
+                }
+
             } catch(e) { }
         }
+// 🔥 ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: Построение фильтра для командного агрегатора
+// 🔥 БРОНЕБОЙНЫЕ ХЕЛПЕРЫ ДЛЯ ПРОВЕРКИ УЧАСТНИКОВ И ID
+    getCleanId(val) {
+        if (!val) return '';
+        if (Array.isArray(val)) return val[0] ? (typeof val[0] === 'object' ? String(val[0].id) : String(val[0])) : '';
+        if (typeof val === 'object') return val.id ? String(val.id) : '';
+        return String(val).trim();
+    }
 
-    async refreshCurrentChatMessages(chatId, sessionToken) {
+    chatHasRider(chat, riderId) {
+        if (!chat || !chat.participants) return false;
+        const target = String(riderId).trim();
+        return chat.participants.some(p => this.getCleanId(p) === target);
+    }
+
+    // 🔥 ТОЧНЫЙ КОНСТРУКТОР ЗАПРОСОВ АГРЕГАТОРА
+    getAggregatedChatFilterQuery(chatId) {
+        const chat = this.chats.find(c => c.id === chatId);
+        if (!chat) return `chat_id="${chatId}"`;
+
+        if (chat.type === 'team_channel') {
+            const tId = this.getCleanId(chat.team_id);
+            const teamChat = this.chats.find(c => c.type === 'team' && (Array.isArray(c.team_id) ? c.team_id.map(id => this.getCleanId(id)).includes(tId) : this.getCleanId(c.team_id) === tId));
+
+            const filterMode = this.activeFeedFilter || 'public';
+
+            if (filterMode === 'team') {
+                return teamChat ? `chat_id="${teamChat.id}"` : `chat_id="none"`;
+            } 
+            else if (filterMode === 'direct') {
+                // Если выбран конкретный человек — ищем ТОЛЬКО личный диалог с ним
+                if (this.activeMessageScope && this.activeMessageScope.startsWith('direct_')) {
+                    const targetRiderId = this.activeMessageScope.replace('direct_', '');
+                    const specificDirectChat = this.chats.find(c => 
+                        c.type === 'direct' && 
+                        this.chatHasRider(c, this.currentRider?.id) && 
+                        this.chatHasRider(c, targetRiderId)
+                    );
+                    return specificDirectChat ? `chat_id="${specificDirectChat.id}"` : `chat_id="none"`;
+                }
+
+                // Резервный случай: все личные чаты команды
+                const teamRiderIds = Object.values(this.ridersMap).filter(r => {
+                    const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
+                    return rTeams.map(id => this.getCleanId(id)).includes(tId);
+                }).map(r => r.id);
+
+                const directChatIds = this.chats.filter(c => 
+                    c.type === 'direct' && 
+                    this.chatHasRider(c, this.currentRider?.id) && 
+                    c.participants.some(p => teamRiderIds.includes(this.getCleanId(p)))
+                ).map(c => c.id);
+
+                return directChatIds.length > 0 ? directChatIds.map(id => `chat_id="${id}"`).join(' || ') : `chat_id="none"`;
+            } 
+            else {
+                // 'public': только официальные новости канала
+                return `chat_id="${chat.id}"`;
+            }
+        }
+
+        return `chat_id="${chatId}"`;
+    }
+    
+    async refreshCurrentChatMessages(expectedChatId, sessionToken, showLoader = true) {
+        if (!expectedChatId) return; 
+
+        const container = document.getElementById('messagesContainer');
+        const loader = document.getElementById('chatLoader'); 
+
+        // 🔥 1. МГНОВЕННАЯ ОЧИСТКА ЭКРАНА ДО ЗАПРОСА (чтобы не висели старые сообщения)
+        if (container && showLoader) {
+            container.innerHTML = `<div style="text-align:center; padding:40px;"><span class="spinner" style="width:30px; height:30px; border-width:3px; display:inline-block;"></span></div>`;
+        }
+
         try {
-            this.messagePage = 1;
-            const res = await pb.collection('messages').getList(1, 50, { 
-                filter: `chat_id="${chatId}"`, 
-                sort: '-created', 
-                expand: 'reply_to,forwarded_from', 
-                requestKey: null 
-            });
+            this.messagePage = 1; 
+            const filterQuery = this.getAggregatedChatFilterQuery(expectedChatId);
+
+            let res = { items: [] };
+            if (filterQuery !== 'chat_id="none"') {
+                res = await pb.collection('messages').getList(1, 50, { 
+                    filter: filterQuery, 
+                    sort: '-created', 
+                    expand: 'reply_to,forwarded_from', 
+                    requestKey: null 
+                });
+            }
 
             if (this.chatSessionToken !== sessionToken) return;
 
-            const container = document.getElementById('messagesContainer');
-            container.innerHTML = '';
-            this.hasMoreMessages = res.items.length === 50;
+            if (container) {
+                container.innerHTML = ''; 
+                this.hasMoreMessages = res.items.length === 50; 
 
-            res.items.reverse().forEach(m => {
-                this.appendMessageHTML(m, container, false);
-            });
+                // 🔥 2. ЗАГЛУШКА ДЛЯ ПУСТОЙ ВЕТКИ
+                if (res.items.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-size:11px; font-family:'Unbounded'; border: 1px dashed var(--border); margin: 20px; border-radius: 12px;">
+                            НЕТ СООБЩЕНИЙ В ЭТОЙ ВЕТКЕ
+                            <div style="font-family:'Manrope'; font-size:11px; opacity:0.7; margin-top:6px; text-transform:none;">
+                                Напишите первое сообщение внизу!
+                            </div>
+                        </div>`;
+                } else {
+                    res.items.reverse().forEach(m => { 
+                        try { this.appendMessageHTML(m, container, false); } catch (err) { } 
+                    });
+                }
+            }
 
-            this.markMessagesAsRead(res.items);
+            this.markMessagesAsRead(res.items); 
+            
+            // 🔥 3. УМНЫЙ СКРОЛЛ: scrollToBottom сам распознает канал и позиционирует верх поста под шапку!
             this.scrollToBottom();
-            this.syncRaceButtonsState(); 
-        } catch(e) { console.error("Ошибка загрузки сообщений", e); }
-    }
 
+            this.syncRaceButtonsState();
+        } catch(e) { 
+            console.error("Ошибка загрузки сообщений", e); 
+            if (container) {
+                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted); font-size:11px; font-family:'Unbounded';">НЕТ СООБЩЕНИЙ</div>`;
+            }
+        } finally {
+            if (loader) loader.style.display = 'none';
+        }
+    }
 async renderRegisterActionAsync(raceId, containerId) {
     try {
         let race = this.cachedRaces[raceId];
@@ -9787,279 +10620,338 @@ async renderRegisterActionAsync(raceId, containerId) {
     }
 
 appendMessageHTML(msg, container, prepend = false, isFeed = false) {
-        const msgSenderId = Array.isArray(msg.sender_id) ? msg.sender_id[0] : msg.sender_id;
-        const isMine = msgSenderId === this.currentRider.id;
-        const sender = this.ridersMap[msgSenderId] || {first_name: 'Неизвестный', last_name: '', email: ''};
-        const time = this.formatMessageDate(msg.created);
-        const isEdited = msg.created !== msg.updated;
-        const isBot = sender.email === 'bot@sotka.one';
+    const msgSenderId = Array.isArray(msg.sender_id) ? msg.sender_id[0] : msg.sender_id;
+    const isMine = msgSenderId === this.currentRider.id;
+    const sender = this.ridersMap[msgSenderId] || {first_name: 'Неизвестный', last_name: '', email: ''};
+    const time = this.formatMessageDate(msg.created);
+    const isEdited = msg.created !== msg.updated;
+    const isBot = sender.email === 'bot@sotka.one';
 
-        const targetChat = this.chats.find(c => c.id === this.activeChatId);
-        
-        // 🔥 ВОТ ОНО: Проверяем флаг анонса
-        const isAnnounce = msg.is_announcement === true; 
-        
-        // 🔥 Анонс теперь приравнивается к посту в канал (чтобы первая строчка стала заголовком)
-        const isChannelPost = isFeed || (msg.expand?.chat_id?.type === 'team_channel') || (targetChat?.type === 'team_channel') || isAnnounce;
-
-        // --- 1. ОБРАБОТКА ФАЙЛОВ ---
-        let fileBlock = ''; 
-        let fileName = Array.isArray(msg.file) ? msg.file[0] : msg.file;
-        if (fileName && typeof fileName === 'string' && fileName.trim() !== '') {
-            const fileUrl = `${pb.baseUrl}/api/files/${msg.collectionId}/${msg.id}/${fileName}`;
-            const isImage = fileName.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
-            if (isImage) {
-                if (isChannelPost) {
-            fileBlock = `<div style="margin: 12px 0;"><img src="${fileUrl}" style="width: 100%; max-height: 350px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;" onclick="window.app.openImageViewer('${fileUrl}', event)"></div>`;
+    const targetChat = this.chats.find(c => c.id === this.activeChatId);
+    
+    // 🔥 ОПРЕДЕЛЯЕМ ШИРОКУЮ ПОЛОСУ-БЕЙДЖ С ИМЕНЕМ АДРЕСАТА
+    let scopeBadgeHtml = '';
+    if (targetChat && targetChat.type === 'team_channel') {
+        const msgChatId = Array.isArray(msg.chat_id) ? msg.chat_id[0] : msg.chat_id;
+        if (msgChatId === targetChat.id) {
+            scopeBadgeHtml = `<div class="badge-scope-banner public">📢 ОФИЦИАЛЬНАЯ НОВОСТЬ</div>`;
         } else {
-                    fileBlock = `<div style="margin-bottom:8px;"><img src="${fileUrl}" style="max-width:100%; max-height:250px; border-radius:8px; display:block; cursor:pointer;" onclick="window.app.openImageViewer('${fileUrl}', event)"></div>`;
-                }
-            } else { 
-                fileBlock = `<div style="margin-bottom:8px; background:rgba(0,0,0,0.15); padding:10px 12px; border-radius:8px; display:flex; align-items:center; gap:10px; border:1px solid rgba(255,255,255,0.05);"><svg width="24" height="24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg><a href="${fileUrl}" target="_blank" onclick="event.stopPropagation()" style="color:inherit; font-size:12px; font-weight:600; text-decoration:none; word-break:break-all;">${fileName}</a></div>`; 
-            }
-        }
+            const msgChat = this.chats.find(c => c.id === msgChatId);
+            if (msgChat && msgChat.type === 'team') {
+                scopeBadgeHtml = `<div class="badge-scope-banner team">ЧАТ КОМАНДЫ</div>`;
+            } else if (msgChat && msgChat.type === 'direct') {
+                const otherUserId = (msgChat?.participants || []).map(p => this.getCleanId(p)).find(id => id !== this.currentRider?.id);
+                const otherRider = otherUserId ? this.ridersMap[otherUserId] : null;
+                const otherName = otherRider ? `${otherRider.first_name || ''} ${otherRider.last_name || ''}`.trim() : '';
 
-        // --- 2. ЛОГИКА БОТА ---
-        if (isBot) {
-            let rawText = msg.text || ''; 
-            let botActionHtml = '';
-            
-            let panelData = null;
-            try {
-                let pDataStr = msg.expand?.chat_id?.panel_data || targetChat?.panel_data;
-                if (pDataStr) panelData = typeof pDataStr === 'string' ? JSON.parse(pDataStr) : pDataStr;
-            } catch(e) {}
-            
-            const regRegex = /\[ACTION:REGISTER:([a-zA-Z0-9_]+)\]/g;
-            rawText = rawText.replace(regRegex, (match, rId) => {
-                let btnLabel = "⚡️ ЗАЯВИТЬСЯ НА ГОНКУ";
-                if (panelData && panelData.buttons) {
-                    const pbBtn = panelData.buttons.find(b => b.url && b.url.includes(rId));
-                    if (pbBtn) {
-                        let shortLabel = pbBtn.label.includes('[') ? pbBtn.label.split('[')[1].split(']')[0].trim() : pbBtn.label;
-                        btnLabel = `⚡️ ${this.escapeHTML(shortLabel.toUpperCase())}`;
-                    }
-                }
-                
-                botActionHtml += `<div style="margin-top: 8px;"><button class="btn-black bot-btn sync-btn-${rId}" data-label="${btnLabel}" style="width: 100%; background: var(--primary); color: #000; font-family: 'Unbounded'; font-size: 12px; padding: 14px; border-radius: 8px; cursor: pointer; border: none; font-weight: 800; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);" onclick="window.app.registerForRace('${rId}', this, event)">${btnLabel}</button></div>`;
-                return ''; 
-            });
-            
-            const liveMatch = rawText.match(/\[ACTION:LIVE:([a-zA-Z0-9_]+)\]/);
-            if (liveMatch) {
-                const rId = liveMatch[1];
-                rawText = rawText.replace(liveMatch[0], '');
-                botActionHtml += `<div style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 15px;">
-                    <button onclick="window.app.openLiveBoard('${rId}', event)" style="background:var(--text-main); color:var(--bg-body); border:none; padding:12px 20px; border-radius:8px; font-family:'Unbounded'; font-weight:800; font-size:11px; cursor:pointer; width:100%; transition:0.2s; display:flex; align-items:center; justify-content:center; gap:10px;">
-                        <div style="width:8px; height:8px; background:var(--bg-body); border-radius:50%; animation: dot-pulse 1s infinite;"></div> 
-                        ХОД ГОНКИ (LIVE)
-                    </button>
-                </div>`;
-            }
-
-            const row = document.createElement('div'); 
-            row.className = `message-row system-bot`; 
-            row.id = `msg-${msg.id}`;
-            row.innerHTML = `<div class="bot-bubble"><div class="bot-name">${this.getMotoSvg(18)} VILKA MOTO <span class="bot-badge">OFFICIAL</span></div><div class="bot-text">${this.linkify(this.escapeHTML(rawText.trim())).replace(/\n/g, '<br>')}</div>${fileBlock}<div style="display:flex; flex-direction:column; gap:4px; margin-top:15px; border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 15px;">${botActionHtml}</div><div class="bot-time">${time}</div></div>`;
-            
-            if (prepend) container.prepend(row); else container.appendChild(row);
-            return; 
-        }
-
-        // --- 3. ОБЫЧНОЕ СООБЩЕНИЕ ИЛИ АНОНС ---
-        let senderBlock = '';
-
-        if (isFeed && msg.expand?.chat_id) {
-            // 🔥 КЛИКАБЕЛЬНАЯ ПЛАШКА ДЛЯ ЛЕНТЫ НОВОСТЕЙ
-            let cName = this.escapeHTML(msg.expand.chat_id.name);
-            let cId = msg.expand.chat_id.id;
-            
-            senderBlock = `
-            <div style="margin-bottom: 8px; display: flex; z-index: 2; position: relative;">
-                <div onclick="event.stopPropagation(); window.app.openChat('${cId}')" 
-                     style="display: inline-flex; align-items: center; gap: 6px; background: var(--bg-surface-hover); border: 1px solid var(--border); padding: 4px 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; color: var(--text-muted);" 
-                     onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" 
-                     onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-muted)';">
-                    <span style="font-family: 'Unbounded'; font-weight: 800; font-size: 11px; text-transform: uppercase;">
-                        📢 ${cName}
-                    </span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8; flex-shrink: 0;">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </div>
-            </div>`;
-        } else if (!isMine) {
-            // Обычный чат: просто имя отправителя
-            senderBlock = `<div class="msg-sender-name clickable" onclick="event.stopPropagation(); window.app.openProfile('${msgSenderId}', event)">${sender.first_name} ${sender.last_name} ${this.getRoleBadge(msgSenderId)}</div>`;
-        }
-		
-        let forwardHtml = msg.expand?.forwarded_from ? `<div style="font-size:10px; color:var(--info); margin-bottom:5px;">↪️ Переслано от: ${msg.expand.forwarded_from.first_name}</div>` : '';
-        let replyBlock = msg.expand?.reply_to ? `<div class="reply-quote" onclick="event.stopPropagation(); document.getElementById('msg-${msg.expand.reply_to.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><div class="reply-quote-name">${this.ridersMap[msg.expand.reply_to.sender_id]?.first_name || '...'}</div><div class="reply-quote-text">${msg.expand.reply_to.text || 'Вложение'}</div></div>` : '';
-
-        // --- 4. КНОПКИ ДЕЙСТВИЙ (ACTION TAGS) ---
-        let displayMsgText = msg.text || '';
-        let actionButtonsHtml = '';
-
-        const tMatch = displayMsgText.match(/\[ACTION:TRANSFER:([a-zA-Z0-9_]+):([a-zA-Z0-9_]+):?([A-Z]*)\]/);
-        if (tMatch) {
-            const rId = tMatch[1]; 
-            const teamId = tMatch[2]; 
-            const transferType = tMatch[3] || 'ANY'; 
-
-            displayMsgText = displayMsgText.replace(tMatch[0], '').trim();
-            
-            const rTeams = Array.isArray(this.ridersMap[rId]?.team_id) ? this.ridersMap[rId].team_id : (this.ridersMap[rId]?.team_id ? [this.ridersMap[rId].team_id] : []);
-            const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
-
-            if (rTeams.includes(teamId)) {
-                actionButtonsHtml += `<div class="transfer-done" style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.1); color:var(--success); border-radius:6px; font-size:10px; font-weight:800; border:1px dashed var(--success); text-align:center; font-family:'Unbounded';">✅ ТРАНСФЕР ВЫПОЛНЕН</div>`;
-            } else {
-                const myRoleW = Math.max(...(this.usersMap[this.currentRider.email] || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
-                const isSuper = myRoleW >= this.ROLE_WEIGHTS['superadmin'];
-                const isAdmin = myRoleW >= this.ROLE_WEIGHTS['admin'];
-                const amIThisRider = this.currentRider.id === rId;
-                const amINewCaptain = myRoleW >= this.ROLE_WEIGHTS['captain'] && myTeams.includes(teamId);
-                const amIOldCaptain = myRoleW >= this.ROLE_WEIGHTS['captain'] && myTeams.some(id => rTeams.includes(id));
-                
-                let showButton = false;
-                if (isSuper || isAdmin) showButton = true;
-                else if (transferType === 'INVITE' && amIThisRider) showButton = true; 
-                else if (transferType === 'REQUEST' && amINewCaptain) showButton = true; 
-                else if (transferType === 'RELEASE' && amIOldCaptain) showButton = true; 
-                else if (transferType === 'ANY') showButton = true;
-
-                if (showButton) {
-                    actionButtonsHtml += `<div style="margin-top:10px;"><button onclick="window.app.approveTransfer('${rId}', '${teamId}', '${msg.id}', this, event)" style="width:100%; background:var(--warning); color:#000; border:none; padding:10px; border-radius:6px; font-size:11px; font-family:'Unbounded'; font-weight:800; cursor:pointer;">🔄 ОДОБРИТЬ ТРАНСФЕР</button></div>`;
+                if (isMine && otherName) {
+                    scopeBadgeHtml = `<div class="badge-scope-banner direct">🔒 ЛИЧНО ДЛЯ: ${this.escapeHTML(otherName.toUpperCase())}</div>`;
                 } else {
-                    actionButtonsHtml += `<div style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.05); color:var(--text-muted); border-radius:6px; font-size:10px; font-weight:800; border:1px dashed var(--border); text-align:center; font-family:'Unbounded';">ОЖИДАНИЕ РЕШЕНИЯ</div>`;
+                    scopeBadgeHtml = `<div class="badge-scope-banner direct">🔒 ЛИЧНОЕ СООБЩЕНИЕ</div>`;
                 }
             }
         }
+    }
 
-        let raceContainersToLoad = []; 
-        const regRegex = /\[ACTION:REGISTER:([a-zA-Z0-9_]+)(?::([^\]]+))?\]/g;
-        displayMsgText = displayMsgText.replace(regRegex, (match, rId, wave) => {
-            const containerId = `reg-container-${msg.id}-${rId}`;
-            raceContainersToLoad.push({ rId, containerId });
-            actionButtonsHtml += `<div id="${containerId}" style="margin-top:10px;"><span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;border-color:var(--primary) transparent transparent transparent;"></span> Загрузка дистанций...</div>`;
-            return '';
-        });
+    // 🔥 Проверяем флаг анонса
+    const isAnnounce = msg.is_announcement === true; 
+    
+    // 🔥 Анонс приравнивается к посту в канал
+    const isChannelPost = isFeed || (msg.expand?.chat_id?.type === 'team_channel') || (targetChat?.type === 'team_channel') || isAnnounce;
 
-        const liveMatch2 = displayMsgText.match(/\[ACTION:LIVE:([a-zA-Z0-9_]+)\]/);
-        if (liveMatch2) {
-            actionButtonsHtml += `<div style="margin-top:10px;"><button style="width:100%; background:var(--text-main); color:var(--bg-body); border:none; padding:10px; border-radius:6px; font-size:11px; font-family:'Unbounded'; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="window.app.openLiveBoard('${liveMatch2[1]}', event)"><div style="width:6px; height:6px; background:var(--bg-body); border-radius:50%; animation: dot-pulse 1s infinite;"></div> ХОД ГОНКИ (LIVE)</button></div>`;
-            displayMsgText = displayMsgText.replace(liveMatch2[0], '');
-        }
+    // --- 1. ОБРАБОТКА ФАЙЛОВ И ОПРЕДЕЛЕНИЕ КАРТИНКИ ---
+    let fileBlock = ''; 
+    let fileUrl = '';
+    let hasImage = false;
+    let fileName = Array.isArray(msg.file) ? msg.file[0] : msg.file;
 
-        const payRegex = /\[ACTION:PAY:([^\]]+):([^\]]+)\]/g;
-        displayMsgText = displayMsgText.replace(payRegex, (match, url, label) => {
-            actionButtonsHtml += `<div style="margin-top:10px;"><a href="${url}" target="_blank" style="display:block; width:100%; background:var(--success); color:#fff; padding:10px; border-radius:6px; font-size:11px; font-family:'Unbounded'; font-weight:800; text-align:center; text-decoration:none;">💳 ${label}</a></div>`;
-            return '';
-        });
-
-        // --- 5. СБОРКА ТЕКСТА И ФОРМАТИРОВАНИЕ ---
-        let textHtml = '';
-        if (isChannelPost && displayMsgText) {
-            let lines = displayMsgText.split('\n');
-            let titleColor = isAnnounce ? 'var(--danger)' : 'var(--text-main)';
-            let titleIcon = isAnnounce ? '📢 ' : '';
-            textHtml = `<div style="font-family:'Unbounded'; font-size:15px; font-weight:800; color:${titleColor}; margin-bottom:8px; line-height:1.3; text-transform:uppercase;">${titleIcon}${this.linkify(this.escapeHTML(lines[0]))}</div>`;
-            if (lines.length > 1) textHtml += `<div style="font-size:13px; color:var(--text-main); white-space:pre-wrap; line-height:1.6;">${this.linkify(this.escapeHTML(lines.slice(1).join('\n')))}</div>`;
-        } else {
-            textHtml = `<div style="white-space:pre-wrap;">${this.linkify(this.escapeHTML(displayMsgText))}</div>`;
-        }
-
-        // --- 6. РЕАКЦИИ И ТИКИ ---
-        let reactionsHtml = '';
-        if (msg.reactions && typeof msg.reactions === 'object') {
-            let tags = '';
-            for (let [key, users] of Object.entries(msg.reactions)) {
-                if (!users?.length) continue;
-                tags += `<span class="reaction-tag ${users.includes(this.currentRider.id) ? 'voted' : ''}" onclick="event.stopPropagation(); window.app.submitContextReactionMock('${msg.id}', '${key}')">${this.getReactSvg(key, 18)} <span class="react-count">${users.length}</span></span>`;
+    if (fileName && typeof fileName === 'string' && fileName.trim() !== '') {
+        fileUrl = `${pb.baseUrl}/api/files/${msg.collectionId}/${msg.id}/${fileName}`;
+        const isImage = fileName.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
+        if (isImage) {
+            hasImage = true;
+            if (isChannelPost) {
+                fileBlock = `<div style="margin: 12px 0;"><img src="${fileUrl}" style="width: 100%; max-height: 350px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;" onclick="window.app.openImageViewer('${fileUrl}', event)"></div>`;
+            } else {
+                fileBlock = `<div style="margin-bottom:8px;"><img src="${fileUrl}" style="max-width:100%; max-height:250px; border-radius:8px; display:block; cursor:pointer;" onclick="window.app.openImageViewer('${fileUrl}', event)"></div>`;
             }
-            if (tags) reactionsHtml = `<div class="reactions-box">${tags}</div>`;
+        } else { 
+            fileBlock = `<div style="margin-bottom:8px; background:rgba(0,0,0,0.15); padding:10px 12px; border-radius:8px; display:flex; align-items:center; gap:10px; border:1px solid rgba(255,255,255,0.05);"><svg width="24" height="24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg><a href="${fileUrl}" target="_blank" onclick="event.stopPropagation()" style="color:inherit; font-size:12px; font-weight:600; text-decoration:none; word-break:break-all;">${fileName}</a></div>`; 
         }
+    }
+
+    // --- 2. ЛОГИКА БОТА ---
+    if (isBot) {
+        let rawText = msg.text || ''; 
+        let botActionHtml = '';
         
-        let ticks = '';
-        if (isMine) {
-            let readArray = msg.read_by || [];
-            if (typeof readArray === 'string') { try { readArray = JSON.parse(readArray); } catch(e) { readArray = []; } }
-            const othersWhoRead = readArray.filter(id => id !== this.currentRider.id);
-            ticks = othersWhoRead.length > 0 ? `<span style="color:#3b82f6; font-weight:bold; letter-spacing:-2px; margin-left:4px;">✓✓</span>` : `<span style="color:var(--text-muted); margin-left:4px;">✓</span>`;
+        let panelData = null;
+        try {
+            let pDataStr = msg.expand?.chat_id?.panel_data || targetChat?.panel_data;
+            if (pDataStr) panelData = typeof pDataStr === 'string' ? JSON.parse(pDataStr) : pDataStr;
+        } catch(e) {}
+        
+        const regRegex = /\[ACTION:REGISTER:([a-zA-Z0-9_]+)\]/g;
+        rawText = rawText.replace(regRegex, (match, rId) => {
+            let btnLabel = "⚡️ ЗАЯВИТЬСЯ НА ГОНКУ";
+            if (panelData && panelData.buttons) {
+                const pbBtn = panelData.buttons.find(b => b.url && b.url.includes(rId));
+                if (pbBtn) {
+                    let shortLabel = pbBtn.label.includes('[') ? pbBtn.label.split('[')[1].split(']')[0].trim() : pbBtn.label;
+                    btnLabel = `⚡️ ${this.escapeHTML(shortLabel.toUpperCase())}`;
+                }
+            }
+            
+            botActionHtml += `<div style="margin-top: 8px;"><button class="btn-black bot-btn sync-btn-${rId}" data-label="${btnLabel}" style="width: 100%; background: var(--primary); color: #000; font-family: 'Unbounded'; font-size: 12px; padding: 14px; border-radius: 8px; cursor: pointer; border: none; font-weight: 800; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);" onclick="window.app.registerForRace('${rId}', this, event)">${btnLabel}</button></div>`;
+            return ''; 
+        });
+        
+        const liveMatch = rawText.match(/\[ACTION:LIVE:([a-zA-Z0-9_]+)\]/);
+        if (liveMatch) {
+            const rId = liveMatch[1];
+            rawText = rawText.replace(liveMatch[0], '');
+            botActionHtml += `<div style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 15px;">
+                <button onclick="window.app.openLiveBoard('${rId}', event)" style="background:var(--text-main); color:var(--bg-body); border:none; padding:12px 20px; border-radius:8px; font-family:'Unbounded'; font-weight:800; font-size:11px; cursor:pointer; width:100%; transition:0.2s; display:flex; align-items:center; justify-content:center; gap:10px;">
+                    <div style="width:8px; height:8px; background:var(--bg-body); border-radius:50%; animation: dot-pulse 1s infinite;"></div> 
+                    ХОД ГОНКИ (LIVE)
+                </button>
+            </div>`;
         }
 
-        // --- 7. ВЫВОД (РАЗДЕЛЯЕМ ЛЕНТУ И ЧАТ) ---
-        const row = document.createElement('div');
+        const row = document.createElement('div'); 
+        row.className = `message-row system-bot`; 
         row.id = `msg-${msg.id}`;
+        
+        row.style.cursor = 'pointer';
+        row.onclick = () => this.openMessageMenu(msg.id);
+        
+        row.innerHTML = `<div class="bot-bubble"><div class="bot-name">${this.getMotoSvg(18)} VILKA MOTO <span class="bot-badge">OFFICIAL</span></div><div class="bot-text">${this.linkify(this.escapeHTML(rawText.trim())).replace(/\n/g, '<br>')}</div>${fileBlock}<div style="display:flex; flex-direction:column; gap:4px; margin-top:15px; border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 15px;">${botActionHtml}</div><div class="bot-time">${time}</div></div>`;
+        
+        if (prepend) container.prepend(row); else container.appendChild(row);
+        return; 
+    }
 
-        // 🔥 ПРОВЕРЯЕМ ПРАВА: Может ли юзер открыть меню для этого поста?
-        let canManagePost = isMine;
-        if (!canManagePost) {
-            const myRoleW = Math.max(...(this.usersMap[this.currentRider?.email] || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
-            if (myRoleW >= this.ROLE_WEIGHTS['superadmin']) {
-                canManagePost = true;
-            } else if (isChannelPost) {
-                const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
-                let postChat = isFeed ? msg.expand?.chat_id : targetChat;
-                if (postChat && postChat.team_id) {
-                    const chatTeams = Array.isArray(postChat.team_id) ? postChat.team_id : [postChat.team_id];
-                    if (myRoleW >= this.ROLE_WEIGHTS['captain'] && myTeams.some(tId => chatTeams.includes(tId))) {
-                        canManagePost = true;
-                    }
+    // --- 3. ОБЫЧНОЕ СООБЩЕНИЕ ИЛИ АНОНС ---
+    let senderBlock = '';
+
+    if (isFeed && msg.expand?.chat_id) {
+        let cName = this.escapeHTML(msg.expand.chat_id.name);
+        let cId = msg.expand.chat_id.id;
+        
+        senderBlock = `
+        <div style="margin-bottom: 8px; display: flex; z-index: 2; position: relative;">
+            <div onclick="event.stopPropagation(); window.app.openChat('${cId}')" 
+                 style="display: inline-flex; align-items: center; gap: 6px; background: var(--bg-surface-hover); border: 1px solid var(--border); padding: 4px 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; color: var(--text-muted);" 
+                 onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" 
+                 onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-muted)';">
+                <span style="font-family: 'Unbounded'; font-weight: 800; font-size: 11px; text-transform: uppercase;">
+                    📢 ${cName}
+                </span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8; flex-shrink: 0;">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </div>`;
+    } else if (!isMine) {
+        senderBlock = `<div class="msg-sender-name clickable" onclick="event.stopPropagation(); window.app.openProfile('${msgSenderId}', event)">${sender.first_name} ${sender.last_name} ${this.getRoleBadge(msgSenderId)}</div>`;
+    }
+
+    let forwardHtml = msg.expand?.forwarded_from ? `<div style="font-size:10px; color:var(--info); margin-bottom:5px;">↪️ Переслано от: ${msg.expand.forwarded_from.first_name}</div>` : '';
+    let replyBlock = msg.expand?.reply_to ? `<div class="reply-quote" onclick="event.stopPropagation(); document.getElementById('msg-${msg.expand.reply_to.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><div class="reply-quote-name">${this.ridersMap[msg.expand.reply_to.sender_id]?.first_name || '...'}</div><div class="reply-quote-text">${msg.expand.reply_to.text || 'Вложение'}</div></div>` : '';
+
+    // --- 4. КНОПКИ ДЕЙСТВИЙ (ACTION TAGS) ---
+    let displayMsgText = msg.text || '';
+    let actionButtonsHtml = '';
+
+    const tMatch = displayMsgText.match(/\[ACTION:TRANSFER:([a-zA-Z0-9_]+):([a-zA-Z0-9_]+):?([A-Z]*)\]/);
+    if (tMatch) {
+        const rId = tMatch[1]; 
+        const teamId = tMatch[2]; 
+        const transferType = tMatch[3] || 'ANY'; 
+
+        displayMsgText = displayMsgText.replace(tMatch[0], '').trim();
+        
+        const rTeams = Array.isArray(this.ridersMap[rId]?.team_id) ? this.ridersMap[rId].team_id : (this.ridersMap[rId]?.team_id ? [this.ridersMap[rId].team_id] : []);
+        const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
+
+        if (rTeams.includes(teamId)) {
+            actionButtonsHtml += `<div class="transfer-done" style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.1); color:var(--success); border-radius:6px; font-size:10px; font-weight:800; border:1px dashed var(--success); text-align:center; font-family:'Unbounded';">✅ ТРАНСФЕР ВЫПОЛНЕН</div>`;
+        } else {
+            const myRoleW = Math.max(...(this.usersMap[this.currentRider.email] || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
+            const isSuper = myRoleW >= this.ROLE_WEIGHTS['superadmin'];
+            const isAdmin = myRoleW >= this.ROLE_WEIGHTS['admin'];
+            const amIThisRider = this.currentRider.id === rId;
+            const amINewCaptain = myRoleW >= this.ROLE_WEIGHTS['captain'] && myTeams.includes(teamId);
+            const amIOldCaptain = myRoleW >= this.ROLE_WEIGHTS['captain'] && myTeams.some(id => rTeams.includes(id));
+            
+            let showButton = false;
+            if (isSuper || isAdmin) showButton = true;
+            else if (transferType === 'INVITE' && amIThisRider) showButton = true; 
+            else if (transferType === 'REQUEST' && amINewCaptain) showButton = true; 
+            else if (transferType === 'RELEASE' && amIOldCaptain) showButton = true; 
+            else if (transferType === 'ANY') showButton = true;
+
+            if (showButton) {
+                actionButtonsHtml += `<div style="margin-top:10px;"><button onclick="window.app.approveTransfer('${rId}', '${teamId}', '${msg.id}', this, event)" style="width:100%; background:var(--warning); color:#000; border:none; padding:10px; border-radius:6px; font-size:11px; font-family:'Unbounded'; font-weight:800; cursor:pointer;">🔄 ОДОБРИТЬ ТРАНСФЕР</button></div>`;
+            } else {
+                actionButtonsHtml += `<div style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.05); color:var(--text-muted); border-radius:6px; font-size:10px; font-weight:800; border:1px dashed var(--border); text-align:center; font-family:'Unbounded';">ОЖИДАНИЕ РЕШЕНИЯ</div>`;
+            }
+        }
+    }
+
+    let raceContainersToLoad = []; 
+    const regRegex = /\[ACTION:REGISTER:([a-zA-Z0-9_]+)(?::([^\]]+))?\]/g;
+    displayMsgText = displayMsgText.replace(regRegex, (match, rId, wave) => {
+        const containerId = `reg-container-${msg.id}-${rId}`;
+        raceContainersToLoad.push({ rId, containerId });
+        actionButtonsHtml += `<div id="${containerId}" style="margin-top:10px;"><span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;border-color:var(--primary) transparent transparent transparent;"></span> Загрузка дистанций...</div>`;
+        return '';
+    });
+
+    const liveMatch2 = displayMsgText.match(/\[ACTION:LIVE:([a-zA-Z0-9_]+)\]/);
+    if (liveMatch2) {
+        actionButtonsHtml += `<div style="margin-top:10px;"><button style="width:100%; background:var(--text-main); color:var(--bg-body); border:none; padding:10px; border-radius:6px; font-size:11px; font-family:'Unbounded'; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="window.app.openLiveBoard('${liveMatch2[1]}', event)"><div style="width:6px; height:6px; background:var(--bg-body); border-radius:50%; animation: dot-pulse 1s infinite;"></div> ХОД ГОНКИ (LIVE)</button></div>`;
+        displayMsgText = displayMsgText.replace(liveMatch2[0], '');
+    }
+
+    const payRegex = /\[ACTION:PAY:([^\]]+):([^\]]+)\]/g;
+    displayMsgText = displayMsgText.replace(payRegex, (match, url, label) => {
+        actionButtonsHtml += `<div style="margin-top:10px;"><a href="${url}" target="_blank" style="display:block; width:100%; background:var(--success); color:#fff; padding:10px; border-radius:6px; font-size:11px; font-family:'Unbounded'; font-weight:800; text-align:center; text-decoration:none;">💳 ${label}</a></div>`;
+        return '';
+    });
+
+    // --- 5. СБОРКА ТЕКСТА И ФОРМАТИРОВАНИЕ ---
+    let textHtml = '';
+    if (isChannelPost && displayMsgText) {
+        let lines = displayMsgText.split('\n');
+        let titleColor = isAnnounce ? 'var(--danger)' : 'var(--text-main)';
+        let titleIcon = isAnnounce ? '📢 ' : '';
+        textHtml = `<div style="font-family:'Unbounded'; font-size:15px; font-weight:800; color:${titleColor}; margin-bottom:8px; line-height:1.3; text-transform:uppercase;">${titleIcon}${this.linkify(this.escapeHTML(lines[0]))}</div>`;
+        if (lines.length > 1) textHtml += `<div style="font-size:13px; color:var(--text-main); white-space:pre-wrap; line-height:1.6;">${this.linkify(this.escapeHTML(lines.slice(1).join('\n')))}</div>`;
+    } else {
+        textHtml = `<div style="white-space:pre-wrap;">${this.linkify(this.escapeHTML(displayMsgText))}</div>`;
+    }
+
+    // --- 6. РЕАКЦИИ И ТИКИ ---
+    let reactionsHtml = '';
+    if (msg.reactions && typeof msg.reactions === 'object') {
+        let tags = '';
+        for (let [key, users] of Object.entries(msg.reactions)) {
+            if (!users?.length) continue;
+            tags += `<span class="reaction-tag ${users.includes(this.currentRider.id) ? 'voted' : ''}" onclick="event.stopPropagation(); window.app.submitContextReactionMock('${msg.id}', '${key}')">${this.getReactSvg(key, 18)} <span class="react-count">${users.length}</span></span>`;
+        }
+        if (tags) reactionsHtml = `<div class="reactions-box">${tags}</div>`;
+    }
+    
+    let ticks = '';
+    if (isMine) {
+        let readArray = msg.read_by || [];
+        if (typeof readArray === 'string') { try { readArray = JSON.parse(readArray); } catch(e) { readArray = []; } }
+        const othersWhoRead = readArray.filter(id => id !== this.currentRider.id);
+        ticks = othersWhoRead.length > 0 ? `<span style="color:#3b82f6; font-weight:bold; letter-spacing:-2px; margin-left:4px;">✓✓</span>` : `<span style="color:var(--text-muted); margin-left:4px;">✓</span>`;
+    }
+
+    // --- 7. ВЫВОД (РАЗДЕЛЯЕМ ЛЕНТУ И ЧАТ) ---
+    const row = document.createElement('div');
+    row.id = `msg-${msg.id}`;
+
+    let canManagePost = isMine;
+    if (!canManagePost) {
+        const myRoleW = Math.max(...(this.usersMap[this.currentRider?.email] || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
+        if (myRoleW >= this.ROLE_WEIGHTS['superadmin']) {
+            canManagePost = true;
+        } else if (isChannelPost) {
+            const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
+            let postChat = isFeed ? msg.expand?.chat_id : targetChat;
+            if (postChat && postChat.team_id) {
+                const chatTeams = Array.isArray(postChat.team_id) ? postChat.team_id : [postChat.team_id];
+                if (myRoleW >= this.ROLE_WEIGHTS['captain'] && myTeams.some(tId => chatTeams.includes(tId))) {
+                    canManagePost = true;
                 }
             }
         }
+    }
 
-        if (isChannelPost) {
-            // 🔥 ДИЗАЙН КАРТОЧКИ (ДЛЯ ЛЕНТЫ НОВОСТЕЙ И КАНАЛОВ)
-            row.className = `message-row`;
-            row.style.cssText = "width: 100%; max-width: 600px; margin: 0 auto 20px auto; padding: 0;";
-            
-            if (canManagePost) {
-                row.style.cursor = 'pointer';
-                row.onclick = () => this.openMessageMenu(msg.id);
-            }
+    if (isChannelPost) {
+        row.className = `message-row`;
+        row.style.cssText = "width: 100%; max-width: 600px; margin: 0 auto 20px auto; padding: 0;";
+        
+        if (canManagePost) {
+            row.style.cursor = 'pointer';
+            row.onclick = () => this.openMessageMenu(msg.id);
+        }
 
-            // 🔥 СОЗДАЕМ КРУГЛУЮ КНОПКУ ПОДЕЛИТЬСЯ ДЛЯ ПОСТА (С ИКОНКОЙ)
-            const postShareBtn = `
-                <button onclick="event.stopPropagation(); window.app.sharePostDirectly('${msg.id}')" class="btn-circle-share" style="width: 28px; height: 28px; min-width: 28px; min-height: 28px; margin: 0; background: transparent; border: 1px solid var(--border); color: var(--text-muted); transition: 0.2s;" title="Поделиться" onmouseover="this.style.color='var(--info)'; this.style.borderColor='var(--info)'; this.style.background='rgba(59,130,246,0.1)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)'; this.style.background='transparent';">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                </button>
+        const postShareBtn = `
+            <button onclick="event.stopPropagation(); window.app.sharePostDirectly('${msg.id}')" class="btn-circle-share" style="width: 28px; height: 28px; min-width: 28px; min-height: 28px; margin: 0; background: transparent; border: 1px solid var(--border); color: var(--text-muted); transition: 0.2s;" title="Поделиться" onmouseover="this.style.color='var(--info)'; this.style.borderColor='var(--info)'; this.style.background='rgba(59,130,246,0.1)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)'; this.style.background='transparent';">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            </button>
+        `;
+
+        // 🔥 ПАРСИНГ ТЕКСТА ПОСТА (ЗАГОЛОВОК + ТЕЛО)
+        let lines = displayMsgText ? displayMsgText.split('\n') : [''];
+        let titleText = lines[0] ? this.linkify(this.escapeHTML(lines[0])) : '';
+        let bodyText = lines.length > 1 ? this.linkify(this.escapeHTML(lines.slice(1).join('\n'))) : '';
+
+        // 🔥 ОПРЕДЕЛЯЕМ: ЭТО ОФИЦИАЛЬНАЯ НОВОСТЬ КАНАЛА ИЛИ АГРЕГИРОВАННАЯ ЛИЧКА/ЧАТ
+        const msgChatId = Array.isArray(msg.chat_id) ? msg.chat_id[0] : msg.chat_id;
+        const isOfficialPost = (targetChat && msgChatId === targetChat.id);
+
+        let chatName = targetChat ? this.getChatName(targetChat) : (msg.expand?.chat_id?.name || 'ПЕЛОТОН');
+
+        let cardContentHtml = '';
+
+        // 🖼 1. ТОЛЬКО ОФИЦИАЛЬНЫЕ НОВОСТИ ПОЛУЧАЮТ ДИЗАЙН ОБЛОЖКИ С ГРАДИЕНТОМ
+        if (isOfficialPost && hasImage) {
+            cardContentHtml = `
+                <div class="vk-card-media" onclick="window.app.openImageViewer('${fileUrl}', event)">
+                    <img src="${fileUrl}" class="vk-card-image" alt="VILKA NEWS">
+                    <div class="vk-card-media-overlay">
+                        <div class="vk-card-channel">📢 ${this.escapeHTML(chatName)}</div>
+                        ${titleText ? `<h3 class="vk-card-title">${titleText}</h3>` : ''}
+                    </div>
+                </div>
+                ${bodyText ? `<div style="font-size:14px; color:var(--text-main); white-space:pre-wrap; line-height:1.6; margin-bottom:12px;">${bodyText}</div>` : ''}
             `;
-            
-            row.innerHTML = `
-            <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
+        } else {
+            // 📝 2. ЛИЧНЫЕ СООБЩЕНИЯ ИЛИ ЧАТ КОМАНДЫ (С ПОЛОСОЙ-БЕЙДЖЕМ И ОТПРАВИТЕЛЕМ)
+            cardContentHtml = `
+                ${scopeBadgeHtml}
                 ${senderBlock}
                 <div style="margin-top: 12px; display:flow-root;">
                     ${fileBlock}
                     ${textHtml}
                 </div>
-                ${actionButtonsHtml}
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <div style="font-size: 11px; color: var(--text-muted); font-family: 'Roboto Mono';">${time} ${isEdited ? '(изм.)' : ''}</div>
-                    
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        ${reactionsHtml ? `<div style="margin-top: -5px;">${reactionsHtml}</div>` : ''}
-                        <div style="margin-top: -5px;">${postShareBtn}</div>
-                    </div>
+            `;
+        }
+
+        row.innerHTML = `
+        <div class="vk-card" style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); overflow: hidden;">
+            ${cardContentHtml}
+            ${actionButtonsHtml}
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 11px; color: var(--text-muted); font-family: 'Roboto Mono';">${time} ${isEdited ? '(изм.)' : ''}</div>
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    ${reactionsHtml ? `<div style="margin-top: -5px;">${reactionsHtml}</div>` : ''}
+                    <div style="margin-top: -5px;">${postShareBtn}</div>
                 </div>
-            </div>`;
-        } else {
-            // 💬 СТАРЫЙ ДИЗАЙН БАББЛОВ (ДЛЯ ЛИЧКИ И ГРУПП)
-            row.className = `message-row ${isMine ? 'mine' : 'theirs'}`;
-            row.onclick = () => this.openMessageMenu(msg.id);
-            let bubbleStyle = isAnnounce ? 'border: 1px solid var(--danger); box-shadow: 0 4px 15px rgba(255, 51, 102, 0.15);' : '';
-            row.innerHTML = `${senderBlock}<div class="message-bubble" style="${bubbleStyle}">${forwardHtml}${replyBlock}<div style="display:flow-root;">${fileBlock}${textHtml}</div>${actionButtonsHtml}<div class="msg-meta-row">${isEdited?'<span class="msg-edited">изм.</span>':''}<span>${time}</span>${ticks}</div></div>${reactionsHtml}`;
-        }
-
-        if (prepend) container.prepend(row); else container.appendChild(row);
-
-        // --- 8. ЗАГРУЗКА РЕГИСТРАЦИОННЫХ БЛОКОВ ---
-        if (raceContainersToLoad.length > 0) {
-            setTimeout(() => { raceContainersToLoad.forEach(item => this.renderRegisterActionAsync(item.rId, item.containerId)); }, 50);
-        }
+            </div>
+        </div>`;
+    } else {
+        // 💬 ДИЗАЙН ОБЫЧНОГО БАББЛА
+        row.className = `message-row ${isMine ? 'mine' : 'theirs'}`;
+        row.onclick = () => this.openMessageMenu(msg.id);
+        let bubbleStyle = isAnnounce ? 'border: 1px solid var(--danger); box-shadow: 0 4px 15px rgba(255, 51, 102, 0.15);' : '';
+        row.innerHTML = `${senderBlock}<div class="message-bubble" style="${bubbleStyle}">${scopeBadgeHtml}${forwardHtml}${replyBlock}<div style="display:flow-root;">${fileBlock}${textHtml}</div>${actionButtonsHtml}<div class="msg-meta-row">${isEdited?'<span class="msg-edited">изм.</span>':''}<span>${time}</span>${ticks}</div></div>${reactionsHtml}`;
     }
 
+    if (prepend) container.prepend(row); else container.appendChild(row);
+
+    // --- 8. ЗАГРУЗКА РЕГИСТРАЦИОННЫХ БЛОКОВ ---
+    if (raceContainersToLoad.length > 0) {
+        setTimeout(() => { raceContainersToLoad.forEach(item => this.renderRegisterActionAsync(item.rId, item.containerId)); }, 50);
+    }
+}
 // 🔥 НОВЫЙ ПЕРСОНАЛИЗИРОВАННЫЙ ЗАГОЛОВОК И ФИКСЫ (С ПОДДЕРЖКОЙ ГОСТЕВОГО РЕЖИМА)
         renderProfileHeader() {
             const headerEl = document.querySelector('.sidebar-header');
@@ -10087,7 +10979,10 @@ appendMessageHTML(msg, container, prepend = false, isFeed = false) {
                 headerEl.innerHTML = `
                     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 5px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--bg-surface-hover); border: 1px dashed var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:18px;">👤</div>
+                            <!-- 🔥 НАША ФИРМЕННАЯ УТОЧКА ДЛЯ ГОСТЯ (КРУПНАЯ И ИДЕАЛЬНО ПО ЦЕНТРУ) -->
+                            <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--primary); display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 10px rgba(255,193,7,0.3); flex-shrink: 0;">
+                                <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" style="width: 28px; height: 28px; object-fit: contain; position: relative; top: -2px; left: 2px;" alt="Guest Duck">
+                            </div>
                             <div style="display: flex; flex-direction: column;">
                                 <span style="font-family: 'Unbounded'; font-size: 13px; font-weight: 800; color: var(--text-main);">ГОСТЬ</span>
                                 <span style="font-size: 10px; color: var(--primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">зарегистрируйся!</span>
@@ -10118,11 +11013,12 @@ appendMessageHTML(msg, container, prepend = false, isFeed = false) {
             
             if (myTeams.length > 0) {
                 if (this.currentPelotonFilter && this.currentPelotonFilter !== 'all') {
-const activeTeamId = myTeams.find(id => {
-    const t = this.teamsMap[id];
-    const pId = t && t.peloton_id ? (Array.isArray(t.peloton_id) ? t.peloton_id[0] : t.peloton_id) : null;
-    return pId === this.currentPelotonFilter;
-});                    if (activeTeamId) teamName = this.teamsMap[activeTeamId].name;
+                    const activeTeamId = myTeams.find(id => {
+                        const t = this.teamsMap[id];
+                        const pId = t && t.peloton_id ? (Array.isArray(t.peloton_id) ? t.peloton_id[0] : t.peloton_id) : null;
+                        return pId === this.currentPelotonFilter;
+                    });                    
+                    if (activeTeamId) teamName = this.teamsMap[activeTeamId].name;
                     else teamName = myTeams.length === 1 ? (this.teamsMap[myTeams[0]]?.name || 'Команда') : `Клубов: ${myTeams.length}`;
                 } else {
                     teamName = myTeams.length === 1 ? (this.teamsMap[myTeams[0]]?.name || 'Команда') : `Клубов: ${myTeams.length}`;
@@ -10133,6 +11029,16 @@ const activeTeamId = myTeams.find(id => {
             
             // 🔥 УМНАЯ АВАТАРКА С ПОДТЯГИВАНИЕМ ИЗ БАЗЫ
             let myAvatarHtml = this.renderAvatar(this.currentRider.id, 'width: 38px; height: 38px; font-size: 14px; background: var(--primary); color: #000;', initials);
+
+            // 🔥 СОЗДАЕМ КНОПКУ CRM ТОЛЬКО ДЛЯ СУПЕРАДМИНА
+            let crmBtnHtml = '';
+            if (this.ROLE_WEIGHTS[this.getUserMaxRole()] >= this.ROLE_WEIGHTS['superadmin']) {
+                crmBtnHtml = `
+                    <button onclick="window.app.switchTab('pelotons')" style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 8px; width: 32px; height: 32px; display:flex; align-items:center; justify-content:center; color: var(--text-main); font-family: 'Unbounded'; font-size: 9px; font-weight: 800; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)';" title="CRM система">
+                        CRM
+                    </button>
+                `;
+            }
 
             headerEl.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 5px;">
@@ -10149,7 +11055,8 @@ const activeTeamId = myTeams.find(id => {
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <button onclick="window.app.toggleTheme()" style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 8px; width: 32px; height: 32px; display:flex; align-items:center; justify-content:center; color: var(--text-muted); cursor: pointer; transition: 0.2s;">
+                        ${crmBtnHtml}
+                        <button onclick="window.app.toggleTheme()" style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 8px; width: 32px; height: 32px; display:flex; align-items:center; justify-content:center; color: var(--text-muted); cursor: pointer; transition: 0.2s;" title="Переключить тему">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         </button>
                         
@@ -10276,7 +11183,7 @@ const activeTeamId = myTeams.find(id => {
                     container.innerHTML = `<div style="text-align:center; padding:60px 20px;"><span class="spinner" style="width:30px; height:30px; border-width:3px; display:inline-block; border-color:var(--primary) transparent transparent transparent;"></span></div>`;
                 } else {
                     // Если сервер ответил, что пусто — пишем текст
-                    container.innerHTML = `<div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-size:11px; font-family:'Unbounded'; border: 1px dashed var(--border); margin: 15px; border-radius: 12px;">В ДАННОЙ КАТЕГОРИИ ЧАТОВ НЕТ</div>`; 
+                    container.innerHTML = `<div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-size:11px; font-family:'Unbounded'; border: 1px dashed var(--border); margin: 15px; border-radius: 12px;">ЖДЁМ ЗАГРУЗКИ</div>`; 
                 }
                 return;
             }
@@ -10297,16 +11204,31 @@ const activeTeamId = myTeams.find(id => {
             pinnedChats.sort((a, b) => pinnedIds.indexOf(a.id) - pinnedIds.indexOf(b.id));
 
             unpinnedChats.sort((a, b) => {
+                // 🔥 ФИКС: Строгая хронология для Календаря (Гонки и Архив)
+                // Игнорируем непрочитанные сообщения, чтобы список не прыгал!
+                if (this.chatListFilter === 'races' || this.chatListFilter === 'archive') {
+                    const dateA = new Date(a.raceObj?.date || 0).getTime();
+                    const dateB = new Date(b.raceObj?.date || 0).getTime();
+                    
+                    if (this.chatListFilter === 'archive') {
+                        return dateB - dateA; // Архив: от свежих завершенных к старым
+                    }
+                    return dateA - dateB; // Будущие гонки: от ближайших к дальним
+                }
+
+                // 💬 Для остальных вкладок (Рация, Личка, Команды): поднимаем непрочитанные наверх
                 const unreadA = (this.unreadCounts && this.unreadCounts[a.id] > 0) ? 1 : 0;
                 const unreadB = (this.unreadCounts && this.unreadCounts[b.id] > 0) ? 1 : 0;
                 if (unreadA !== unreadB) return unreadB - unreadA;
 
+                // На всякий случай (страховка)
                 if (a.type === 'global' && b.type === 'global') {
                     const dateA = new Date(a.raceObj?.date || 0).getTime();
                     const dateB = new Date(b.raceObj?.date || 0).getTime();
                     return dateA - dateB;
                 }
 
+                // Обычные чаты сортируем по времени последнего сообщения
                 const dA = new Date(a.updated || a.created || 0).getTime();
                 const dB = new Date(b.updated || b.created || 0).getTime();
                 return dB - dA;
@@ -10349,8 +11271,9 @@ const activeTeamId = myTeams.find(id => {
                 if (c.type === 'direct') { 
                     subText = 'Личные сообщения'; 
                 } else if (c.type === 'global' && c.raceObj) {
-                    const safeFormats = this.RACE_FORMATS || { 'mass': 'Группа', 'itt': 'Разделка' };
-                    const safeSurfaces = this.RACE_SURFACES || { 'road': 'Шоссе', 'offroad': 'Грунт' };
+                    // 🔥 ФИКС: Умно обращаемся к словарям в модуле CRM и используем полный резервный список
+                    const safeFormats = (this.crm && this.crm.RACE_FORMATS) ? this.crm.RACE_FORMATS : { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
+                    const safeSurfaces = (this.crm && this.crm.RACE_SURFACES) ? this.crm.RACE_SURFACES : { 'road': 'Шоссе', 'offroad': 'Грунт', 'track': 'Трек', 'indoor': 'Индор' };
                     let formatName = c.raceObj.format ? (safeFormats[c.raceObj.format] || 'Заезд') : 'Заезд';
                     let surfaceName = c.raceObj.surface ? (safeSurfaces[c.raceObj.surface] || '') : '';
                     subText = surfaceName ? `${surfaceName} • ${formatName}` : formatName;
@@ -10387,7 +11310,12 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                 `;
 
                 const shareIconHtml = `
-                    <button onclick="event.stopPropagation(); window.app.copyChatLink('${c.id}')" class="btn-circle-share" style="margin-left:4px;" title="Поделиться">🔗</button>
+                    <button onclick="event.stopPropagation(); window.app.copyChatLink('${c.id}')" style="background:none; border:none; padding:6px; margin-left:2px; cursor:pointer; color:var(--text-muted); opacity:0.3; transition: 0.2s; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent;" onmouseover="this.style.opacity='1'; this.style.color='var(--primary)';" onmouseout="this.style.opacity='0.3'; this.style.color='var(--text-muted)';" title="Копировать ссылку">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                    </button>
                 `;
 
                 const rightControlsHtml = `<div style="display:flex; align-items:center; margin-left:auto; flex-shrink:0;">${badgeHtml}${shareIconHtml}${pinIconHtml}</div>`;
@@ -10468,7 +11396,7 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                     }
                     
                     // 🔥 УМНАЯ ЛОГИКА ВРЕМЕНИ (Читаемый дизайн + данные из LIVE BOARD)
-                    let displayTimeHtml = `<span>⏱️ ${baseTimeStr}</span>`; 
+                    let displayTimeHtml = `<span>${baseTimeStr}</span>`; 
 
                     // 1. Ищем гонщика в live_board гонки (по Фамилии и Имени)
                     let liveResult = null;
@@ -10492,7 +11420,7 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                     else if (myRegContext && myRegContext.planned_start) {
                         let personalTimeStr = myRegContext.planned_start;
                         if (personalTimeStr.endsWith(':00') && personalTimeStr.length === 8) personalTimeStr = personalTimeStr.substring(0, 5); 
-                        displayTimeHtml = `<span style="background: rgba(217, 164, 0, 0.15); color: #b47a00; padding: 3px 6px; border-radius: 6px; font-weight: 800;" title="Ваше личное время старта">⏱️ ${personalTimeStr}</span>`;
+                        displayTimeHtml = `<span style="background: rgba(217, 164, 0, 0.15); color: #b47a00; padding: 3px 6px; border-radius: 6px; font-weight: 800;" title="Ваше личное время старта">${personalTimeStr}</span>`;
                     }
 
                     let mainActionBtnHtml = '';
@@ -10536,18 +11464,79 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
 
                     const displayState = (this.expandedRaceId === c.id) ? 'block' : 'none';
 
+                    // 🔥 ОПРЕДЕЛЯЕМ ПРАВА АДМИНА ДЛЯ ТЕКУЩЕЙ ГОНКИ
+                    const myRoleW = Math.max(...(this.usersMap[this.currentRider?.email] || []).map(role => this.ROLE_WEIGHTS[role] || 20), 20);
+                    const isGlobalAdmin = myRoleW >= this.ROLE_WEIGHTS['admin'];
+                    const isCreator = r.creator_id === this.currentRider?.id;
+                    const isAssignedJudge = r.judge_id === this.currentRider?.id || (r.judgeRiderId && r.judgeRiderId === this.currentRider?.id);
+                    const canManageRoster = isGlobalAdmin || isCreator || isAssignedJudge;
+
+                    let adminMenuHtml = '';
+                    if (canManageRoster) {
+                        const menuId = `admin-menu-${r.id}`;
+                        let menuItems = '';
+
+                        // Судейский пульт
+                        if (r.status === 'LIVE' || r.status === 'Finished') {
+                            menuItems += `<div class="admin-menu-item" onclick="window.open('https://sotka.one/repult?race_id=${r.id}', '_blank')">⚖️ Судейский пульт</div>`;
+                        }
+                        
+                        // QR-код оставляем, так как его нет в правой панели старт-листа
+                        menuItems += `<div class="admin-menu-item" onclick="window.app.crm.openRaceQrModal('${r.id}', '${this.escapeHTML(r.name)}')">📱 QR-код Стартового пульта</div>`;
+                        
+                        // Управление статусом гонки
+                        if (r.status !== 'Finished' && r.status !== 'LIVE') {
+                            menuItems += `<div class="admin-menu-item text-danger" onclick="window.app.crm.startManualLiveRace('${r.id}')">🔴 Дать старт гонке (LIVE)</div>`;
+                        }
+                        if (r.status === 'LIVE') {
+                            menuItems += `<div class="admin-menu-item text-success" onclick="window.app.crm.finalizeRaceProcess('${r.id}')">🏁 Закрыть и распределить очки</div>`;
+                        }
+                        
+                        // Редактирование и удаление
+                        if (r.status === 'Registration' || r.status === 'Скоро') {
+                            menuItems += `<div class="admin-menu-item" onclick="window.app.crm.openEditEventModal('${r.id}')">✏️ Редактировать параметры</div>`;
+                            menuItems += `<div class="admin-menu-item text-danger" onclick="window.app.crm.deleteRace('${r.id}')">🗑️ Удалить гонку навсегда</div>`;
+                        }
+
+                        adminMenuHtml = `
+                            <div style="position:relative; margin-top: 8px; width: 100%;">
+                                <button onclick="const m = document.getElementById('${menuId}'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; event.stopPropagation();" style="width:100%; background:var(--bg-body); color:var(--text-main); border:1px solid var(--primary); padding:10px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition: 0.2s;">
+                                    <span>⚙️ УПРАВЛЕНИЕ СОБЫТИЕМ</span> <span style="font-size: 8px;">▼</span>
+                                </button>
+                                <div id="${menuId}" style="display:none; position:absolute; top:100%; left:0; width:100%; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; margin-top:4px; z-index:100; box-shadow:0 10px 25px rgba(0,0,0,0.5); overflow:hidden;">
+                                    <style>
+                                        .admin-menu-item { padding: 12px 16px; font-size: 12px; font-family: 'Manrope'; color: var(--text-main); cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; }
+                                        .admin-menu-item:last-child { border-bottom: none; }
+                                        .admin-menu-item:hover { background: var(--bg-surface-hover); color: var(--primary); }
+                                        .admin-menu-item.text-danger { color: #ef4444; }
+                                        .admin-menu-item.text-danger:hover { background: rgba(239, 68, 68, 0.1); }
+                                        .admin-menu-item.text-success { color: #10b981; }
+                                        .admin-menu-item.text-success:hover { background: rgba(16, 185, 129, 0.1); }
+                                    </style>
+                                    ${menuItems}
+                                </div>
+                            </div>
+                        `;
+                        
+                        document.addEventListener('click', (e) => {
+                            const m = document.getElementById(menuId);
+                            if (m && e.target.closest(`#${menuId}`) === null) m.style.display = 'none';
+                        });
+                    }
+
                     const accordionBody = `
                         <div class="race-accordion-body" style="display:${displayState}; width:100%; flex-basis:100%; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); cursor:default;">
                             <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:10px; font-family:'Roboto Mono', monospace; font-weight:bold;">
                                 ${displayTimeHtml}
-                                <span>🏁 ${distStr}</span>
-                                <span>👥 ${countRiders} чел.</span>
+                                <span>${distStr}</span>
+                                <span>${countRiders} чел.</span>
                             </div>
                             <div style="margin-bottom:8px;">${mainActionBtnHtml}</div>
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                                <button onclick="window.app.openChat('${c.id}')" style="background:transparent; color:var(--text-main); border:1px solid var(--border); height:36px; border-radius:8px; font-family:'Unbounded'; font-weight:800; font-size:10px; cursor:pointer;">💬 ЧАТ ГОНКИ</button>
-                                <button onclick="window.app.openLiveBoard('${r.id}', event)" style="background:var(--bg-surface-hover); color:var(--text-main); border:1px solid var(--border); height:36px; border-radius:8px; font-family:'Unbounded'; font-weight:800; font-size:10px; cursor:pointer;">📋 СТАРТ-ЛИСТ</button>
+                                <button onclick="window.app.openChat('${c.id}')" style="background:transparent; color:var(--text-main); border:1px solid var(--border); height:36px; border-radius:8px; font-family:'Unbounded'; font-weight:800; font-size:10px; cursor:pointer; transition:0.2s;" onmouseover="this.style.background='var(--bg-surface-hover)'" onmouseout="this.style.background='transparent'">💬 ЧАТ ГОНКИ</button>
+                                <button onclick="${canManageRoster ? `window.app.crm.openRaceRoster('${r.id}', '${this.escapeHTML(r.name)}', '${r.type || ''}')` : `window.app.openLiveBoard('${r.id}', event)`}" style="background:var(--bg-surface-hover); color:var(--text-main); border:1px solid var(--border); height:36px; border-radius:8px; font-family:'Unbounded'; font-weight:800; font-size:10px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)'">📋 СТАРТ-ЛИСТ</button>
                             </div>
+                            ${adminMenuHtml}
                         </div>
                     `;
 
@@ -10874,38 +11863,327 @@ setChatListFilter(type) {
             }
         }
 
-        renderContactsTab(filterText = "") {
-            const container = document.getElementById('contactList'); 
-            if(!container) return; 
-            container.innerHTML = '';
-            
-            // ==========================================
-            // 1. КАНАЛЫ, КОМАНДНЫЕ ЧАТЫ И ГРУППЫ
-            // ==========================================
-            let groupChats = this.chats.filter(c => ['team_channel', 'team', 'private', 'gruppetto'].includes(c.type));
-            
-            if (this.currentPelotonFilter !== 'all') { 
-                groupChats = groupChats.filter(c => {
-                    let chatPId = c.peloton_id ? (Array.isArray(c.peloton_id) ? c.peloton_id[0] : c.peloton_id) : null;
-                    return !chatPId || chatPId === this.currentPelotonFilter;
+async renderContactsTab(filterText = "") {
+        const container = document.getElementById('contactList'); 
+        if(!container) return; 
+        container.innerHTML = '';
+        
+        // ==========================================
+        // 🔥 1. НОВОСТНАЯ ЛЕНТА (STORIES) - С ФОТО И АВАТАРКАМИ
+        // ==========================================
+        if (!filterText) {
+            let storyCards = [];
+
+            if (this.chats && this.unreadCounts) {
+                for (let c of this.chats) {
+                    let count = this.unreadCounts[c.id] || 0;
+                    
+                    // Берем только Рацию с непрочитанными сообщениями (исключаем гонки)
+                    if (count > 0 && c.type !== 'global') {
+                        let sName = "Сообщение";
+                        let finalImage = null;
+
+                        // 1. 🔥 Ищем фото в последнем сообщении этого чата НАПРЯМУЮ ИЗ БАЗЫ
+                        try {
+                            const msgsWithFiles = await pb.collection('messages').getList(1, 1, {
+                                filter: `chat_id="${c.id}" && file != null && file != ""`,
+                                sort: '-created',
+                                requestKey: 'story_file_' + c.id
+                            });
+                            
+                            if (msgsWithFiles.items.length > 0) {
+                                const m = msgsWithFiles.items[0];
+                                const fField = m.file || m.image || m.photo || m.attachment || (m.files && m.files[0]);
+                                if (fField) {
+                                    const fName = Array.isArray(fField) ? fField[0] : fField;
+                                    try { 
+                                        // Принудительно задаем имя коллекции для генератора
+                                        if (!m.collectionName && !m.collectionId) m.collectionName = 'messages';
+                                        finalImage = pb.files.getUrl(m, fName); 
+                                    } 
+                                    catch(e) { finalImage = `${pb.baseUrl}/api/files/messages/${m.id}/${fName}`; }
+                                }
+                            }
+                        } catch(e) { console.warn("Не удалось получить фото из чата", e); }
+
+                        // 2. Достаем имя и аватарку для ЛИЧНЫХ СООБЩЕНИЙ (если фото не отправляли)
+                        if (c.type === 'direct') {
+                            const otherId = c.participants?.find(p => p !== this.currentRider?.id);
+                            
+                            if (otherId) {
+                                let otherRider = this.ridersMap[otherId];
+                                
+                                // Если гонщика нет в кэше, качаем из базы!
+                                if (!otherRider) {
+                                    try {
+                                        otherRider = await pb.collection('riders').getOne(otherId, { requestKey: null });
+                                        this.ridersMap[otherId] = otherRider; // Сохраняем в кэш
+                                    } catch(e) {}
+                                }
+
+                                if (otherRider) {
+                                    sName = `${otherRider.first_name || ''} ${otherRider.last_name || ''}`.trim();
+                                    if (!finalImage && otherRider.avatar) {
+                                        const fName = Array.isArray(otherRider.avatar) ? otherRider.avatar[0] : otherRider.avatar;
+                                        try { 
+                                            // 🔥 Железная защита для ссылок на аватары
+                                            if (!otherRider.collectionName && !otherRider.collectionId) otherRider.collectionName = 'riders';
+                                            finalImage = pb.files.getUrl(otherRider, fName); 
+                                        } 
+                                        catch(e) { finalImage = `${pb.baseUrl}/api/files/riders/${otherRider.id}/${fName}`; }
+                                    }
+                                }
+                            }
+                        } 
+                        // 3. Достаем имя и обложку для ГРУППОВЫХ ЧАТОВ
+                        else {
+                            try {
+                                let rawName = this.getChatName(c);
+                                if (rawName) sName = rawName;
+                            } catch (e) {}
+
+                            if (!finalImage && c.image) {
+                                if (c.image.startsWith('http')) finalImage = c.image;
+                                else {
+                                    try { 
+                                        if (!c.collectionName && !c.collectionId) c.collectionName = 'chats';
+                                        finalImage = pb.files.getUrl(c, c.image); 
+                                    } 
+                                    catch(e) { finalImage = `${pb.baseUrl}/api/files/chats/${c.id}/${c.image}`; }
+                                }
+                            }
+                        }
+
+                        // 4. Фолбэк на Уточку (если вообще нет никаких картинок)
+                        finalImage = finalImage || 'https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg';
+                        
+                        storyCards.push({ id: c.id, name: this.escapeHTML(sName), count: count, image: finalImage });
+                    }
+                }
+            }
+
+            // Отрисовка ленты
+            if (storyCards.length > 0) {
+                let storiesHtml = `<div class="stories-scroll-container" style="display:flex; overflow-x:auto; gap:12px; padding:5px 5px 20px 5px; scrollbar-width:none; -webkit-overflow-scrolling:touch;">`;
+                
+                storyCards.forEach(card => {
+                    const isDuck = card.image.includes('__18.svg');
+                    const bgStyle = isDuck 
+                        ? `background-color: var(--primary); background-image: url('${card.image}'); background-size: 50%; background-position: center 35%; background-repeat: no-repeat;`
+                        : `background-color: var(--bg-surface-hover); background-image: url('${card.image}'); background-size: cover; background-position: center;`;
+
+                    storiesHtml += `
+                        <div onclick="window.app.openChat('${card.id}')" style="position:relative; flex-shrink:0; width:80px; height:110px; border-radius:16px; border:2px solid var(--primary); cursor:pointer; overflow:hidden; box-shadow:0 6px 12px rgba(0,0,0,0.1); transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">
+                            <div style="position:absolute; inset:0; ${bgStyle}"></div>
+                            <div style="position:absolute; inset:0; background:linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.9) 100%);"></div>
+                            <div style="position:absolute; bottom:8px; left:6px; right:6px; font-size:9px; font-family:'Unbounded'; font-weight:800; color:#fff; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 3px rgba(0,0,0,0.8);">${card.name}</div>
+                            <div style="position:absolute; top:4px; right:4px; background:var(--bg-body); border-radius:10px; padding:2px;">
+                                <div style="background:var(--primary); color:#000; font-size:10px; font-weight:900; font-family:'Roboto Mono'; min-width:16px; height:16px; padding:0 4px; display:flex; align-items:center; justify-content:center; border-radius:10px;">${card.count}</div>
+                            </div>
+                        </div>
+                    `;
                 });
+                
+                storiesHtml += `</div><style>.stories-scroll-container::-webkit-scrollbar { display: none; }</style>`;
+                container.innerHTML += storiesHtml;
             }
-            if (filterText) { 
-                const q = filterText.toLowerCase(); 
-                groupChats = groupChats.filter(c => (this.getChatName(c) || '').toLowerCase().includes(q)); 
-            }
+        }
 
-            if (groupChats.length > 0) {
-                const grpTitle = document.createElement('div');
-                grpTitle.style.cssText = "font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; padding:15px 15px 5px; text-transform:uppercase;";
-                grpTitle.innerText = "КАНАЛЫ И ГРУППЫ";
-                container.appendChild(grpTitle);
+        // ==========================================
+        // 2. КАНАЛЫ, КОМАНДНЫЕ ЧАТЫ И ГРУППЫ (УЛУЧШЕННЫЕ)
+        // ==========================================
+        let groupChats = this.chats.filter(c => ['team_channel', 'team', 'private', 'gruppetto'].includes(c.type));
+        
+        if (this.currentPelotonFilter !== 'all') { 
+            groupChats = groupChats.filter(c => {
+                let chatPId = c.peloton_id ? (Array.isArray(c.peloton_id) ? c.peloton_id[0] : c.peloton_id) : null;
+                return !chatPId || chatPId === this.currentPelotonFilter;
+            });
+        }
+        if (filterText) { 
+            const q = filterText.toLowerCase(); 
+            groupChats = groupChats.filter(c => (this.getChatName(c) || '').toLowerCase().includes(q)); 
+        }
 
-                groupChats.forEach(c => {
+        if (groupChats.length > 0) {
+            const grpTitle = document.createElement('div');
+            grpTitle.style.cssText = "font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; padding:15px 15px 5px; text-transform:uppercase;";
+            grpTitle.innerText = "КОМАНДЫ";
+            container.appendChild(grpTitle);
+
+            // 🔥 Расчет статистики команд
+            let allTeamStats = {};
+            Object.keys(this.teamsMap).forEach(tId => {
+                const teamMembers = Object.values(this.ridersMap).filter(r => {
+                    const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
+                    return rTeams.includes(tId);
+                });
+                teamMembers.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                let top3 = teamMembers.slice(0,3).reduce((sum, r) => sum + (r.rating || 0), 0);
+                let total = teamMembers.reduce((sum, r) => sum + (r.rating || 0), 0);
+                let males = teamMembers.filter(r => r.gender === 'M' || r.gender === 'М').length;
+                let females = teamMembers.filter(r => r.gender === 'F' || r.gender === 'Ж').length;
+                
+                let teamName = this.teamsMap[tId].name || "Команда";
+                let isNeutral = teamName.trim().toUpperCase() === 'ONE TEAM';
+
+                allTeamStats[tId] = { tId, top3, total, males, females, members: teamMembers, name: teamName, isNeutral };
+            });
+
+            // Группируем чаты (отбираем ТОЛЬКО команды с чатами)
+            let teamsToRender = {};
+            let nonTeamChats = [];
+
+            groupChats.forEach(c => {
+                let tId = c.team_id ? (Array.isArray(c.team_id) ? c.team_id[0] : c.team_id) : null;
+                if (tId && allTeamStats[tId]) {
+                    if (!teamsToRender[tId]) {
+                        teamsToRender[tId] = { teamId: tId, chats: [], stat: allTeamStats[tId] };
+                    }
+                    teamsToRender[tId].chats.push(c);
+                } else {
+                    nonTeamChats.push(c);
+                }
+            });
+
+            // Раздаем места
+            let renderedTeamsArr = Object.values(teamsToRender);
+            let neutralTeams = renderedTeamsArr.filter(t => t.stat.isNeutral);
+            let compTeams = renderedTeamsArr.filter(t => !t.stat.isNeutral);
+
+            compTeams.sort((a, b) => b.stat.top3 - a.stat.top3);
+
+            neutralTeams.forEach(t => { t.stat.rank = 0; t.stat.sortOrder = 0; });
+            compTeams.forEach((t, index) => { t.stat.rank = index + 1; t.stat.sortOrder = index + 1; });
+
+            let sortedTeams = [...neutralTeams, ...compTeams].sort((a, b) => a.stat.sortOrder - b.stat.sortOrder);
+
+            // Отрисовываем карточки команд
+            sortedTeams.forEach(tGroup => {
+                const el = document.createElement('div');
+                el.className = 'contact-item group-item'; 
+                
+                const isActive = tGroup.chats.some(c => c.id === this.activeChatId);
+                if (isActive) el.style.background = 'var(--bg-surface-hover)';
+                
+                el.onclick = (e) => { 
+                    if (e.target.closest('.team-accordion-body')) return; 
+                    document.querySelectorAll('.group-item').forEach(i => i.style.background = 'transparent');
+                    document.querySelectorAll('.rider-card').forEach(i => i.style.borderColor = 'var(--border)');
+                    el.style.background = 'var(--bg-surface-hover)';
+                    
+                    document.querySelectorAll('.team-accordion-body').forEach(b => b.style.display = 'none');
+                    const body = el.querySelector('.team-accordion-body');
+                    if (body) body.style.display = 'block';
+                };
+                
+                const safeName = this.escapeHTML(tGroup.stat.name || "Команда");
+                const avatarLetter = safeName.charAt(0).toUpperCase();
+                
+                const avatarContent = tGroup.stat.isNeutral ? avatarLetter : tGroup.stat.rank;
+                const isTop3 = !tGroup.stat.isNeutral && tGroup.stat.rank <= 3;
+                
+                let avatarStyle = isTop3 
+                    ? 'background:rgba(255,193,7,0.15); color:var(--primary); font-family:"Unbounded"; font-weight:900; border: 1px solid var(--primary);' 
+                    : 'background:var(--bg-surface-hover); color:var(--text-muted); font-family:"Unbounded"; font-weight:900; border: 1px solid var(--border);';
+                
+                let unread = 0;
+                
+                let chatsHtml = `<div style="margin-top: 15px;"><div style="font-size:9px; color:var(--text-muted); font-family:'Unbounded'; margin-bottom:6px; text-transform:uppercase;">Связь с командой:</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">`;
+                tGroup.chats.forEach(c => {
+                    let cUnread = (this.unreadCounts && this.unreadCounts[c.id]) || 0;
+                    unread += cUnread;
+                    
+                    let cIcon = '💬'; let cName = 'ЧАТ';
+                    if (c.type === 'team_channel') { cIcon = '📢'; cName = 'КАНАЛ'; }
+                    else if (c.type === 'team') { cIcon = ''; cName = 'ЧАТ'; }
+                    
+                    let cBadge = cUnread > 0 ? `<span style="background:var(--primary); color:#000; padding:2px 6px; border-radius:10px; font-size:9px; margin-left:4px;">${cUnread}</span>` : '';
+                    
+                    chatsHtml += `<button onclick="window.app.openChat('${c.id}')" style="background:var(--bg-surface-hover); border:1px solid var(--border); color:var(--text-main); border-radius:8px; padding:10px 4px; font-family:'Unbounded'; font-size:9px; font-weight:800; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)';">${cIcon} ${cName} ${cBadge}</button>`;
+                });
+                chatsHtml += `</div></div>`;
+                
+                const badgeHtml = unread > 0 ? `<div style="background:var(--primary); color:#000; font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; margin-left:auto; font-family:'Roboto Mono'; box-shadow:0 2px 5px rgba(255,193,7,0.4);">${unread}</div>` : '';
+
+                const myRoleWeight = Math.max(...(this.usersMap[this.currentRider?.email] || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
+                const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
+                const isCaptain = myRoleWeight >= this.ROLE_WEIGHTS['captain'] && myTeams.includes(tGroup.teamId);
+                const isAdmin = myRoleWeight >= this.ROLE_WEIGHTS['admin'];
+
+                let manageBtn = '';
+                if (isCaptain || isAdmin) {
+                    manageBtn = `<button onclick="event.stopPropagation(); window.app.crm.viewedTeamId = '${tGroup.teamId}'; window.app.openCrmView('team');" style="width:100%; margin-top:10px; background:var(--text-main); color:var(--bg-body); border:none; padding:10px; border-radius:8px; font-size:10px; font-family:'Unbounded'; font-weight:800; cursor:pointer; transition:0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.1);" onmouseover="this.style.background='var(--primary)'; this.style.color='#000';" onmouseout="this.style.background='var(--text-main)'; this.style.color='var(--bg-body)';">⚙️ УПРАВЛЕНИЕ СОСТАВОМ</button>`;
+                }
+                
+                let top3Html = tGroup.stat.members.slice(0, 3).map((m, i) => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-main); margin-bottom:6px;">
+                        <div style="display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            <span style="color:var(--text-muted); font-size:9px; font-weight:bold;">${i+1}.</span>
+                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHTML(m.first_name)} ${this.escapeHTML(m.last_name)}</span>
+                        </div>
+                        <span style="color:var(--primary); font-family:'Roboto Mono'; font-weight:bold; flex-shrink:0;">${m.rating||0} pts</span>
+                    </div>
+                `).join('');
+                if (!top3Html) top3Html = '<div style="font-size:10px; color:var(--text-muted); text-align:center; padding:5px;">Нет участников</div>';
+
+                const displayState = isActive ? 'block' : 'none';
+
+                let teamStatsHtml = `
+                    <div class="team-accordion-body" style="display:${displayState}; width:100%; flex-basis:100%; margin-top:10px; padding-top:12px; border-top:1px dashed var(--border); cursor:default;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; background:var(--bg-body); padding:10px 12px; border-radius:10px; border:1px solid var(--border);">
+                            <div>
+                                <div style="font-size:9px; color:var(--text-muted); font-family:'Unbounded'; margin-bottom:2px;">ТОП-3 ЗАЧЕТ</div>
+                                <div style="font-size:14px; font-weight:800; color:var(--primary); font-family:'Roboto Mono';">${tGroup.stat.top3} <span style="font-size:9px; color:var(--text-muted);">pts</span></div>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="font-size:9px; color:var(--text-muted); font-family:'Unbounded'; margin-bottom:2px;">ВСЕГО ОЧКОВ</div>
+                                <div style="font-size:14px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${tGroup.stat.total} <span style="font-size:9px; color:var(--text-muted);">pts</span></div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:9px; color:var(--text-muted); font-family:'Unbounded'; margin-bottom:2px;">М/Ж</div>
+                                <div style="font-size:14px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${tGroup.stat.males} <span style="font-size:10px; color:var(--text-muted);">/</span> ${tGroup.stat.females}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px; color:var(--text-muted); font-family:'Unbounded'; margin-bottom:10px; text-transform:uppercase;">Самые сильные гонщики:</div>
+                            ${top3Html}
+                        </div>
+                        ${chatsHtml}
+                        ${manageBtn}
+                    </div>
+                `;
+
+                const teamSubtitle = tGroup.stat.isNeutral ? "Нейтральная команда" : "Команда";
+
+                el.style.cssText = 'padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; transition: 0.2s; display: flex; flex-wrap: wrap;';
+                el.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:12px; width:100%;">
+                        <div class="avatar" style="width:40px; height:40px; font-size:18px; flex-shrink:0; display:flex; justify-content:center; align-items:center; ${avatarStyle}">${avatarContent}</div>
+                        <div style="flex:1; min-width:0; display:flex; align-items:center;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight:800; font-size:13px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'Unbounded';">${safeName}</div>
+                                <div style="font-size:11px; color:var(--text-muted);">${teamSubtitle}</div>
+                            </div>
+                            ${badgeHtml}
+                        </div>
+                    </div>
+                    ${teamStatsHtml}
+                `;
+                container.appendChild(el);
+            });
+
+            // Отрисовываем Прочие чаты (Группетто, Избранное и т.д.)
+            if (nonTeamChats.length > 0) {
+                const othTitle = document.createElement('div');
+                othTitle.style.cssText = "font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; padding:15px 15px 5px; text-transform:uppercase;";
+                othTitle.innerText = "ПРОЧИЕ ЧАТЫ";
+                container.appendChild(othTitle);
+
+                nonTeamChats.forEach(c => {
                     const el = document.createElement('div');
                     el.className = 'contact-item group-item'; 
-                    
-                    el.onclick = () => { 
+                    el.onclick = (e) => { 
                         document.querySelectorAll('.group-item').forEach(i => i.style.background = 'transparent');
                         document.querySelectorAll('.rider-card').forEach(i => i.style.borderColor = 'var(--border)');
                         el.style.background = 'var(--bg-surface-hover)';
@@ -10915,151 +12193,147 @@ setChatListFilter(type) {
                     const safeName = this.escapeHTML(this.getChatName(c));
                     let avatarLetter = safeName.charAt(0).toUpperCase();
                     let subText = "Группа";
-                    let avatarStyle = 'background:rgba(255,255,255,0.1); color:var(--text-main);';
+                    let avatarStyle = 'background:rgba(168,85,247,0.1); color:#a855f7; border: 1px solid rgba(168,85,247,0.3);';
                     
-                    if (c.type === 'team_channel') { subText = "Публичный канал"; avatarStyle = 'background:rgba(255,193,7,0.1); color:var(--primary);'; avatarLetter = '📢'; }
-                    else if (c.type === 'team') { subText = "Командный чат"; avatarStyle = 'background:rgba(59,130,246,0.1); color:var(--info);'; avatarLetter = '👥'; }
-                    else if (c.type === 'gruppetto') { subText = "Группетто"; avatarStyle = 'background:rgba(168,85,247,0.1); color:#a855f7;'; }
+                    if (c.type === 'gruppetto') { subText = "Группетто"; }
+                    else if (c.type === 'private') { subText = "Приватная группа"; avatarStyle = 'background:rgba(255,255,255,0.05); color:var(--text-muted); border: 1px solid var(--border);'; }
                     
                     const unread = (this.unreadCounts && this.unreadCounts[c.id]) || 0;
                     const badgeHtml = unread > 0 ? `<div style="background:var(--primary); color:#000; font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; margin-left:auto; font-family:'Roboto Mono'; box-shadow:0 2px 5px rgba(255,193,7,0.4);">${unread}</div>` : '';
 
-                    el.style.cssText = 'padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; transition: 0.2s;';
+                    el.style.cssText = 'padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 12px;';
                     el.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
-                            <div class="avatar" style="width:40px; height:40px; font-size:16px; ${avatarStyle}">${avatarLetter}</div>
-                            <div style="flex:1; min-width:0; display:flex; align-items:center;">
-                                <div style="flex:1; min-width:0;">
-                                    <div style="font-weight:800; font-size:13px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'Unbounded';">${safeName}</div>
-                                    <div style="font-size:11px; color:var(--text-muted);">${subText}</div>
-                                </div>
-                                ${badgeHtml}
-                            </div>
-                        </div>`;
-                    container.appendChild(el);
-                });
-            }
-
-            // ==========================================
-            // 2. СПОРТСМЕНЫ (КАРТОЧКИ ЛИЧНЫХ СООБЩЕНИЙ)
-            // ==========================================
-            let all = Object.values(this.ridersMap).filter(r => r.id !== this.currentRider.id && r.email !== 'bot@sotka.one' && !(r.email && r.email.startsWith('guest_')));
-            
-            if (this.currentPelotonFilter !== 'all') { 
-                all = all.filter(r => { 
-                    const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
-                    if (rTeams.length === 0) return true; 
-                    return rTeams.some(tId => {
-                        const rTeam = this.teamsMap[tId]; 
-                        if (!rTeam) return true; 
-                        let tPeloton = rTeam.peloton_id; 
-                        if (!tPeloton) return true; 
-                        if (Array.isArray(tPeloton)) return tPeloton.includes(this.currentPelotonFilter); 
-                        return tPeloton === this.currentPelotonFilter; 
-                    });
-                }); 
-            }
-            
-            if (filterText) { const q = filterText.toLowerCase(); all = all.filter(r => r.first_name.toLowerCase().includes(q) || r.last_name.toLowerCase().includes(q)); }
-            
-            const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
-            
-            const getSortWeight = (rider) => { 
-                const roles = this.usersMap[rider.email] || []; 
-                const maxRoleWeight = Math.max(...roles.map(role => this.ROLE_WEIGHTS[role] || 20), 20); 
-                const rTeams = Array.isArray(rider.team_id) ? rider.team_id : (rider.team_id ? [rider.team_id] : []);
-                const isSameTeam = myTeams.some(id => rTeams.includes(id));
-                
-                let dChat = this.chats.find(c => c.type === 'direct' && c.participants.includes(rider.id));
-                let hasUnread = dChat && this.unreadCounts[dChat.id] > 0;
-
-                if (hasUnread) return 0; 
-                if (maxRoleWeight >= this.ROLE_WEIGHTS['admin']) return 1; 
-                if (maxRoleWeight >= this.ROLE_WEIGHTS['captain'] && isSameTeam) return 2; 
-                if (isSameTeam) return 3; 
-                return 4; 
-            };
-            
-            all.sort((a, b) => { const wA = getSortWeight(a); const wB = getSortWeight(b); if (wA !== wB) return wA - wB; return a.last_name.localeCompare(b.last_name); });
-            
-            if (all.length > 0) {
-                const ridersTitle = document.createElement('div');
-                ridersTitle.style.cssText = "font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; padding:15px 15px 10px; text-transform:uppercase;";
-                ridersTitle.innerText = "СПОРТСМЕНЫ (ЛИЧНЫЕ СООБЩЕНИЯ)";
-                container.appendChild(ridersTitle);
-            }
-
-            all.forEach(r => {
-                const el = document.createElement('div'); 
-                el.className = 'contact-item rider-card'; 
-                
-                el.onclick = () => { 
-                    document.querySelectorAll('.group-item').forEach(i => i.style.background = 'transparent');
-                    document.querySelectorAll('.rider-card').forEach(i => i.style.borderColor = 'var(--border)');
-                    el.style.borderColor = 'var(--primary)';
-                    window.app.startDirectChat(r.id); 
-                };
-                
-                const safeFirstName = this.escapeHTML(r.first_name);
-                const safeLastName = this.escapeHTML(r.last_name);
-                const safeTeamName = this.escapeHTML(this.getRiderTeamName(r));
-                const safeFirstChar = safeFirstName.charAt(0) || '?';
-
-                let dChat = this.chats.find(c => c.type === 'direct' && c.participants.includes(r.id));
-                let unreadCount = dChat ? (this.unreadCounts[dChat.id] || 0) : 0;
-                let badgeHtml = unreadCount > 0 ? `<div style="background:var(--primary); color:#000; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:6px; margin-left:8px; font-family:'Roboto Mono'; box-shadow:0 2px 5px rgba(255,193,7,0.4);">${unreadCount}</div>` : '';
-
-                // 🔥 ДОСТАЕМ ССЫЛКУ НА ФОТО
-                let avatarUrl = "";
-                if (r.avatar) {
-                    const fileName = Array.isArray(r.avatar) ? r.avatar[0] : r.avatar;
-                    try {
-                        if (!r.collectionName && !r.collectionId) r.collectionName = 'riders';
-                        avatarUrl = pb.files.getUrl(r, fileName);
-                    } catch(e) {
-                        avatarUrl = `${pb.baseUrl}/api/files/riders/${r.id}/${fileName}`;
-                    }
-                }
-
-                // 🔥 ФОРМИРУЕМ АВАТАР
-                // Фокус на центр и чуть выше (20%), чтобы лица не обрезались
-                let avatarBlock = '';
-                if (avatarUrl) {
-                    avatarBlock = `<img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block;">`;
-                } else {
-                    avatarBlock = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-family: 'Unbounded'; font-weight: 900; font-size: 24px; color: var(--text-muted); background: var(--bg-surface-hover); padding-left: 10px;">${safeFirstChar}</div>`;
-                }
-
-                // ⚡ РЕШЕНИЕ: Убрали жесткую высоту (min-height вместо height), flex-stretch растянет фото по высоте текста
-                el.style.cssText = 'display: flex; align-items: stretch; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-surface); cursor: pointer; transition: 0.2s; overflow: hidden; min-height: 64px;';
-                
-                // ⚡ РЕШЕНИЕ 2: Идеальный косой срез (clip-path) и броня для плашек (flex-shrink: 0)
-                el.innerHTML = `
-                    <div style="flex: 1; min-width: 0; padding: 12px 4px 12px 12px; display: flex; flex-direction: column; justify-content: center; gap: 6px;">
-                        <div style="display:flex; align-items:center;">
-                            <div style="font-weight:800; font-size:13px; font-family:'Unbounded'; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                ${safeFirstName} ${safeLastName}
+                        <div class="avatar" style="width:40px; height:40px; font-size:16px; flex-shrink:0; ${avatarStyle}">${avatarLetter}</div>
+                        <div style="flex:1; min-width:0; display:flex; align-items:center;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight:800; font-size:13px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'Unbounded';">${safeName}</div>
+                                <div style="font-size:11px; color:var(--text-muted);">${subText}</div>
                             </div>
                             ${badgeHtml}
                         </div>
-                        
-                        <div style="font-size:10px; display:flex; gap:8px; align-items:center; flex-wrap:nowrap; overflow:hidden;">
-                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink: 1; min-width: 30px;">
-                                ${this.getTeamLinkHtml(r.team_id, safeTeamName, 'var(--text-muted)')}
-                            </span> 
-                            <div style="flex-shrink: 0; display: flex; gap: 4px; white-space: nowrap;">
-                                ${this.getRoleBadge(r.id)}
-                            </div>
+                    `;
+                    container.appendChild(el);
+                });
+            }
+        }
+
+        // ==========================================
+        // 3. СПОРТСМЕНЫ (КАРТОЧКИ ЛИЧНЫХ СООБЩЕНИЙ)
+        // ==========================================
+        let all = Object.values(this.ridersMap).filter(r => r.id !== this.currentRider.id && r.email !== 'bot@sotka.one' && !(r.email && r.email.startsWith('guest_')));
+        
+        if (this.currentPelotonFilter !== 'all') { 
+            all = all.filter(r => { 
+                const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
+                if (rTeams.length === 0) return true; 
+                return rTeams.some(tId => {
+                    const rTeam = this.teamsMap[tId]; 
+                    if (!rTeam) return true; 
+                    let tPeloton = rTeam.peloton_id; 
+                    if (!tPeloton) return true; 
+                    if (Array.isArray(tPeloton)) return tPeloton.includes(this.currentPelotonFilter); 
+                    return tPeloton === this.currentPelotonFilter; 
+                });
+            }); 
+        }
+        
+        if (filterText) { const q = filterText.toLowerCase(); all = all.filter(r => r.first_name.toLowerCase().includes(q) || r.last_name.toLowerCase().includes(q)); }
+        
+        const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
+        
+        const getSortWeight = (rider) => { 
+            const roles = this.usersMap[rider.email] || []; 
+            const maxRoleWeight = Math.max(...roles.map(role => this.ROLE_WEIGHTS[role] || 20), 20); 
+            const rTeams = Array.isArray(rider.team_id) ? rider.team_id : (rider.team_id ? [rider.team_id] : []);
+            const isSameTeam = myTeams.some(id => rTeams.includes(id));
+            
+            let dChat = this.chats.find(c => c.type === 'direct' && c.participants.includes(rider.id));
+            let hasUnread = dChat && this.unreadCounts[dChat.id] > 0;
+
+            if (hasUnread) return 0; 
+            if (maxRoleWeight >= this.ROLE_WEIGHTS['admin']) return 1; 
+            if (maxRoleWeight >= this.ROLE_WEIGHTS['captain'] && isSameTeam) return 2; 
+            if (isSameTeam) return 3; 
+            return 4; 
+        };
+        
+        all.sort((a, b) => { const wA = getSortWeight(a); const wB = getSortWeight(b); if (wA !== wB) return wA - wB; return a.last_name.localeCompare(b.last_name); });
+        
+        if (all.length > 0) {
+            const ridersTitle = document.createElement('div');
+            ridersTitle.style.cssText = "font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; padding:15px 15px 10px; text-transform:uppercase;";
+            ridersTitle.innerText = "СПОРТСМЕНЫ (ЛИЧНЫЕ СООБЩЕНИЯ)";
+            container.appendChild(ridersTitle);
+        }
+
+        all.forEach(r => {
+            const el = document.createElement('div'); 
+            el.className = 'contact-item rider-card'; 
+            
+            el.onclick = () => { 
+                document.querySelectorAll('.group-item').forEach(i => i.style.background = 'transparent');
+                document.querySelectorAll('.rider-card').forEach(i => i.style.borderColor = 'var(--border)');
+                el.style.borderColor = 'var(--primary)';
+                window.app.startDirectChat(r.id); 
+            };
+            
+            const safeFirstName = this.escapeHTML(r.first_name);
+            const safeLastName = this.escapeHTML(r.last_name);
+            const safeTeamName = this.escapeHTML(this.getRiderTeamName(r));
+            const safeFirstChar = safeFirstName.charAt(0) || '?';
+
+            let dChat = this.chats.find(c => c.type === 'direct' && c.participants.includes(r.id));
+            let unreadCount = dChat ? (this.unreadCounts[dChat.id] || 0) : 0;
+            let badgeHtml = unreadCount > 0 ? `<div style="background:var(--primary); color:#000; font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; margin-left:8px; font-family:'Roboto Mono'; box-shadow:0 2px 5px rgba(255,193,7,0.4);">${unreadCount}</div>` : '';
+
+            // 🔥 ДОСТАЕМ ССЫЛКУ НА ФОТО
+            let avatarUrl = "";
+            if (r.avatar) {
+                const fileName = Array.isArray(r.avatar) ? r.avatar[0] : r.avatar;
+                try {
+                    if (!r.collectionName && !r.collectionId) r.collectionName = 'riders';
+                    avatarUrl = pb.files.getUrl(r, fileName);
+                } catch(e) {
+                    avatarUrl = `${pb.baseUrl}/api/files/riders/${r.id}/${fileName}`;
+                }
+            }
+
+            // 🔥 ФОРМИРУЕМ АВАТАР
+            let avatarBlock = '';
+            if (avatarUrl) {
+                avatarBlock = `<img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block;">`;
+            } else {
+                avatarBlock = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-start; padding-left: 20px; box-sizing: border-box; font-family: 'Unbounded'; font-weight: 900; font-size: 24px; color: var(--text-muted); background: var(--bg-surface-hover);">${safeFirstChar}</div>`;
+            }
+
+            el.style.cssText = 'display: flex; align-items: stretch; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-surface); cursor: pointer; transition: 0.2s; overflow: hidden; min-height: 64px;';
+            
+            el.innerHTML = `
+                <div style="flex: 1; min-width: 0; padding: 12px 4px 12px 12px; display: flex; flex-direction: column; justify-content: center; gap: 6px;">
+                    <div style="display:flex; align-items:center;">
+                        <div style="font-weight:800; font-size:13px; font-family:'Unbounded'; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center;">
+                            ${safeFirstName} ${safeLastName} ${badgeHtml}
                         </div>
                     </div>
                     
-                    <div style="width: 90px; flex-shrink: 0; clip-path: polygon(20% 0, 100% 0, 100% 100%, 0% 100%); background: var(--bg-surface-hover);">
-                        ${avatarBlock}
+                    <div style="font-size:10px; display:flex; gap:8px; align-items:center; flex-wrap:nowrap; overflow:hidden;">
+                        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink: 1; min-width: 30px;">
+                            ${this.getTeamLinkHtml(r.team_id, safeTeamName, 'var(--text-muted)')}
+                        </span> 
+                        <div style="flex-shrink: 0; display: flex; gap: 4px; white-space: nowrap;">
+                            ${this.getRoleBadge(r.id)}
+                        </div>
                     </div>
-                `;
-                container.appendChild(el);
-            });
-        }
+                </div>
+                
+                <div style="width: 90px; flex-shrink: 0; clip-path: polygon(20% 0, 100% 0, 100% 100%, 0% 100%); background: var(--bg-surface-hover);">
+                    ${avatarBlock}
+                </div>
+            `;
+            container.appendChild(el);
+        });
+    }
+        
 	   filterContacts(val) { this.renderContactsTab(val); }
 
         async startDirectChat(targetRiderId) {
@@ -11723,7 +12997,7 @@ async joinRadar(chatId, event) {
  // ==========================================
     // 🔥 2. ГЕНЕРАТОР ТАБЛО ПРИВЕТСТВИЯ С РЕАЛЬНЫМИ ДАННЫМИ
     // ==========================================
-    async renderWelcomeDashboard() {
+   async renderWelcomeDashboard() {
         if (!this.currentRider || this.isGuest) return;
         const r = this.currentRider;
 
@@ -11753,7 +13027,9 @@ async joinRadar(chatId, event) {
                     </div>
                     <div class="hero-badges-row">
                         <div class="hero-pill-badge"><span id="wCluster">КЛАСТЕР</span></div>
-                        <div class="hero-pill-badge"><span id="wTeam">КОМАНДА</span></div>
+                        <div class="hero-pill-badge" onclick="window.app.openMyTeamChatFromDashboard()" style="cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#ffffff';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(255,255,255,0.5)';" title="Перейти в чат команды">
+                            <span id="wTeam">КОМАНДА</span> <span style="font-size: 10px; margin-left: 2px;">➔</span>
+                        </div>
                     </div>
                 </div>
 
@@ -11785,20 +13061,16 @@ async joinRadar(chatId, event) {
             if (r.avatar) {
                 avatarBgEl.src = pb.files.getUrl(r, Array.isArray(r.avatar) ? r.avatar[0] : r.avatar);
             } else {
-                // 🔥 Ставим нашу фирменную уточку
                 avatarBgEl.src = "https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg";
-                
-                // Делаем так, чтобы она не обрезалась, а красиво висела по центру
                 avatarBgEl.style.objectFit = "contain";
                 avatarBgEl.style.transform = "scale(0.8) translateY(-20px)";
-                avatarBgEl.style.opacity = "0.2"; // Делаем ее полупрозрачной, как водяной знак
+                avatarBgEl.style.opacity = "0.2";
             }
         }
         
         document.getElementById('wRiderName').innerHTML = `${this.escapeHTML(r.first_name)}<br>${this.escapeHTML(r.last_name)}`;
         document.getElementById('wCluster').innerText = `КЛАСТЕР ${r.base_cluster || 'B'}`;
         document.getElementById('wTeam').innerText = this.getRiderTeamName(r);
-        document.getElementById('wRating').innerText = `${(r.rating || 0).toLocaleString('ru-RU')} pts`;
         document.getElementById('wDateNow').innerText = new Date().getFullYear();
         
         // 🔥 АСИНХРОННАЯ ЗАГРУЗКА БАЛАНСА С ШИММЕРОМ
@@ -11819,7 +13091,7 @@ async joinRadar(chatId, event) {
                 });
         }
 
-        // 🔥 ЛОГИКА ОТОБРАЖЕНИЯ ГОНОК
+        // 🔥 ЛОГИКА ОТОБРАЖЕНИЯ ГОНОК И ПОДСЧЕТА ОЧКОВ
         const raceListEl = document.getElementById('wRaceList');
         let racesHtml = '';
         
@@ -11832,9 +13104,9 @@ async joinRadar(chatId, event) {
             return { reg, race };
         }).filter(item => item.race);
 
-        // 🚨 УМНЫЙ ШИММЕР И ЗАГЛУШКА
-        // 🔥 ФИКС: Убрали баг бесконечной загрузки (теперь не зависит от количества гонок)
         const isDataLoading = this.isServerSyncing || this.myRosters === null;
+
+        let totalRecentPointsEarned = 0;
 
         if (isDataLoading) {
             racesHtml = `
@@ -11858,7 +13130,6 @@ async joinRadar(chatId, event) {
                 </div>
             `;
         } else {
-            // Разделяем мои гонки на будущие и прошедшие
             let upcomingRaces = enrichedRaces.filter(({race}) => new Date(race.date || race.rawDate) >= now && race.status !== 'Finished');
             let pastRaces = enrichedRaces.filter(({race}) => new Date(race.date || race.rawDate) < now || race.status === 'Finished');
 
@@ -11867,32 +13138,64 @@ async joinRadar(chatId, event) {
 
             let displayList = [];
 
-            // 🔥 ЛОГИКА РЕКОМЕНДАЦИЙ
             if (upcomingRaces.length > 0) {
-                // Если есть свои заявки - просто показываем их + историю
                 displayList = [...upcomingRaces, ...pastRaces].slice(0, 4);
             } else {
-                // Если заявок нет - ищем ближайшую открытую гонку для рекомендации
                 let availableRaces = calendar.filter(r => r.status === 'Registration' && new Date(r.date || r.rawDate) >= now);
                 if (availableRaces.length > 0) {
                     availableRaces.sort((a, b) => new Date(a.date || a.rawDate) - new Date(b.date || b.rawDate));
                     displayList.push({ race: availableRaces[0], reg: null, isSuggestion: true });
                 }
-                // Добиваем список старыми гонками
                 displayList.push(...pastRaces.slice(0, 4 - displayList.length));
             }
 
             const months = ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК'];
             
             if (displayList.length === 0) {
-                racesHtml = `<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:11px; font-family:'Unbounded'; border: 1px dashed var(--border); border-radius: 20px;">ЗАГРУЖАЕМ, ГОТОВЬ ВАТТЫ</div>`;
+                racesHtml = `
+                    <style>
+                        @keyframes fillProgressDash {
+                            0% { width: 0%; }
+                            20% { width: 25%; }
+                            50% { width: 65%; }
+                            80% { width: 90%; }
+                            100% { width: 100%; }
+                        }
+                        @keyframes textProgressDash {
+                            0% { content: "0%"; }
+                            10% { content: "12%"; }
+                            20% { content: "25%"; }
+                            30% { content: "38%"; }
+                            40% { content: "51%"; }
+                            50% { content: "65%"; }
+                            60% { content: "78%"; }
+                            70% { content: "86%"; }
+                            80% { content: "90%"; }
+                            90% { content: "97%"; }
+                            100% { content: "100%"; }
+                        }
+                        .dash-progress-text::after {
+                            content: "100%";
+                            animation: textProgressDash 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                        }
+                    </style>
+                    <div style="text-align:center; padding:22px 20px; border: 1px dashed var(--border); border-radius: 20px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div style="font-family:'Unbounded'; font-size:12px; color:var(--text-main); margin-bottom:12px; font-weight:800; text-transform:uppercase; display:flex; align-items:center; gap:8px;">
+                            ЗАГРУЗКА <span class="dash-progress-text" style="color:var(--primary);"></span>
+                        </div>
+                        <div style="width: 100%; max-width: 220px; height: 6px; background: var(--bg-surface-hover); border-radius: 10px; margin: 0 auto; overflow: hidden; border: 1px solid var(--border); box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                            <div style="height: 100%; background: var(--primary); border-radius: 10px; box-shadow: 0 0 10px rgba(255,193,7,0.5); animation: fillProgressDash 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;"></div>
+                        </div>
+                        <div style="font-family:'Manrope'; font-size:10px; color:var(--text-muted); margin-top:10px; text-transform:uppercase; letter-spacing:0.5px;">Готовь ватты ⚡</div>
+                    </div>
+                `;
             } else {
                 displayList.forEach(({reg, race, isSuggestion}) => {
                     const raceDateStr = race.rawDate || race.date;
                     const raceDate = new Date(raceDateStr);
                     const day = raceDate.getDate();
                     const monthStr = months[raceDate.getMonth()];
-                    const raceName = this.escapeHTML(race.name);
+                    const raceName = this.escapeHTML(race.name || race.title || 'Велогонка');
                     const distStr = race.distance ? `${race.distance} км` : 'Заезд';
                     
                     const safeFormats = (this.crm && this.crm.RACE_FORMATS) ? this.crm.RACE_FORMATS : { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
@@ -11919,6 +13222,23 @@ async joinRadar(chatId, event) {
                                     <div class="race-action-circle" style="background: var(--primary); color: #000; border: none;">➔</div>
                                 </div>
                             </div>`;
+                    } else if (race.status === 'LIVE' || (reg && reg.status === 'LIVE')) {
+                        // 🔥 СТИЛЬ ДЛЯ ГОНКИ В ЭФИРЕ (LIVE)
+                        racesHtml += `
+                            <div class="race-row-item" onclick="${clickAction}" style="border: 1px solid rgba(239,68,68,0.4); background: rgba(239,68,68,0.05);">
+                                <div class="race-row-left">
+                                    <div class="race-icon-box" style="background:#ef4444; color:#fff;">📡</div>
+                                    <div class="race-row-info">
+                                        <div class="race-row-name">${raceName}</div>
+                                        <div class="race-row-sub">ГОНКА В ЭФИРЕ • ${distStr}</div>
+                                    </div>
+                                </div>
+                                <div class="race-row-right">
+                                    <div class="live-status-badge">
+                                        <div style="width:6px; height:6px; background:#ef4444; border-radius:50%; animation:dot-pulse 1s infinite;"></div> LIVE
+                                    </div>
+                                </div>
+                            </div>`;
                     } else if (raceDate >= now && race.status !== 'Finished') {
                         // СТИЛЬ ДЛЯ МОИХ ЗАЯВЛЕННЫХ ГОНОК
                         racesHtml += `
@@ -11927,7 +13247,7 @@ async joinRadar(chatId, event) {
                                     <div class="race-icon-box">🚀</div>
                                     <div class="race-row-info">
                                         <div class="race-row-name">${raceName}</div>
-                                        <div class="race-row-sub">⏱️ ${reg.planned_start || 'План'} • ${distStr}</div>
+                                        <div class="race-row-sub">${reg.planned_start || 'План'} • ${distStr}</div>
                                     </div>
                                 </div>
                                 <div class="race-row-right">
@@ -11936,9 +13256,25 @@ async joinRadar(chatId, event) {
                                 </div>
                             </div>`;
                     } else {
-                        // СТИЛЬ ДЛЯ ИСТОРИИ ФИНИШЕЙ
-                        const timeStr = reg.time_ms > 0 ? this.formatMs(reg.time_ms) : 'Финиш';
-                        const pointsStr = reg.earned_points ? `+${reg.earned_points} pts` : '';
+                        // 🔥 СТИЛЬ ДЛЯ ИСТОРИИ ФИНИШЕЙ С ВЫВОДОМ ТОЧНОГО ВРЕМЕНИ И ОЧКОВ
+                        const pts = (reg ? (reg.earned_points || reg.points || 0) : 0);
+                        totalRecentPointsEarned += pts;
+
+                        // ⏱️ Расчет и форматирование финишного времени
+                        let timeStr = '—';
+                        if (reg) {
+                            if (reg.time_ms > 0 && typeof this.formatMs === 'function') {
+                                timeStr = this.formatMs(reg.time_ms);
+                            } else if (reg.result_time) {
+                                timeStr = reg.result_time;
+                            } else if (reg.time) {
+                                timeStr = reg.time;
+                            }
+                        }
+
+                        const pointsBadge = pts > 0 
+                            ? `<div class="pts-badge-animated">+${pts} pts ✓</div>` 
+                            : `<div class="race-action-circle">✓</div>`;
 
                         racesHtml += `
                             <div class="race-row-item" onclick="${clickAction}">
@@ -11946,12 +13282,15 @@ async joinRadar(chatId, event) {
                                     <div class="race-icon-box">🏁</div>
                                     <div class="race-row-info">
                                         <div class="race-row-name">${raceName}</div>
-                                        <div class="race-row-sub">${distStr} • ${formatName}</div>
+                                        <div class="race-row-sub">
+                                            <span style="color: var(--text-main); font-weight: 800; font-family: 'Roboto Mono', monospace;">${timeStr}</span> 
+                                            <span style="opacity: 0.5; margin: 0 4px;">•</span> 
+                                            ${distStr} • ${formatName}
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="race-row-right">
-                                    <div class="race-row-val">${pointsStr}</div>
-                                    <div class="race-action-circle">✓</div>
+                                    ${pointsBadge}
                                 </div>
                             </div>`;
                     }
@@ -11961,10 +13300,49 @@ async joinRadar(chatId, event) {
 
         if (raceListEl) raceListEl.innerHTML = racesHtml;
 
+        // 🔥 АНИМАЦИЯ НАРАСТАНИЯ РЕЙТИНГА СУММИРОВАНИЕМ
+        const finalRating = r.rating || totalRecentPointsEarned || 0;
+        const startRating = Math.max(0, finalRating - totalRecentPointsEarned);
+        
         modal.style.display = 'flex';
-        setTimeout(() => modal.style.opacity = '1', 10);
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            this.animateRatingCounter('wRating', startRating, finalRating, 1500);
+        }, 10);
     }
-	
+
+    // 🔥 ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: АНИМАЦИЯ СЧЕТЧИКА ОЧКОВ
+    animateRatingCounter(elementId, startVal, endVal, durationMs = 1500) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+
+        if (startVal === endVal) {
+            el.innerText = `${endVal.toLocaleString('ru-RU')} pts`;
+            return;
+        }
+
+        el.classList.add('rating-counter-active');
+        const startTime = performance.now();
+
+        const step = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / durationMs, 1);
+            
+            const easeOut = 1 - Math.pow(1 - progress, 3);
+            const currentVal = Math.floor(startVal + (endVal - startVal) * easeOut);
+
+            el.innerText = `${currentVal.toLocaleString('ru-RU')} pts`;
+
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            } else {
+                el.innerText = `${endVal.toLocaleString('ru-RU')} pts`;
+                setTimeout(() => el.classList.remove('rating-counter-active'), 500);
+            }
+        };
+
+        requestAnimationFrame(step);
+    }
     // ==========================================
     // 🔥 3. ЗАКРЫТИЕ ТАБЛО И ПЕРЕХОД В ПЕЛОТОН
     // ==========================================
@@ -12029,8 +13407,18 @@ async joinRadar(chatId, event) {
                 this.openPelotonCalendar();
             }
         }
-		
-	   async openChat(chatId) {
+		// 🔥 ОТКРЫТИЕ ЧАТА КОМАНДЫ ПРЯМО СО СТАРТОВОГО ТАБЛО
+    openMyTeamChatFromDashboard() {
+        const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
+        
+        if (myTeams.length > 0) {
+            this.closeWelcomeOverlay(true); // Закрываем стартовый экран
+            this.openChatForTeam(myTeams[0]); // Открываем агрегатор команды
+        } else {
+            alert("Вы пока не состоите в команде.");
+        }
+    }
+	async openChat(chatId) {
         try {
             const ws = document.getElementById('pelotonWorkspace');
             const mainChat = document.getElementById('mainChatArea');
@@ -12063,7 +13451,7 @@ async joinRadar(chatId, event) {
 
             // 🔥 АВТО-РАСКРЫТИЕ АККОРДЕОНА: Если открываем чат гонки, сразу раскрываем её карточку слева
             if (chat.type === 'global' && chat.raceObj) {
-                this.expandedRaceId = chatId; // <--- ИСПРАВЛЕНИЕ ЗДЕСЬ: Передаем ID чата!
+                this.expandedRaceId = chatId; 
             } else {
                 this.expandedRaceId = null;
             }
@@ -12102,7 +13490,7 @@ async joinRadar(chatId, event) {
             }
 
             if (chat.type === 'direct' && chat.expand && chat.expand.participants) {
-                const otherRider = chat.expand.participants.find(p => p.id !== this.currentRider.id);
+                const otherRider = chat.expand.participants.find(p => p.id !== this.currentRider?.id);
                 if(otherRider) { 
                     if (otherRider.email === 'bot@sotka.one') avatarContainer.innerHTML = `<div class="avatar" style="background:var(--primary-light); color:var(--primary); border-color:var(--primary);">${this.getMotoSvg(24)}</div>`; 
                     else avatarContainer.innerHTML = this.renderAvatar(otherRider.id, '', avatarLetter); 
@@ -12115,13 +13503,13 @@ async joinRadar(chatId, event) {
             const myRole = this.getUserMaxRole(); 
             const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin']; 
             const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin']; 
-            const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
+            const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
             const isCaptain = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain'] && chat.type === 'team' && myTeams.includes(chat.team_id);
-            const isCreator = (chat.type === 'private' || chat.type === 'gruppetto' || chat.type === 'radar') && (chat.captain === this.currentRider.id || (chat.participants && chat.participants[0] === this.currentRider.id));
+            const isCreator = (chat.type === 'private' || chat.type === 'gruppetto' || chat.type === 'radar') && (chat.captain === this.currentRider?.id || (chat.participants && chat.participants[0] === this.currentRider?.id));
             
             let isMyPelotonChat = false; 
             const chatP = chat.peloton_id ? (Array.isArray(chat.peloton_id) ? chat.peloton_id[0] : chat.peloton_id) : null; 
-            const myTeamsForChat = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
+            const myTeamsForChat = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
             if (chatP) {
                 if (myTeamsForChat.some(tId => {
                     const t = this.teamsMap[tId]; 
@@ -12129,7 +13517,7 @@ async joinRadar(chatId, event) {
                     return pId === chatP;
                 })) isMyPelotonChat = true;
                 const pelotonObj = this.pelotonsMap[chatP]; 
-                if (pelotonObj && pelotonObj.admin_id === this.userIdMap[this.currentRider.email]) isMyPelotonChat = true;
+                if (pelotonObj && pelotonObj.admin_id === this.userIdMap[this.currentRider?.email]) isMyPelotonChat = true;
             }
             const canManageChat = isSuper || (isAdmin && isMyPelotonChat) || isCaptain || isCreator;
 
@@ -12138,7 +13526,6 @@ async joinRadar(chatId, event) {
             if (chat.type === 'global' && chat.race_id) {
                 try {
                     const rosterInfo = await pb.collection('race_rosters').getList(1, 1, { 
-                        // 🔥 ФИКС: Игнорируем отмененные и фантомные заявки
                         filter: `race_id="${chat.race_id}" && status!="canceled" && rider_id!=""`, 
                         requestKey: 'header_count_' + chat.race_id 
                     });
@@ -12154,240 +13541,501 @@ async joinRadar(chatId, event) {
             }
 
             // ==========================================
-            // 🔥 6. ВЕРСТКА ШАПКИ (ВАРИАНТ 2 ДЛЯ ГОНОК)
+            // 🔥 6. ВЕРСТКА ШАПКИ
             // ==========================================
             if (chat.type === 'global' && chat.raceObj) {
-                if (avatarContainer) avatarContainer.style.display = 'none';
+                    if (avatarContainer) avatarContainer.style.display = 'none';
 
-                const r = chat.raceObj;
-                const dateObj = new Date(r.date);
-                
-                // 📅 1. Форматируем полную дату (напр. "26 июля 2026 г.")
-                let fullDateStr = '';
-                if (!isNaN(dateObj.getTime())) {
-                    fullDateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-                    if (!fullDateStr.endsWith('г.')) fullDateStr += ' г.';
-                }
-
-                // 🚴 2. Определение формата гонки (Группа, Разделка и т.д.)
-                const safeFormats = this.RACE_FORMATS || { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
-                let formatName = r.format ? (safeFormats[r.format] || 'Гонка') : '';
-
-                // 🏁 3. Дистанция
-                let distStr = r.distance ? `${r.distance} км` : '';
-
-                let myRegContext = this.myRosters ? this.myRosters[r.id] : null;
-
-                // ⚡ Кнопка действия (высота 32px)
-                let actionBtnHtml = ''; 
-
-                if (r.status === 'Registration') {
-                    let regBtnText = '⚡ ЗАЯВИТЬСЯ';
-                    let regBtnStyle = 'background: var(--primary, #ffc107); color: #000000; border: none; box-shadow: 0 2px 8px rgba(255,193,7,0.3);';
-
-                    if (myRegContext && myRegContext.is_paid) {
-                        regBtnText = '✅ В СТАРТ-ЛИСТЕ';
-                        regBtnStyle = 'background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border);';
-                    } else if (myRegContext) {
-                        regBtnText = '💳 ОПЛАТИТЬ';
-                        regBtnStyle = 'background: var(--primary, #ffc107); color: #000000; border: none; box-shadow: 0 2px 8px rgba(255,193,7,0.3);';
+                    const r = chat.raceObj;
+                    const dateObj = new Date(r.date);
+                    
+                    let fullDateStr = '';
+                    if (!isNaN(dateObj.getTime())) {
+                        const dd = String(dateObj.getDate()).padStart(2, '0');
+                        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const yyyy = dateObj.getFullYear();
+                        fullDateStr = `${dd}.${mm}.${yyyy}`;
                     }
 
-                    actionBtnHtml = `
-                        <button class="sync-btn-${r.id}" data-label="⚡ ЗАЯВИТЬСЯ" onclick="window.app.registerForRace('${r.id}', this, event)" style="${regBtnStyle} border-radius: 6px; height: 32px; padding: 0 14px; font-family: 'Unbounded'; font-weight: 800; font-size: 10px; cursor: pointer; transition: 0.2s; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
-                            ${regBtnText}
-                        </button>
-                    `;
-                } else if (r.status === 'LIVE') {
-                    actionBtnHtml = `
-                        <button onclick="window.app.openLiveBoard('${r.id}', event)" style="background: var(--danger, #ef4444); color: #ffffff; border: none; border-radius: 6px; height: 32px; padding: 0 10px; font-family: 'Unbounded'; font-weight: 800; font-size: 10px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; margin: 0;">
-                            <div style="width:5px; height:5px; background:#fff; border-radius:50%; animation: dot-pulse 1s infinite;"></div> LIVE
-                        </button>
-                    `;
-                } else if (r.status === 'Finished') {
-                    actionBtnHtml = `
-                        <button onclick="window.app.openLiveBoard('${r.id}', event)" style="background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; height: 32px; padding: 0 10px; font-family: 'Unbounded'; font-weight: 800; font-size: 10px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
-                            🏆 ИТОГИ
-                        </button>
-                    `;
-                } else if (r.status === 'Скоро') {
-                    actionBtnHtml = `
-                        <button disabled style="background: var(--bg-surface-hover); color: var(--text-muted); border: 1px dashed var(--border); border-radius: 6px; height: 32px; padding: 0 10px; font-family: 'Unbounded'; font-weight: 800; font-size: 10px; opacity: 0.7; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
-                            ⏳ АНОНС
-                        </button>
-                    `;
-                }
+                    const safeFormats = (this.crm && this.crm.RACE_FORMATS) ? this.crm.RACE_FORMATS : { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
+                    let formatName = r.format ? (safeFormats[r.format] || 'Гонка') : '';
+                    let distStr = r.distance ? `${r.distance} км` : '';
+                    let myRegContext = this.myRosters ? this.myRosters[r.id] : null;
 
-                // Выравнивание контейнера шапки по верхнему краю
-                const headerParent = nameEl.closest('.chat-header') || nameEl.parentElement?.parentElement;
-                if (headerParent) {
-                    headerParent.style.alignItems = 'flex-start'; 
-                    headerParent.style.paddingTop = '12px';
-                    headerParent.style.paddingBottom = '12px';
-                    headerParent.style.height = 'auto'; // 🔥 Убираем жесткую высоту!
-                    headerParent.style.minHeight = '65px';
+                    let actionBtnHtml = ''; 
 
-                    const dotsBtn = headerParent.querySelector('button:not(.sync-btn-' + r.id + ')');
-                    if (dotsBtn) {
-                        dotsBtn.style.marginTop = '2px';
+                    if (r.status === 'Registration') {
+                        let regBtnText = 'ЗАЯВИТЬСЯ';
+                        let regBtnStyle = 'background: var(--primary, #ffc107); color: #000000; border: none; box-shadow: 0 2px 8px rgba(255,193,7,0.3);';
+                        let iconColor = '#ffffff';
+
+                        if (myRegContext && myRegContext.is_paid) {
+                            regBtnText = 'В СТАРТ-ЛИСТЕ';
+                            regBtnStyle = 'background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border);';
+                            iconColor = 'currentColor'; 
+                        } else if (myRegContext) {
+                            regBtnText = 'ОПЛАТИТЬ';
+                            regBtnStyle = 'background: var(--primary, #ffc107); color: #000000; border: none; box-shadow: 0 2px 8px rgba(255,193,7,0.3);';
+                        }
+
+                        let iconSvg = `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+                        actionBtnHtml = `
+                            <button class="sync-btn-${r.id} compact-action-btn" data-label="⚡ ЗАЯВИТЬСЯ" onclick="window.app.registerForRace('${r.id}', this, event)" style="${regBtnStyle} border-radius: 16px; height: 32px; padding: 0 12px; width: auto; font-family: 'Unbounded'; font-weight: 800; font-size: 9px; cursor: pointer; transition: 0.2s; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
+                                ${iconSvg} <span style="color: inherit; margin-left: 4px;">${regBtnText}</span>
+                            </button>
+                        `;
+                    } else if (r.status === 'LIVE') {
+                        let iconSvg = `<div class="btn-icon" style="width:8px; height:8px; background:#fff; border-radius:50%; margin-right:6px; animation: dot-pulse 1s infinite;"></div>`;
+                        actionBtnHtml = `
+                            <button class="compact-action-btn" onclick="window.app.openLiveBoard('${r.id}', event)" style="background: var(--danger, #ef4444); color: #ffffff; border: none; border-radius: 16px; height: 32px; padding: 0 12px; width: auto; font-family: 'Unbounded'; font-weight: 800; font-size: 9px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
+                                ${iconSvg} <span style="margin-left: 4px;">LIVE</span>
+                            </button>
+                        `;
+                    } else if (r.status === 'Finished') {
+                        let iconSvg = `<span class="btn-icon" style="font-size:14px; margin-right:4px;">🏆</span>`;
+                        actionBtnHtml = `
+                            <button class="compact-action-btn" onclick="window.app.openLiveBoard('${r.id}', event)" style="background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border); border-radius: 16px; height: 32px; padding: 0 12px; width: auto; font-family: 'Unbounded'; font-weight: 800; font-size: 9px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
+                                ${iconSvg} <span style="margin-left: 4px;">ИТОГИ</span>
+                            </button>
+                        `;
+                    } else if (r.status === 'Скоро') {
+                        let iconSvg = `<span class="btn-icon" style="font-size:14px; margin-right:4px;">⏳</span>`;
+                        actionBtnHtml = `
+                            <button class="compact-action-btn" disabled style="background: var(--bg-surface-hover); color: var(--text-muted); border: 1px dashed var(--border); border-radius: 16px; height: 32px; padding: 0 12px; width: auto; font-family: 'Unbounded'; font-weight: 800; font-size: 9px; opacity: 0.7; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
+                                ${iconSvg} <span style="margin-left: 4px;">АНОНС</span>
+                            </button>
+                        `;
                     }
-                }
 
-                // СТРОКА 1: Название + Кнопка (🔥 ТЕПЕРЬ С ПЕРЕНОСОМ flex-wrap И КУБКОМ)
-                nameEl.style.width = '100%';
-                nameEl.style.margin = '0';
-                nameEl.style.padding = '0';
+                    const headerParent = nameEl.closest('.chat-header') || nameEl.parentElement?.parentElement;
+                    if (headerParent) headerParent.style.cssText = ''; 
 
-                // 🔥 ИЩЕМ ПРИВЯЗКУ К КУБКУ (УМНЫЙ ПОИСК ВО ВСЕХ КЭШАХ)
-                let cupId = null;
-                let cupName = 'КУБОК';
-                
-                if (r.cup_id) {
-                    cupId = Array.isArray(r.cup_id) ? r.cup_id[0] : r.cup_id;
-                    if (r.expand && r.expand.cup_id) {
-                        cupName = Array.isArray(r.expand.cup_id) ? r.expand.cup_id[0].name : r.expand.cup_id.name;
-                    }
-                }
-                
-                if (cupName === 'КУБОК' && this.crm && this.crm.dataCalendar) {
-                    const calRace = this.crm.dataCalendar.find(cr => cr.id === r.id);
-                    if (calRace) {
-                        if (calRace.cupId && calRace.cupName) {
-                            cupId = calRace.cupId;
-                            cupName = calRace.cupName;
-                        } else if (calRace.cup_id && calRace.expand && calRace.expand.cup_id) {
-                            cupId = Array.isArray(calRace.cup_id) ? calRace.cup_id[0] : calRace.cup_id;
-                            cupName = Array.isArray(calRace.expand.cup_id) ? calRace.expand.cup_id[0].name : calRace.expand.cup_id.name;
+                    const chatInfo = nameEl.closest('.chat-info');
+                    if (chatInfo) chatInfo.style.cssText = ''; 
+
+                    if (headerParent) {
+                        const actionsDiv = headerParent.querySelector('.chat-header-actions');
+                        if (actionsDiv) {
+                            actionsDiv.style.cssText = '';
+                            const oldBtn = actionsDiv.querySelector('.header-race-btn');
+                            if (oldBtn) oldBtn.remove();
+                            
+                            if (actionBtnHtml) {
+                                const btnWrapper = document.createElement('div');
+                                btnWrapper.className = 'header-race-btn';
+                                btnWrapper.innerHTML = actionBtnHtml;
+                                actionsDiv.prepend(btnWrapper);
+                            }
+
+                            const dotsBtn = actionsDiv.querySelector('button:not(.compact-action-btn):not([class*="sync-btn-"])');
+                            if (dotsBtn) {
+                                dotsBtn.style.cssText = 'display: none !important;';
+                            }
                         }
                     }
-                }
 
-                // Генерируем саму кнопку
-                let cupBadgeHtml = '';
-                if (cupId) {
-                    let shortCupName = cupName.toUpperCase();
-                    // Сокращаем до 8 символов (7 + многоточие)
-                    if (shortCupName.length > 8) {
-                        shortCupName = shortCupName.substring(0, 7) + '…';
-                    }
+                    let cupId = null;
+                    let cupName = 'КУБОК';
                     
-                    cupBadgeHtml = `
-                        <div onclick="event.stopPropagation(); window.app.crm.openCupStandings('${cupId}')" 
-                             style="display:inline-flex; align-items:center; justify-content:center; background:rgba(255,193,7,0.1); color:var(--primary); border:1px solid rgba(255,193,7,0.3); padding:3px 6px; border-radius:6px; font-size:10px; font-family:'Unbounded'; font-weight:800; cursor:pointer; transition:0.2s; flex-shrink:0; margin-right: 6px;" 
-                             onmouseover="this.style.background='var(--primary)'; this.style.color='#000';" 
-                             onmouseout="this.style.background='rgba(255,193,7,0.1)'; this.style.color='var(--primary)';" 
-                             title="${cupName.toUpperCase()} (Нажмите, чтобы открыть рейтинг)">
-                            🏆 ${shortCupName}
-                        </div>`;
-                }
+                    if (r.cup_id) {
+                        cupId = Array.isArray(r.cup_id) ? r.cup_id[0] : r.cup_id;
+                        if (r.expand && r.expand.cup_id) cupName = Array.isArray(r.expand.cup_id) ? r.expand.cup_id[0].name : r.expand.cup_id.name;
+                    }
+                    if (cupName === 'КУБОК' && this.crm && this.crm.dataCalendar) {
+                        const calRace = this.crm.dataCalendar.find(cr => cr.id === r.id);
+                        if (calRace) {
+                            if (calRace.cupId && calRace.cupName) { cupId = calRace.cupId; cupName = calRace.cupName; } 
+                            else if (calRace.cup_id && calRace.expand && calRace.expand.cup_id) {
+                                cupId = Array.isArray(calRace.cup_id) ? calRace.cup_id[0] : calRace.cup_id;
+                                cupName = Array.isArray(calRace.expand.cup_id) ? calRace.expand.cup_id[0].name : calRace.expand.cup_id.name;
+                            }
+                        }
+                    }
 
-                nameEl.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 32px; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; flex: 1; min-width: 140px;">
+                    let cupBadgeHtml = '';
+                    if (cupId) {
+                        let shortCupName = cupName.toUpperCase();
+                        if (shortCupName.length > 8) shortCupName = shortCupName.substring(0, 7) + '…';
+                        cupBadgeHtml = `
+                            <div onclick="event.stopPropagation(); window.app.crm.openCupStandings('${cupId}')" 
+                                 style="display:inline-flex; align-items:center; justify-content:center; background:rgba(255,193,7,0.1); color:var(--primary); border:1px solid rgba(255,193,7,0.3); padding:2px 6px; border-radius:6px; font-size:10px; font-family:'Unbounded'; font-weight:800; cursor:pointer; transition:0.2s; flex-shrink:0; margin-right: 6px;" 
+                                 onmouseover="this.style.background='var(--primary)'; this.style.color='#000';" 
+                                 onmouseout="this.style.background='rgba(255,193,7,0.1)'; this.style.color='var(--primary)';" 
+                                 title="${cupName.toUpperCase()}">
+                                🏆 <span class="hide-on-mobile" style="margin-left:4px;">${shortCupName}</span>
+                            </div>`;
+                    }
+
+                    nameEl.style.cssText = '';
+                    nameEl.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: nowrap;">
                             ${cupBadgeHtml}
-                            <div style="font-family: 'Unbounded'; font-size: 13px; font-weight: 800; color: var(--text-main); text-transform: uppercase; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;">
+                            <div class="header-race-title" style="font-family: 'Unbounded'; font-size: 14px; font-weight: 800; color: var(--text-main); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${chatName}
                             </div>
                         </div>
-                        <div style="display: flex; align-items: center; justify-content: flex-start; flex-shrink: 0;">
-                            ${actionBtnHtml}
+                    `;
+
+                    metaEl.style.cssText = '';
+                    metaEl.style.marginTop = '2px'; 
+                    metaEl.innerHTML = `
+                        <div class="meta-scroller" style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                            ${fullDateStr ? `<span>${fullDateStr}</span>` : ''}
+                            ${formatName ? `<span style="opacity:0.4; margin: 0 4px;">•</span><span>${formatName}</span>` : ''}
+                            ${distStr ? `<span style="opacity:0.4; margin: 0 4px;">•</span><span>${distStr}</span>` : ''}
+                            <span style="opacity:0.4; margin: 0 4px;">•</span>
+                            <span onclick="window.app.openLiveBoard('${r.id}', event)" style="cursor: pointer; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;" title="Открыть старт-лист">${pCount} чел. ➝</span>
                         </div>
-                    </div>
-                `;
+                    `;
 
-                // 🎯 СТРОКА 2: 26 июля 2026 г. • Группа • 73 км • 25 чел. (🔥 С ПЕРЕНОСОМ flex-wrap)
-                metaEl.style.display = 'block';
-                metaEl.style.width = '100%';
-                metaEl.style.marginTop = '6px';
-                
-                metaEl.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); padding-bottom: 2px; flex-wrap: wrap; line-height: 1.6;">
-                        ${fullDateStr ? `<span style="white-space:nowrap;">${fullDateStr}</span>` : ''}
-                        ${formatName ? `<span style="opacity:0.4">•</span><span style="white-space:nowrap;">${formatName}</span>` : ''}
-                        ${distStr ? `<span style="opacity:0.4">•</span><span style="white-space:nowrap;">${distStr}</span>` : ''}
-                        <span style="opacity:0.4">•</span>
-                        <span onclick="window.app.openLiveBoard('${r.id}', event)" style="cursor: pointer; color: var(--text-main); transition: 0.2s; white-space: nowrap; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);" onmouseover="this.style.background='var(--primary)'; this.style.color='#000';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-main)'" title="Открыть старт-лист">${pCount} чел. ➝</span>
-                    </div>
-                `;
-
-            } else {
-                if (avatarContainer) avatarContainer.style.display = 'flex'; 
-                nameEl.style.width = 'auto';
-                metaEl.style.width = 'auto';
-
-                // 🔥 Снимаем жесткую высоту и у обычных чатов тоже
-                const headerParent = nameEl.closest('.chat-header') || nameEl.parentElement?.parentElement;
-                if (headerParent) {
-                    headerParent.style.alignItems = 'center'; 
-                    headerParent.style.height = 'auto'; 
-                    headerParent.style.minHeight = '65px';
-                    headerParent.style.paddingTop = '12px';
-                    headerParent.style.paddingBottom = '12px';
-                }
-
-                let metaLine1 = ''; 
-                let metaLine2 = ''; 
-                let clickableNameHtml = chatName;
-
-                if (chat.type === 'direct') {
-                    const otherRider = chat.expand?.participants?.find(p => p.id !== this.currentRider.id);
-                    if (otherRider && otherRider.email === 'bot@sotka.one') {
-                        metaLine1 = `<span style="color:var(--primary); font-weight:bold; font-size:10px; text-transform:uppercase;">ОФИЦИАЛЬНЫЙ ИНФОРМАТОР</span>`;
-                    } else if (otherRider) {
-                        metaLine1 = this.getRoleBadge(otherRider.id);
-                        clickableNameHtml = `<span onclick="window.app.openProfile('${otherRider.id}')" style="cursor:pointer; transition:0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-main)'" title="Открыть профиль">${chatName}</span>`;
-                    }
-                } else if (chat.type === 'team') {
-                    metaLine1 = `<span style="color:var(--info); font-weight:bold; font-size:10px; text-transform:uppercase;">КОМАНДНЫЙ ЧАТ</span>`;
                 } else if (chat.type === 'team_channel') {
+                    // 🔥 ВЕТКА КАНАЛА КОМАНДЫ (С АВААТАРКОЙ, КНОПКОЙ И ДАННЫМИ)
+                    if (avatarContainer) {
+                        avatarContainer.style.display = 'flex'; 
+                        avatarContainer.style.margin = '0';
+                    }
+
                     const captain = this.getCaptainByTeam(chat.team_id);
-                    metaLine1 = captain ? `<span style="color:var(--text-muted); font-size:10px;">Капитан: <b>${captain.first_name} ${captain.last_name}</b></span>` : `<span style="color:var(--primary); font-weight:bold; font-size:10px; text-transform:uppercase;">ПУБЛИЧНЫЙ КАНАЛ</span>`;
-                } else if (chat.type === 'radar') {
-                    metaLine1 = `<span class="radar-pulse-anim" style="color:var(--danger); font-weight:bold; font-size:10px; text-transform:uppercase;">🚨 СИГНАЛ РАДАРА</span>`;
+                    const capName = captain ? `Капитан: ${captain.first_name} ${captain.last_name}` : 'Капитан не назначен';
+                    const isMyTeamCap = (myTeams.includes(chat.team_id) && this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain']);
+                    
+                    const actualTeam = this.teamsMap[chat.team_id];
+                    let teamAvatarHtml = '';
+                    
+                    if (actualTeam && actualTeam.avatar) {
+                        const avatarUrl = pb.files.getUrl(actualTeam, actualTeam.avatar);
+                        teamAvatarHtml = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                    } else {
+                        teamAvatarHtml = `<img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" style="width:24px; height:24px; object-fit:contain; position:relative; top:-1px;" alt="Duck">`;
+                    }
+
+                    if (isMyTeamCap) {
+                        avatarContainer.innerHTML = `
+                            <div class="avatar" style="background:var(--primary); color:#000; border:none; padding:0; overflow:hidden; position:relative; cursor:pointer;" onclick="window.app.triggerTeamAvatarUpload('${chat.team_id}')" title="Изменить логотип">
+                                ${teamAvatarHtml}
+                                <div style="position:absolute; bottom:0; left:0; width:100%; height:30%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center;">
+                                    <span style="font-size:8px; color:#fff;">📷</span>
+                                </div>
+                            </div>`;
+                    } else {
+                        avatarContainer.innerHTML = `<div class="avatar" style="background:var(--primary); color:#000; border:none; padding:0; overflow:hidden;">${teamAvatarHtml}</div>`;
+                    }
+
+                    let actionBtnHtml = '';
+                    if (!myTeams.includes(chat.team_id)) {
+                        let iconSvg = `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; flex-shrink:0;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                        actionBtnHtml = `
+                            <button class="compact-action-btn" onclick="alert('Функция вступления находится в разработке'); event.stopPropagation();" style="background: var(--primary, #ffc107); color: #000000; border: none; box-shadow: 0 2px 8px rgba(255,193,7,0.3); border-radius: 16px; height: 32px; padding: 0 16px; font-family: 'Unbounded'; font-weight: 800; font-size: 10px; cursor: pointer; transition: 0.2s; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
+                                ${iconSvg} <span style="color: inherit;">ВСТУПИТЬ</span>
+                            </button>
+                        `;
+                    }
+
+                    const headerParent = nameEl.closest('.chat-header') || nameEl.parentElement?.parentElement;
+                    if (headerParent) headerParent.style.cssText = ''; 
+                    
+                    const chatInfo = nameEl.closest('.chat-info');
+                    if (chatInfo) chatInfo.style.cssText = ''; 
+
+                    if (headerParent) {
+                        const actionsDiv = headerParent.querySelector('.chat-header-actions');
+                        if (actionsDiv) {
+                            actionsDiv.style.cssText = '';
+                            const oldBtn = actionsDiv.querySelector('.header-race-btn');
+                            if (oldBtn) oldBtn.remove();
+                            
+                            if (actionBtnHtml) {
+                                const btnWrapper = document.createElement('div');
+                                btnWrapper.className = 'header-race-btn';
+                                btnWrapper.innerHTML = actionBtnHtml;
+                                actionsDiv.prepend(btnWrapper);
+                            }
+                        }
+                    }
+
+                    nameEl.style.cssText = '';
+                    nameEl.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 4px; width: 100%; flex-wrap: nowrap;">
+                            <div class="header-race-title" style="font-family: 'Unbounded'; font-size: 14px; font-weight: 800; color: var(--text-main); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 2px;">
+                                ${chatName}
+                            </div>
+                        </div>
+                    `;
+
+                    metaEl.style.cssText = '';
+                    metaEl.style.marginTop = '2px'; 
+                    metaEl.innerHTML = `
+                        <div class="meta-scroller" style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                            <span onclick="${captain ? `window.app.openProfile('${captain.id}')` : ''}" style="${captain ? 'cursor:pointer; transition:0.2s;' : ''}" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">${capName}</span>
+                            <span style="opacity:0.4; margin: 0 4px;">•</span>
+                            <span onclick="window.app.openParticipantsModal()" style="cursor: pointer; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;" title="Участники">${pCount} чел. ➝</span>
+                        </div>
+                    `;
+
+                } else {
+                    // 🔥 ЛИЧНЫЕ ЧАТЫ И ОБЫЧНЫЕ КОМАНДЫ (ВЕРСТКА И ШРИФТЫ КАК В РАДИО)
+                    if (avatarContainer) {
+                        avatarContainer.style.display = 'flex'; 
+                        avatarContainer.style.margin = '0';
+                    }
+                    nameEl.style.width = 'auto';
+                    metaEl.style.width = 'auto';
+
+                    const headerParent = nameEl.closest('.chat-header') || nameEl.parentElement?.parentElement;
+                    if (headerParent) {
+                        headerParent.style.cssText = ''; 
+                        
+                        const actionsDiv = headerParent.querySelector('.chat-header-actions');
+                        if (actionsDiv) {
+                            actionsDiv.style.cssText = '';
+                            const oldBtn = actionsDiv.querySelector('.header-race-btn');
+                            if (oldBtn) oldBtn.remove();
+
+                            const dotsBtn = actionsDiv.querySelector('button');
+                            if (dotsBtn) {
+                                dotsBtn.style.cssText = 'display: flex !important; align-items: center !important; justify-content: center !important;';
+                            }
+                        }
+                    }
+
+                    const chatInfo = nameEl.closest('.chat-info');
+                    if (chatInfo) chatInfo.style.cssText = ''; 
+                    nameEl.style.cssText = '';
+                    metaEl.style.cssText = '';
+
+                    let clickableNameHtml = chatName;
+                    let metaHtml = '';
+
+                    if (chat.type === 'direct') {
+                        const otherRider = chat.expand?.participants?.find(p => p.id !== this.currentRider?.id);
+                        
+                        if (otherRider && otherRider.email === 'bot@sotka.one') {
+                            clickableNameHtml = `VILKA MOTO`;
+                            metaHtml = `
+                                <div class="meta-scroller" style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                    <span style="color:var(--primary); font-weight:bold; text-transform:uppercase;">ОФИЦИАЛЬНЫЙ ИНФОРМАТОР</span>
+                                    <span style="opacity:0.4; margin: 0 2px;">•</span>
+                                    <span>Служба уведомлений VILKA</span>
+                                </div>
+                            `;
+                        } else if (otherRider) {
+                            clickableNameHtml = `<span onclick="window.app.openProfile('${otherRider.id}')" style="cursor:pointer; transition:0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-main)'" title="Открыть профиль">${chatName}</span>`;
+                            
+                            const roleBadges = this.getRoleBadge(otherRider.id);
+                            const teamName = this.getRiderTeamName(otherRider);
+                            const yobStr = otherRider.yob ? `${otherRider.yob}` : '';
+
+                            // 🔥 ОДНОСТРОЧНАЯ ЛЕНТА КАК В РАДИО: Роль + Кластер • Команда • Год
+                            metaHtml = `
+                                <div class="meta-scroller" style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                    ${roleBadges}
+                                    ${teamName ? `<span style="opacity:0.4; margin: 0 2px;">•</span><span onclick="window.app.openProfile('${otherRider.id}')" style="cursor:pointer; transition:0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">${this.escapeHTML(teamName)}</span>` : ''}
+                                    ${yobStr ? `<span style="opacity:0.4; margin: 0 2px;">•</span><span>${yobStr}</span>` : ''}
+                                </div>
+                            `;
+                        } else {
+                            // Избранное
+                            clickableNameHtml = `ИЗБРАННОЕ`;
+                            metaHtml = `
+                                <div class="meta-scroller" style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                    <span style="color:var(--primary); font-weight:bold; text-transform:uppercase;">ЛИЧНЫЙ ЧАТ</span>
+                                    <span style="opacity:0.4; margin: 0 2px;">•</span>
+                                    <span>Заметки и файлы</span>
+                                </div>
+                            `;
+                        }
+                    } else if (chat.type === 'team') {
+                        clickableNameHtml = chatName;
+                        metaHtml = `
+                            <div class="meta-scroller" style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                <span style="color:var(--info); font-weight:bold; text-transform:uppercase;">КОМАНДНЫЙ ЧАТ</span>
+                                <span style="opacity:0.4; margin: 0 2px;">•</span>
+                                <span onclick="window.app.openParticipantsModal()" style="cursor: pointer; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);" title="Участники">👥 ${pCount} чел. ➝</span>
+                            </div>
+                        `;
+                    } else if (chat.type === 'radar') {
+                        clickableNameHtml = chatName;
+                        metaHtml = `
+                            <div class="meta-scroller" style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                <span class="radar-pulse-anim" style="color:var(--danger); font-weight:bold; text-transform:uppercase;">🚨 СИГНАЛ РАДАРА</span>
+                                <span style="opacity:0.4; margin: 0 2px;">•</span>
+                                <span onclick="window.app.openParticipantsModal()" style="cursor: pointer;">👥 ${pCount} чел. ➝</span>
+                            </div>
+                        `;
+                    } else {
+                        clickableNameHtml = chatName;
+                        metaHtml = `
+                            <div class="meta-scroller" style="display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'Roboto Mono', monospace; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                <span onclick="window.app.openParticipantsModal()" style="cursor: pointer; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);" title="Участники">👥 ${pCount} чел. ➝</span>
+                            </div>
+                        `;
+                    }
+
+                    nameEl.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 4px; width: 100%; flex-wrap: nowrap;">
+                            <div class="header-race-title" style="font-family: 'Unbounded'; font-size: 14px; font-weight: 800; color: var(--text-main); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 2px;">
+                                ${clickableNameHtml}
+                            </div>
+                        </div>
+                    `;
+
+                    metaEl.style.cssText = '';
+                    metaEl.style.marginTop = '2px'; 
+                    metaEl.innerHTML = metaHtml;
                 }
 
-                let pLabel = 'участников';
-                if (chat.type === 'team' || chat.type === 'team_channel') pLabel = 'в команде';
+            // ==========================================
+            // 🔥 7. МЕНЮ "ТРИ ТОЧКИ"
+            // ==========================================
+            const headerActions = document.querySelector('.chat-header-actions');
+            if (headerActions) {
+                headerActions.style.display = 'flex';
                 
-                if (chat.type !== 'direct') {
-                    // 🔥 Упаковали кнопку участников в плашку
-                    metaLine2 = `<span style="color:var(--text-muted); font-size:11px; margin-top:2px; display:inline-block; cursor:pointer; transition:0.2s; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);" onmouseover="this.style.background='var(--primary)'; this.style.color='#000';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='var(--text-muted)';" onclick="window.app.openParticipantsModal()">👥 ${pCount} ${pLabel} ▾</span>`;
-                } else {
-                    metaLine2 = `<span style="color:var(--text-muted); font-size:11px; margin-top:2px; display:inline-block;">👥 ${pCount} ${pLabel}</span>`;
-                }
+                const dotsBtn = document.getElementById('chatMenuBtn');
+                if (dotsBtn) {
+                    if (!dotsBtn.classList.contains('btn-circle')) {
+                        dotsBtn.classList.add('btn-circle');
+                    }
+                    
+                    dotsBtn.style.cssText = 'background: transparent !important; border: none !important; box-shadow: none !important; color: var(--text-main) !important; cursor: pointer; display: flex !important; align-items: center !important; justify-content: center !important;';
+                    
+                    const svgIcon = dotsBtn.querySelector('svg');
+                    if (svgIcon) {
+                        svgIcon.setAttribute('width', '28');
+                        svgIcon.setAttribute('height', '28');
+                        svgIcon.setAttribute('stroke-width', '2.5');
+                    }
 
-                // 🔥 Вставляем наше умное кликабельное имя с ПЕРЕНОСОМ
-                nameEl.innerHTML = `<div style="font-family: 'Unbounded'; font-size: 13px; font-weight: 800; color: var(--text-main); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;">${clickableNameHtml}</div>`;
-                
-                if (metaLine1) {
-                    metaEl.innerHTML = `<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start; margin-top: 4px;"><div>${metaLine1}</div><div>${metaLine2}</div></div>`;
-                } else {
-                    metaEl.innerHTML = `<div style="margin-top: 4px;">${metaLine2}</div>`;
+                    if (chat.type === 'global' && chat.raceObj) {
+                        dotsBtn.style.setProperty('display', 'none', 'important'); 
+                    } else {
+                        dotsBtn.style.setProperty('display', 'flex', 'important'); 
+                    }
                 }
             }
-
-            // 7. МЕНЮ "ТРИ ТОЧКИ"
-            const headerActions = document.querySelector('.chat-header-actions');
-            if (headerActions) headerActions.style.display = 'block';
 
             const dropMenu = document.getElementById('chatDropdownMenu');
-            let dropHtml = '';
-            
-            dropHtml += `<button onclick="window.app.focusChatSearch()"><span style="font-size:16px;">🔍</span> Поиск по чату</button>`;
-            dropHtml += `<button onclick="window.app.copyChatLink('${chatId}')"><span style="font-size:16px;">🔗</span> Копировать ссылку</button>`;
-            
-            if (canManageChat && chat.type !== 'direct' && chat.type !== 'team_channel') {
-                dropHtml += `<button onclick="window.app.editCurrentChatName()"><span style="font-size:16px;">✏️</span> Изменить название</button>`;
-            }
-            if (chat.type === 'private' || chat.type === 'gruppetto' || chat.type === 'radar') {
-                dropHtml += `<button style="color: #ffc107;" onclick="window.app.leaveCurrentChat()"><span style="font-size:16px;">🚪</span> Покинуть чат</button>`;
-            }
-            if (canManageChat && chat.type !== 'team_channel' || chat.type === 'direct') {
-                dropHtml += `<button class="text-danger" style="color: #ff3366;" onclick="window.app.deleteCurrentChat()"><span style="font-size:16px;">🗑️</span> Удалить для всех</button>`;
-            }
-            dropMenu.innerHTML = dropHtml;
+            if (dropMenu) {
+                let dropHtml = '';
+                
+                dropHtml += `<button onclick="window.app.focusChatSearch()"><span style="font-size:16px;">🔍</span> Поиск по чату</button>`;
+                dropHtml += `<button onclick="window.app.copyChatLink('${chatId}')"><span style="font-size:16px;">🔗</span> Копировать ссылку</button>`;
+                
+                // 🔥 ПОСТЕР С QR И АЛИАСОМ ДОСТУПЕН ВСЕМ ГОНЩИКАМ (ДЛЯ ПРОМО КОМАНДЫ)
+                if (chat.type === 'team_channel' || chat.type === 'team' || chat.type === 'global') {
+                    dropHtml += `<button onclick="window.app.generateRadioQrPoster('${chatId}')"><span style="font-size:16px;">📸</span> Постер Радио с QR</button>`;
+                }
 
-            // 8. БЛОКИРОВКА ВВОДА (ДЛЯ ГОСТЕЙ И КАНАЛОВ)
+                // 🏷️ НАСТРОЙКА И ИЗМЕНЕНИЕ АЛИАСА — ТОЛЬКО ДЛЯ КАПИТАНА И АДМИНОВ
+                if (canManageChat) {
+                    dropHtml += `<button onclick="window.app.openAliasModal()"><span style="font-size:16px;">🏷️</span> Настроить короткую ссылку</button>`;
+                }
+
+                if (canManageChat && chat.type !== 'direct' && chat.type !== 'team_channel') {
+                    dropHtml += `<button onclick="window.app.editCurrentChatName()"><span style="font-size:16px;">✏️</span> Изменить название</button>`;
+                }
+                if (chat.type === 'private' || chat.type === 'gruppetto' || chat.type === 'radar') {
+                    dropHtml += `<button style="color: #ffc107;" onclick="window.app.leaveCurrentChat()"><span style="font-size:16px;">🚪</span> Покинуть чат</button>`;
+                }
+                if ((canManageChat && chat.type !== 'team_channel') || chat.type === 'direct') {
+                    dropHtml += `<button class="text-danger" style="color: #ff3366;" onclick="window.app.deleteCurrentChat()"><span style="font-size:16px;">🗑️</span> Удалить для всех</button>`;
+                }
+                
+                dropMenu.innerHTML = dropHtml;
+            }
+
+            // ==========================================
+            // 🔥 8. ЕДИНАЯ НИЖНЯЯ ПАНЕЛЬ: СМОТРЮ + ПИШУ
+            // ==========================================
+            let recipientBar = document.getElementById('recipientSelectorBar');
+
+            if (chat.type === 'team_channel') {
+                if (!recipientBar) {
+                    recipientBar = document.createElement('div');
+                    recipientBar.id = 'recipientSelectorBar';
+                    const inputWrapper = document.getElementById('inputWrapper');
+                    if (inputWrapper) inputWrapper.insertBefore(recipientBar, inputWrapper.firstChild);
+                }
+
+                const cTeamId = Array.isArray(chat.team_id) ? chat.team_id[0] : chat.team_id;
+                const captain = this.getCaptainByTeam(cTeamId);
+                const isCap = (myTeams.includes(cTeamId) && this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain']);
+                const isMember = myTeams.includes(cTeamId);
+
+                const allTeamMembers = Object.values(this.ridersMap).filter(r => {
+                    if (r.id === this.currentRider?.id || r.email === 'bot@sotka.one' || (r.email && r.email.startsWith('guest_'))) return false;
+                    const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
+                    return rTeams.includes(cTeamId);
+                });
+
+                const recentDirectRiderIds = this.chats
+                    .filter(c => c.type === 'direct' && c.participants && c.participants.includes(this.currentRider.id))
+                    .flatMap(c => c.participants)
+                    .filter(id => id !== this.currentRider.id);
+
+                let recentMembers = allTeamMembers.filter(m => recentDirectRiderIds.includes(m.id)).slice(0, 5);
+                
+                if (captain && captain.id !== this.currentRider.id && !recentMembers.some(m => m.id === captain.id)) {
+                    recentMembers.unshift(captain);
+                }
+
+                this.activeFeedFilter = (this.activeFeedFilter && this.activeFeedFilter !== 'all') ? this.activeFeedFilter : 'public';
+
+                if (!this.activeMessageScope) {
+                    this.activeMessageScope = isCap ? 'channel' : (isMember ? 'team' : (captain ? `direct_${captain.id}` : 'channel'));
+                }
+
+                let scopeOpts = '';
+                if (isCap) {
+                    scopeOpts += `<option value="channel" ${this.activeMessageScope === 'channel' ? 'selected' : ''}>Всем</option>`;
+                    scopeOpts += `<option value="team" ${this.activeMessageScope === 'team' ? 'selected' : ''}>своей команде</option>`;
+                } else if (isMember) {
+                    scopeOpts += `<option value="team" ${this.activeMessageScope === 'team' ? 'selected' : ''}>своей команде</option>`;
+                }
+
+                recentMembers.forEach(m => {
+                    const isCapTag = (captain && m.id === captain.id) ? ' (Капитан)' : '';
+                    const val = `direct_${m.id}`;
+                    const mName = `${m.first_name || ''} ${m.last_name || ''}`.trim();
+                    scopeOpts += `<option value="${val}" ${this.activeMessageScope === val ? 'selected' : ''}>Лично: ${mName}${isCapTag}</option>`;
+                });
+
+                scopeOpts += `<option value="search_member">🔍 Найти участника (${allTeamMembers.length} чел.)...</option>`;
+
+                let feedOpts = `
+                    <option value="public" ${this.activeFeedFilter === 'public' ? 'selected' : ''}>📢 Новости</option>
+                    <option value="team" ${this.activeFeedFilter === 'team' ? 'selected' : ''}>Команда</option>
+                    <option value="direct" ${this.activeFeedFilter === 'direct' ? 'selected' : ''}>Личные</option>
+                `;
+
+                recipientBar.innerHTML = `
+                    <div class="chat-control-group">
+                        <span style="color: var(--text-muted); font-size:9px;">СМОТРЮ:</span>
+                        <select class="chat-control-select" id="feedFilterSelect" onchange="window.app.setChatFeedFilter(this.value)">
+                            ${feedOpts}
+                        </select>
+                    </div>
+                    <div class="chat-control-group">
+                        <span style="color: var(--text-muted); font-size:9px;">ПИШУ:</span>
+                        <select class="chat-control-select" id="recipientScopeSelect" onchange="window.app.setRecipientScope(this.value, '${cTeamId}')">
+                            ${scopeOpts}
+                        </select>
+                    </div>
+                `;
+                recipientBar.style.display = 'flex';
+            } else {
+                // 🔥 ЖЕСТКО ПРЯЧЕМ ПАНЕЛЬ ДЛЯ ВСЕХ ОСТАЛЬНЫХ ЧАТОВ (В Т.Ч. ГОНОК)
+                if (recipientBar) {
+                    recipientBar.style.setProperty('display', 'none', 'important');
+                }
+                this.activeMessageScope = null;
+                this.activeFeedFilter = 'public';
+            }
+
+            // ==========================================
+            // 🔥 9. БЛОКИРОВКА ВВОДА И ГОСТЕВОЙ РЕЖИМ
+            // ==========================================
             const inputWrap = document.getElementById('inputWrapper');
             let ro = document.getElementById('readOnlyNotice');
             if (!ro) { 
@@ -12398,7 +14046,10 @@ async joinRadar(chatId, event) {
             const supportAdminId = "blf8xys1c833b3p";
             const isSupportChat = chat.type === 'direct' && chat.participants.includes(supportAdminId);
 
-            if (this.isGuest && !isSupportChat) {
+            if (chat.type === 'team_channel') {
+                inputWrap.style.display = 'flex';
+                ro.style.display = 'none';
+            } else if (this.isGuest && !isSupportChat) {
                 inputWrap.style.display = 'none';
                 ro.style.display = 'block';
                 ro.style.cssText = 'padding: 20px; text-align: center; background: var(--bg-surface); border-top: 1px solid var(--border);';
@@ -12406,18 +14057,12 @@ async joinRadar(chatId, event) {
                     <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; font-family:'Inter';">Вы находитесь в гостевом режиме</div>
                     <button class="btn-black" onclick="window.app.openLoginScreen();" style="background:var(--primary); color:#000; border:none; padding:10px 20px; font-family:'Unbounded'; font-size:11px; font-weight:800; border-radius:8px; cursor:pointer; box-shadow: 0 4px 15px rgba(255,193,7,0.3); transition:0.2s;">ВОЙТИ В АККАУНТ ДЛЯ ОБЩЕНИЯ</button>
                 `;
-            } else if (chat.type === 'team_channel') {
-                ro.style.cssText = 'padding: 15px; text-align: center; color: var(--text-muted); font-size: 12px; background: var(--bg-surface); border-top: 1px solid var(--border);'; 
-                ro.innerText = 'Только для чтения. Писать может только Капитан.';
-                const isMyTeamCap = (myTeams.includes(chat.team_id) && this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain']);
-                if (!isMyTeamCap && !isSuper) { inputWrap.style.display = 'none'; ro.style.display = 'block'; } 
-                else { inputWrap.style.display = 'flex'; ro.style.display = 'none'; }
             } else { 
                 inputWrap.style.display = 'flex'; 
                 ro.style.display = 'none'; 
             }
 
-            // 9. ВОССТАНОВЛЕНИЕ ЧЕРНОВИКА И ЗАВЕРШЕНИЕ
+            // 10. ВОССТАНОВЛЕНИЕ ЧЕРНОВИКА И ЗАВЕРШЕНИЕ
             const msgInput = document.getElementById('messageInput');
             if (msgInput && inputWrap.style.display !== 'none') {
                 const savedDraft = this.getDraft(chatId);
@@ -12439,7 +14084,6 @@ async joinRadar(chatId, event) {
             
         } catch (e) { console.error("Ошибка при открытии чата:", e); }
     }
-	
 	focusChatSearch() {
         const menu = document.getElementById('chatDropdownMenu');
         if (menu) menu.classList.remove('show');
@@ -12684,17 +14328,124 @@ async joinRadar(chatId, event) {
         }
 
         async refreshCurrentChatMessages(expectedChatId, sessionToken, showLoader = true) {
-            if (!expectedChatId) return; const loader = document.getElementById('chatLoader'); if (loader && showLoader) loader.style.display = 'block';
-            try {
-                this.messagePage = 1; const res = await pb.collection('messages').getList(1, 50, { filter: `chat_id="${expectedChatId}"`, sort: '-created', expand: 'reply_to,forwarded_from', requestKey: null });
-                if (this.chatSessionToken !== sessionToken) return;
-                if (loader) loader.style.display = 'none'; const container = document.getElementById('messagesContainer'); if (!container) return;
-                container.innerHTML = ''; this.hasMoreMessages = res.items.length === 50; res.items.reverse().forEach(m => { try { this.appendMessageHTML(m, container, false); } catch (err) { } });
-                this.markMessagesAsRead(res.items); this.scrollToBottom();
-            } catch(e) { if (loader) loader.style.display = 'none'; }
+        if (!expectedChatId) return; 
+        
+        const container = document.getElementById('messagesContainer');
+
+        // 🔥 1. МГНОВЕННАЯ ОЧИСТКА ЭКРАНА ДО ЗАПРОСА К СЕРВЕРУ
+        if (container && showLoader) {
+            container.innerHTML = `<div style="text-align:center; padding:40px;"><span class="spinner" style="width:30px; height:30px; border-width:3px; display:inline-block;"></span></div>`;
         }
 
-        async loadMoreMessages() {
+        try {
+            this.messagePage = 1; 
+            // 🔥 2. УМНЫЙ ФИЛЬТР (ИСПОЛЬЗУЕТ ВЫБРАННОГО В "ПИШУ:" ГОНЩИКА)
+            const filterQuery = this.getAggregatedChatFilterQuery(expectedChatId);
+
+            let res = { items: [] };
+            if (filterQuery !== 'chat_id="none"') {
+                res = await pb.collection('messages').getList(1, 50, { 
+                    filter: filterQuery, 
+                    sort: '-created', 
+                    expand: 'reply_to,forwarded_from', 
+                    requestKey: null 
+                });
+            }
+
+            if (this.chatSessionToken !== sessionToken) return;
+
+            if (container) {
+                container.innerHTML = ''; 
+                this.hasMoreMessages = res.items.length === 50;
+
+                // 🔥 3. ЗАГЛУШКА ДЛЯ ПУСТОГО ДИАЛОГА
+                if (res.items.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-size:11px; font-family:'Unbounded'; border: 1px dashed var(--border); margin: 20px; border-radius: 12px;">
+                            НЕТ СООБЩЕНИЙ В ЭТОЙ ВЕТКЕ
+                            <div style="font-family:'Manrope'; font-size:11px; opacity:0.7; margin-top:6px; text-transform:none;">
+                                Напишите первое сообщение внизу!
+                            </div>
+                        </div>`;
+                } else {
+                    res.items.reverse().forEach(m => { 
+                        try { this.appendMessageHTML(m, container, false); } catch (err) { } 
+                    });
+                }
+            }
+
+            this.markMessagesAsRead(res.items); 
+            this.scrollToBottom();
+            this.syncRaceButtonsState(); 
+        } catch(e) { 
+            console.error("Ошибка загрузки сообщений", e); 
+            if (container) {
+                container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted); font-size:11px; font-family:'Unbounded';">НЕТ СООБЩЕНИЙ</div>`;
+            }
+        } finally {
+            const loader = document.getElementById('chatLoader');
+            if (loader) loader.style.display = 'none';
+        }
+    }
+
+// 🔥 ПЕРЕКЛЮЧЕНИЕ ФИЛЬТРА ЛЕНТЫ (СМОТРЮ:)
+    setChatFeedFilter(filterType) {
+        this.activeFeedFilter = filterType;
+
+        const scopeSelect = document.getElementById('recipientScopeSelect');
+        if (scopeSelect) {
+            if (filterType === 'public') {
+                const opt = Array.from(scopeSelect.options).find(o => o.value === 'channel');
+                if (opt) { scopeSelect.value = 'channel'; this.activeMessageScope = 'channel'; }
+            } else if (filterType === 'team') {
+                const opt = Array.from(scopeSelect.options).find(o => o.value === 'team');
+                if (opt) { scopeSelect.value = 'team'; this.activeMessageScope = 'team'; }
+            } else if (filterType === 'direct') {
+                // Если адресат еще не был личным — выбираем первого доступного человека из списка
+                if (!this.activeMessageScope || !this.activeMessageScope.startsWith('direct_')) {
+                    const opt = Array.from(scopeSelect.options).find(o => o.value.startsWith('direct_'));
+                    if (opt) { scopeSelect.value = opt.value; this.activeMessageScope = opt.value; }
+                }
+            }
+        }
+
+        if (this.activeChatId) {
+            this.refreshCurrentChatMessages(this.activeChatId, this.chatSessionToken, true);
+        }
+    }
+
+    // 🔥 ПЕРЕКЛЮЧЕНИЕ АДРЕСАТА (ПИШУ:)
+    setRecipientScope(scopeValue, teamId = null) {
+        if (scopeValue === 'search_member') {
+            const currentChat = this.chats.find(c => c.id === this.activeChatId);
+            const cTeamId = teamId || (currentChat ? (Array.isArray(currentChat.team_id) ? currentChat.team_id[0] : currentChat.team_id) : null);
+            
+            const scopeSelect = document.getElementById('recipientScopeSelect');
+            if (scopeSelect && this.activeMessageScope) scopeSelect.value = this.activeMessageScope;
+
+            this.openTeamMemberSearchModal(cTeamId);
+            return;
+        }
+
+        this.activeMessageScope = scopeValue;
+        const feedSelect = document.getElementById('feedFilterSelect');
+
+        if (scopeValue.startsWith('direct_')) {
+            this.activeFeedFilter = 'direct';
+            if (feedSelect) feedSelect.value = 'direct';
+        } else if (scopeValue === 'channel') {
+            this.activeFeedFilter = 'public';
+            if (feedSelect) feedSelect.value = 'public';
+        } else if (scopeValue === 'team') {
+            this.activeFeedFilter = 'team';
+            if (feedSelect) feedSelect.value = 'team';
+        }
+
+        if (this.activeChatId) {
+            this.refreshCurrentChatMessages(this.activeChatId, this.chatSessionToken, true);
+        }
+    }
+		async loadMoreMessages() {
             this.isLoadingMessages = true; this.messagePage++; const loader = document.getElementById('chatLoader'); if(loader) loader.style.display = 'block';
             try {
                 const res = await pb.collection('messages').getList(this.messagePage, 50, { filter: `chat_id="${this.activeChatId}"`, sort: '-created', expand: 'reply_to,forwarded_from', requestKey: null });
@@ -12705,26 +14456,54 @@ async joinRadar(chatId, event) {
         }
 
         async softRefreshMessages() {
-            // 🔥 Запрещаем фоновое обновление чатов, если открыт Драфт, Календарь или Лента
-            if (!this.activeChatId || this.activeChatId === 'draft' || this.activeChatId === 'calendar' || this.activeChatId === 'newsfeed') return; 
-            const container = document.getElementById('messagesContainer'); 
-            
-            // 🔥 УМНЫЙ СКРОЛЛ: Проверяем, находимся ли мы в самом низу ДО удаления сообщений
-            const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-            const currentScroll = container.scrollTop;
-            
-            const res = await pb.collection('messages').getList(1, this.messagePage * 50, { filter: `chat_id="${this.activeChatId}"`, sort: '-created', expand: 'reply_to,forwarded_from', requestKey: null });
-            
-            container.innerHTML = ''; 
-            res.items.reverse().forEach(m => { try { this.appendMessageHTML(m, container, false); } catch (err) { } }); 
-            
-            // 🔥 Возвращаем скролл без дерганий
-            if (isAtBottom) {
-                this.scrollToBottom();
-            } else {
-                container.scrollTop = currentScroll;
-            }
+        if (!this.activeChatId || this.activeChatId === 'draft' || this.activeChatId === 'calendar' || this.activeChatId === 'newsfeed') return; 
+        const container = document.getElementById('messagesContainer'); 
+        if (!container) return;
+
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+        const currentScroll = container.scrollTop;
+
+        const filterQuery = this.getAggregatedChatFilterQuery(this.activeChatId);
+
+        // Если выбран человек, с которым еще нет чата — держим пустую заглушку
+        if (filterQuery === 'chat_id="none"') {
+            container.innerHTML = `
+                <div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-size:11px; font-family:'Unbounded'; border: 1px dashed var(--border); margin: 20px; border-radius: 12px;">
+                    НЕТ СООБЩЕНИЙ В ЭТОЙ ВЕТКЕ
+                    <div style="font-family:'Manrope'; font-size:11px; opacity:0.7; margin-top:6px; text-transform:none;">
+                        Напишите первое сообщение внизу!
+                    </div>
+                </div>`;
+            return;
         }
+
+        const res = await pb.collection('messages').getList(1, this.messagePage * 50, { 
+            filter: filterQuery, 
+            sort: '-created', 
+            expand: 'reply_to,forwarded_from', 
+            requestKey: null 
+        });
+
+        if (res.items.length === 0) {
+            container.innerHTML = `
+                <div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-size:11px; font-family:'Unbounded'; border: 1px dashed var(--border); margin: 20px; border-radius: 12px;">
+                    НЕТ СООБЩЕНИЙ В ЭТОЙ ВЕТКЕ
+                    <div style="font-family:'Manrope'; font-size:11px; opacity:0.7; margin-top:6px; text-transform:none;">
+                        Напишите первое сообщение внизу!
+                    </div>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = ''; 
+        res.items.reverse().forEach(m => { try { this.appendMessageHTML(m, container, false); } catch (err) { } }); 
+
+        if (isAtBottom) {
+            this.scrollToBottom();
+        } else {
+            container.scrollTop = currentScroll;
+        }
+    }
 
         async markMessagesAsRead(messages) {
             const unread = messages.filter(m => m.sender_id !== this.currentRider.id && !(m.read_by || []).includes(this.currentRider.id));
@@ -12751,18 +14530,33 @@ async joinRadar(chatId, event) {
         async openMessageMenu(msgId) {
             try {
                 const msg = await pb.collection('messages').getOne(msgId, { requestKey: null }); this.contextMessageObj = msg;
-                const msgSenderIdStr = Array.isArray(msg.sender_id) ? msg.sender_id[0] : msg.sender_id; if (this.ridersMap[msgSenderIdStr]?.email === 'bot@sotka.one') return; 
+                const msgSenderIdStr = Array.isArray(msg.sender_id) ? msg.sender_id[0] : msg.sender_id; 
                 
-                const myRole = this.getUserMaxRole(); const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin']; const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin']; const isMine = msg.sender_id === this.currentRider.id;
+                // 🔥 Определяем, принадлежит ли сообщение боту
+                const isBot = this.ridersMap[msgSenderIdStr]?.email === 'bot@sotka.one';
+                
+                const myRole = this.getUserMaxRole(); 
+                const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin']; 
+                const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin']; 
+                const isMine = msg.sender_id === this.currentRider.id;
+
                 const chat = this.chats.find(c => c.id === this.activeChatId); let isMyP = false;
                 if (chat) { const chatP = chat.peloton_id ? (Array.isArray(chat.peloton_id) ? chat.peloton_id[0] : chat.peloton_id) : null; if (this.pelotonsMap[chatP]?.admin_id === this.userIdMap[this.currentRider.email]) isMyP = true; }
 
                 const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
                 const canDel = isSuper || (isAdmin && isMyP); 
                 const canManage = canDel || (this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain'] && (chat?.type === 'team' || chat?.type === 'team_channel') && myTeams.includes(chat?.team_id)) || (chat?.type === 'private' && chat?.participants[0] === this.currentRider.id);
-                const isAnnounce = msg.is_announcement === true;
 
-                document.getElementById('ctxBtnPin').style.display = canManage ? 'flex' : 'none'; document.getElementById('ctxBtnEdit').style.display = (isMine && !isAnnounce) ? 'flex' : 'none'; document.getElementById('ctxBtnDelete').style.display = ((isMine && !isAnnounce) || (canManage && (!isAnnounce || isSuper))) ? 'flex' : 'none'; document.getElementById('ctxMenuOverlay').style.display = 'flex';
+                // 🔥 Если это сообщение бота и у юзера нет прав на управление - блокируем меню
+                if (isBot && !canManage) return;
+
+                document.getElementById('ctxBtnPin').style.display = canManage ? 'flex' : 'none'; 
+                // 🔥 Разрешаем админам/кэпам редактировать сообщения бота
+                document.getElementById('ctxBtnEdit').style.display = (isMine || (isBot && canManage)) ? 'flex' : 'none'; 
+                // 🔥 Разрешаем удалять
+                document.getElementById('ctxBtnDelete').style.display = (isMine || canManage) ? 'flex' : 'none'; 
+                
+                document.getElementById('ctxMenuOverlay').style.display = 'flex';
             } catch(e) {}
         }
 
@@ -13028,18 +14822,18 @@ async joinRadar(chatId, event) {
         const container = document.getElementById('messagesContainer');
         if (!container) return;
 
-        // 🔥 ФИКС: Проверяем, где мы находимся (Лента Новостей или Публичный Канал)
         const activeChat = this.chats.find(c => c.id === this.activeChatId);
         const isFeedOrChannel = this.activeChatId === 'newsfeed' || (activeChat && activeChat.type === 'team_channel');
 
         if (isFeedOrChannel && container.lastElementChild) {
-            // ДЛЯ НОВОСТЕЙ: Скроллим так, чтобы верхний край последнего поста прилип к верху экрана
-            container.lastElementChild.scrollIntoView({ 
-                behavior: smooth ? 'smooth' : 'auto', 
-                block: 'start' 
+            // 🔥 Точный расчет: отступаем 130px от верха, чтобы заголовок поста встал аккуратно ПОД шторку "ПОДРОБНОСТИ"
+            const targetScroll = Math.max(0, container.lastElementChild.offsetTop - 130);
+            container.scrollTo({
+                top: targetScroll,
+                behavior: smooth ? 'smooth' : 'auto'
             });
         } else {
-            // ДЛЯ ЛИЧНЫХ ЧАТОВ: Классический скролл в самый низ (к полю ввода)
+            // ДЛЯ ЛИЧНЫХ ЧАТОВ: Скролл в самый низ к полю ввода
             container.scrollTo({
                 top: container.scrollHeight,
                 behavior: smooth ? 'smooth' : 'auto'
@@ -13047,8 +14841,71 @@ async joinRadar(chatId, event) {
         }
     }
 
-        async prepareReply(msgId) { this.cancelReplyEdit(); this.replyingToMessageId = msgId; const msg = await pb.collection('messages').getOne(msgId, { requestKey: null }); const senderId = Array.isArray(msg.sender_id) ? msg.sender_id[0] : msg.sender_id; const sender = this.ridersMap[senderId] || {first_name: 'Кто-то'}; document.getElementById('replyEditTitle').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg> Ответ для ${sender.first_name}`; document.getElementById('replyEditText').innerText = msg.text ? msg.text : 'Вложение'; document.getElementById('replyEditBar').style.display = 'flex'; document.getElementById('messageInput').focus(); }
+// 🔥 ПРОКРУТКА К ВЕРХНЕЙ ГРАНИЦЕ ПОСЛЕДНЕГО ПОСТА (ДЛЯ КАНАЛОВ)
+    scrollToLastPostTop() {
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+
+        const rows = container.querySelectorAll('.message-row');
+        if (rows.length > 0) {
+            const lastRow = rows[rows.length - 1];
+            // Ставим скролл ровно на верхний край последнего поста с небольшим отступом
+            container.scrollTop = Math.max(0, lastRow.offsetTop - 10);
+        } else {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+	
+async prepareReply(msgId) { 
+        this.cancelReplyEdit(); 
+        this.replyingToMessageId = msgId; 
+        const msg = await pb.collection('messages').getOne(msgId, { requestKey: null }); 
         
+        const senderId = Array.isArray(msg.sender_id) ? msg.sender_id[0] : msg.sender_id; 
+        const sender = this.ridersMap[senderId] || {first_name: 'Кто-то', last_name: ''}; 
+
+        const activeChat = this.chats.find(c => c.id === this.activeChatId);
+        if (activeChat && activeChat.type === 'team_channel') {
+            const msgChatId = Array.isArray(msg.chat_id) ? msg.chat_id[0] : msg.chat_id;
+            let targetScope = 'channel';
+
+            if (msgChatId === activeChat.id) {
+                targetScope = 'channel';
+            } else {
+                const msgChat = this.chats.find(c => c.id === msgChatId);
+                if (msgChat && msgChat.type === 'team') {
+                    targetScope = 'team';
+                } else if (msgChat && msgChat.type === 'direct') {
+                    const targetRiderId = senderId === this.currentRider.id 
+                        ? (msgChat.participants || []).map(p => this.getCleanId(p)).find(id => id !== this.currentRider.id)
+                        : senderId;
+                    if (targetRiderId) targetScope = `direct_${targetRiderId}`;
+                }
+            }
+
+            const scopeSelect = document.getElementById('recipientScopeSelect');
+            if (scopeSelect) {
+                let hasOption = Array.from(scopeSelect.options).some(opt => opt.value === targetScope);
+                if (!hasOption && targetScope.startsWith('direct_')) {
+                    const targetRiderId = targetScope.replace('direct_', '');
+                    const rObj = this.ridersMap[targetRiderId] || sender;
+                    const rName = `${rObj.first_name || ''} ${rObj.last_name || ''}`.trim();
+                    const newOpt = document.createElement('option');
+                    newOpt.value = targetScope;
+                    newOpt.innerText = `👤 Лично: ${rName}`;
+                    scopeSelect.appendChild(newOpt);
+                }
+
+                scopeSelect.value = targetScope;
+                this.setRecipientScope(targetScope);
+            }
+        }
+
+        document.getElementById('replyEditTitle').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg> Ответ для ${sender.first_name}`; 
+        document.getElementById('replyEditText').innerText = msg.text ? msg.text : 'Вложение'; 
+        document.getElementById('replyEditBar').style.display = 'flex'; 
+        document.getElementById('messageInput').focus(); 
+    }        
         cancelReplyEdit() { this.editingMessageId = null; this.replyingToMessageId = null; this.fileToDelete = false; document.getElementById('replyEditBar').style.display = 'none'; const input = document.getElementById('messageInput'); input.value = ''; input.style.height = '46px'; document.getElementById('vIcon').style.display = 'block'; document.getElementById('checkIcon').style.display = 'none'; }
         
         handleFileSelect(inputElement) { const file = inputElement.files[0]; const previewBox = document.getElementById('filePreviewBox'); if (file) { document.getElementById('filePreviewName').innerText = file.name; previewBox.style.display = 'flex'; } else { this.removeFile(); } }
@@ -13077,88 +14934,136 @@ async joinRadar(chatId, event) {
         }
 
         async sendMessage() {
-            const input = document.getElementById('messageInput'); const fileInput = document.getElementById('fileInput'); const btnIcon = document.getElementById('sendBtnIcon'); const vIcon = document.getElementById('vIcon'); const compressingText = document.getElementById('filePreviewCompressing');
-            let text = input.value.trim(); let file = fileInput.files[0];
-            if ((!text && !file && !this.fileToDelete) || !this.activeChatId) return;
-            
-            if (this.editingMessageId) { 
-                btnIcon.style.pointerEvents = 'none'; if (vIcon) vIcon.classList.add('v-fly'); const minAnim = new Promise(res => setTimeout(res, 800));
-                try {
-                    const updateData = new FormData();
-                    updateData.append('text', text);
-                    if (this.fileToDelete) { updateData.append('file', ''); }
-                    if (file) {
-                        if (file.type.startsWith('image/')) { 
-                            if(compressingText) compressingText.style.display = 'inline'; 
-                            file = await this.compressImage(file, 2); 
-                            if(compressingText) compressingText.style.display = 'none'; 
-                        }
-                        updateData.append('file', file);
-                    }
-                    await pb.collection('messages').update(this.editingMessageId, updateData, { requestKey: null }); 
-                    this.cancelReplyEdit(); this.removeFile();
-                } catch(e) { alert("Ошибка сохранения"); } finally { await minAnim; btnIcon.style.pointerEvents = 'auto'; if (vIcon) vIcon.classList.remove('v-fly'); if(compressingText) compressingText.style.display = 'none'; }
-                return; 
-            }
-
-            let isAnnouncement = false;
-            if (text.toLowerCase().startsWith('/news')) {
-                const roles = this.usersMap[this.currentRider.email] || [];
-                if (JSON.stringify(roles).includes('judge') || JSON.stringify(roles).includes('admin') || JSON.stringify(roles).includes('superadmin')) { isAnnouncement = true; text = text.replace(/^\/news\s*/i, '').trim(); if (!text && !file) return alert("Уведомление не может быть пустым."); } else return alert("Команда /news доступна только Судьям!");
-            }
-
-            btnIcon.style.pointerEvents = 'none'; if (vIcon) vIcon.classList.add('v-fly'); const minAnim = new Promise(res => setTimeout(res, 800)); 
+        const input = document.getElementById('messageInput'); const fileInput = document.getElementById('fileInput'); const btnIcon = document.getElementById('sendBtnIcon'); const vIcon = document.getElementById('vIcon'); const compressingText = document.getElementById('filePreviewCompressing');
+        let text = input.value.trim(); let file = fileInput.files[0];
+        if ((!text && !file && !this.fileToDelete) || !this.activeChatId) return;
+        
+        if (this.editingMessageId) { 
+            btnIcon.style.pointerEvents = 'none'; if (vIcon) vIcon.classList.add('v-fly'); const minAnim = new Promise(res => setTimeout(res, 800));
             try {
-                if (file && file.type.startsWith('image/')) { if(compressingText) compressingText.style.display = 'inline'; file = await this.compressImage(file, 2); if(compressingText) compressingText.style.display = 'none'; }
-                const formData = new FormData(); formData.append('chat_id', this.activeChatId); formData.append('sender_id', this.currentRider.id); formData.append('text', text); 
-                if (isAnnouncement) formData.append('is_announcement', true); if (file) formData.append('file', file); if (this.replyingToMessageId) formData.append('reply_to', this.replyingToMessageId);
-                
-                // 1. Сохраняем сообщение в базу
-                await pb.collection('messages').create(formData, { requestKey: null }); 
-                
-                // 🔥 УМНАЯ СИНХРОНИЗАЦИЯ ПЕЛОТОНА (SELF-HEALING)
-                let chatUpdatePayload = { updated: new Date().toISOString() };
-                const currentChatForSync = this.chats.find(c => c.id === this.activeChatId);
-                
-                if (currentChatForSync && (currentChatForSync.type === 'team_channel' || currentChatForSync.type === 'team') && currentChatForSync.team_id) {
-                    const tId = Array.isArray(currentChatForSync.team_id) ? currentChatForSync.team_id[0] : currentChatForSync.team_id;
-                    const actualTeam = this.teamsMap[tId];
-                    
-                    if (actualTeam) {
-                        // 🔥 Заменили "" на null, чтобы PocketBase не ругался на пустые связи
-                        let teamPeloton = actualTeam.peloton_id ? (Array.isArray(actualTeam.peloton_id) ? actualTeam.peloton_id[0] : actualTeam.peloton_id) : null;
-                        let chatPeloton = currentChatForSync.peloton_id ? (Array.isArray(currentChatForSync.peloton_id) ? currentChatForSync.peloton_id[0] : currentChatForSync.peloton_id) : null;
-                        
-                        // Если пелотон команды не совпадает с пелотоном канала — чиним!
-                        if (teamPeloton !== chatPeloton) {
-                            chatUpdatePayload.peloton_id = teamPeloton;
-                            currentChatForSync.peloton_id = teamPeloton; // Локальное обновление для скорости
-                            console.log("🔄 Канал синхронизирован: привязан к пелотону", teamPeloton);
-                        }
+                const updateData = new FormData();
+                updateData.append('text', text);
+                if (this.fileToDelete) { updateData.append('file', ''); }
+                if (file) {
+                    if (file.type.startsWith('image/')) { 
+                        if(compressingText) compressingText.style.display = 'inline'; 
+                        file = await this.compressImage(file, 2); 
+                        if(compressingText) compressingText.style.display = 'none'; 
                     }
+                    updateData.append('file', file);
                 }
-
-                // 2. Обновляем время чата (и заодно исправляем пелотон, если он "отвалился")
-                await pb.collection('chats').update(this.activeChatId, chatUpdatePayload, { requestKey: null });
-
-                // 🔥 НОВОЕ: ОТПРАВЛЯЕМ PUSH-УВЕДОМЛЕНИЕ ДЛЯ ЛИЧНЫХ СООБЩЕНИЙ
-                const currentChat = this.chats.find(c => c.id === this.activeChatId);
-                if (currentChat && currentChat.type === 'direct') {
-                    const otherRiderId = currentChat.participants.find(id => id !== this.currentRider.id);
-                    if (otherRiderId) {
-                        const pushTitle = `${this.currentRider.first_name} ${this.currentRider.last_name}`;
-                        const pushText = text ? text : '📎 Отправил(а) вложение';
-                        const pushUrl = `https://vilka.sotka.one/?chat=${this.activeChatId}`;
-                        
-                        this.sendPushNotification(pushTitle, pushText, [otherRiderId], pushUrl);
-                    }
-                }
-
-                // 3. Очищаем интерфейс
-                input.value = ''; input.style.height = '46px'; this.clearDraft(this.activeChatId); this.removeFile(); this.cancelReplyEdit(); input.focus();
-            } catch(e) { alert("Ошибка отправки."); } finally { await minAnim; btnIcon.style.pointerEvents = 'auto'; if (vIcon) vIcon.classList.remove('v-fly'); if(compressingText) compressingText.style.display = 'none'; }
+                await pb.collection('messages').update(this.editingMessageId, updateData, { requestKey: null }); 
+                this.cancelReplyEdit(); this.removeFile();
+            } catch(e) { alert("Ошибка сохранения"); } finally { await minAnim; btnIcon.style.pointerEvents = 'auto'; if (vIcon) vIcon.classList.remove('v-fly'); if(compressingText) compressingText.style.display = 'none'; }
+            return; 
         }
 
+        let isAnnouncement = false;
+        if (text.toLowerCase().startsWith('/news')) {
+            const roles = this.usersMap[this.currentRider.email] || [];
+            if (JSON.stringify(roles).includes('judge') || JSON.stringify(roles).includes('admin') || JSON.stringify(roles).includes('superadmin')) { isAnnouncement = true; text = text.replace(/^\/news\s*/i, '').trim(); if (!text && !file) return alert("Уведомление не может быть пустым."); } else return alert("Команда /news доступна только Судьям!");
+        }
+
+        btnIcon.style.pointerEvents = 'none'; if (vIcon) vIcon.classList.add('v-fly'); const minAnim = new Promise(res => setTimeout(res, 800)); 
+        try {
+            if (file && file.type.startsWith('image/')) { if(compressingText) compressingText.style.display = 'inline'; file = await this.compressImage(file, 2); if(compressingText) compressingText.style.display = 'none'; }
+            
+            // ==========================================
+            // 🔥 УМНЫЙ РОУТИНГ АДРЕСАТА ДЛЯ КОМАНДНОГО КАНАЛА
+            // ==========================================
+            let targetChatId = this.activeChatId;
+            const currentChat = this.chats.find(c => c.id === this.activeChatId);
+
+            if (currentChat && currentChat.type === 'team_channel' && this.activeMessageScope) {
+                if (this.activeMessageScope === 'channel') {
+                    // Публичная новость -> уходит прямо в текущий командный канал
+                    targetChatId = this.activeChatId;
+                } else if (this.activeMessageScope === 'team') {
+                    // Товарищам по команде -> ищем внутренний скрытый чат команды
+                    const tId = Array.isArray(currentChat.team_id) ? currentChat.team_id[0] : currentChat.team_id;
+                    const teamChat = this.chats.find(c => c.type === 'team' && (Array.isArray(c.team_id) ? c.team_id.includes(tId) : c.team_id === tId));
+                    if (teamChat) targetChatId = teamChat.id;
+                } else if (this.activeMessageScope.startsWith('direct_')) {
+                    // Лично Капитану -> ищем или создаем личный диалог
+                    const targetUserId = this.activeMessageScope.replace('direct_', '');
+                    let directChat = this.chats.find(c => c.type === 'direct' && c.participants && c.participants.includes(targetUserId) && c.participants.includes(this.currentRider.id));
+                    
+                    if (!directChat) {
+                        try {
+                            directChat = await pb.collection('chats').create({
+                                type: 'direct',
+                                participants: [this.currentRider.id, targetUserId],
+                                captain: this.currentRider.id
+                            }, { requestKey: null });
+                            this.chats.push(directChat);
+                            this.chatsMap[directChat.id] = directChat;
+                        } catch(err) {
+                            console.error("Ошибка создания личного чата с капитаном:", err);
+                        }
+                    }
+                    if (directChat) targetChatId = directChat.id;
+                }
+            }
+
+            const formData = new FormData(); 
+            formData.append('chat_id', targetChatId); 
+            formData.append('sender_id', this.currentRider.id); 
+            formData.append('text', text); 
+            if (isAnnouncement) formData.append('is_announcement', true); 
+            if (file) formData.append('file', file); 
+            if (this.replyingToMessageId) formData.append('reply_to', this.replyingToMessageId);
+            
+            // 1. Сохраняем сообщение в целевой чат
+            await pb.collection('messages').create(formData, { requestKey: null }); 
+            
+            // 🔥 УМНАЯ СИНХРОНИЗАЦИЯ ПЕЛОТОНА (SELF-HEALING)
+            let chatUpdatePayload = { updated: new Date().toISOString() };
+            const currentChatForSync = this.chats.find(c => c.id === targetChatId);
+            
+            if (currentChatForSync && (currentChatForSync.type === 'team_channel' || currentChatForSync.type === 'team') && currentChatForSync.team_id) {
+                const tId = Array.isArray(currentChatForSync.team_id) ? currentChatForSync.team_id[0] : currentChatForSync.team_id;
+                const actualTeam = this.teamsMap[tId];
+                
+                if (actualTeam) {
+                    let teamPeloton = actualTeam.peloton_id ? (Array.isArray(actualTeam.peloton_id) ? actualTeam.peloton_id[0] : actualTeam.peloton_id) : null;
+                    let chatPeloton = currentChatForSync.peloton_id ? (Array.isArray(currentChatForSync.peloton_id) ? currentChatForSync.peloton_id[0] : currentChatForSync.peloton_id) : null;
+                    
+                    if (teamPeloton !== chatPeloton) {
+                        chatUpdatePayload.peloton_id = teamPeloton;
+                        currentChatForSync.peloton_id = teamPeloton;
+                        console.log("🔄 Канал синхронизирован: привязан к пелотону", teamPeloton);
+                    }
+                }
+            }
+
+            // 2. Обновляем время целевого чата
+            await pb.collection('chats').update(targetChatId, chatUpdatePayload, { requestKey: null });
+
+            // Если отправляли в личку или в команду из агрегатора — обновим время и у самого канала
+            if (targetChatId !== this.activeChatId) {
+                try {
+                    await pb.collection('chats').update(this.activeChatId, { updated: new Date().toISOString() }, { requestKey: null });
+                } catch(e) {}
+            }
+
+            // 🔥 PUSH-УВЕДОМЛЕНИЕ ДЛЯ ЛИЧНЫХ СООБЩЕНИЙ
+            const currentChatForPush = this.chats.find(c => c.id === targetChatId);
+            if (currentChatForPush && currentChatForPush.type === 'direct') {
+                const otherRiderId = currentChatForPush.participants.find(id => id !== this.currentRider.id);
+                if (otherRiderId) {
+                    const pushTitle = `${this.currentRider.first_name} ${this.currentRider.last_name}`;
+                    const pushText = text ? text : '📎 Отправил(а) вложение';
+                    const pushUrl = `https://vilka.sotka.one/?chat=${targetChatId}`;
+                    
+                    this.sendPushNotification(pushTitle, pushText, [otherRiderId], pushUrl);
+                }
+            }
+
+            // 3. Очищаем интерфейс
+            input.value = ''; input.style.height = '46px'; this.clearDraft(this.activeChatId); this.removeFile(); this.cancelReplyEdit(); input.focus();
+			await this.refreshCurrentChatMessages(this.activeChatId, this.chatSessionToken, false);
+        } catch(e) { alert("Ошибка отправки."); } finally { await minAnim; btnIcon.style.pointerEvents = 'auto'; if (vIcon) vIcon.classList.remove('v-fly'); if(compressingText) compressingText.style.display = 'none'; }
+    }
         async initiateTransfer(riderId, oldTeamId) {
             const targetRider = this.ridersMap[riderId];
             if (!targetRider) return;
@@ -13961,9 +15866,11 @@ async syncRaceButtonsState() {
             regBtns.forEach(b => {
                 const raceId = b.className.match(/sync-btn-([a-zA-Z0-9_]+)/)[1];
                 const race = racesList.find(r => r.id === raceId);
-                if (!race) return; // Защита от ошибок
+                if (!race) return;
 
                 const wave = b.getAttribute('data-wave') || null;
+                // 🔥 ПРОВЕРЯЕМ, НАХОДИТСЯ ЛИ КНОПКА В ШАПКЕ ЧАТА (КОМПАКТНЫЙ РЕЖИМ)
+                const isCompact = b.classList.contains('compact-action-btn'); 
                 
                 let myReg = null;
                 if (wave) {
@@ -13972,54 +15879,71 @@ async syncRaceButtonsState() {
                     myReg = allRosters.find(r => r.race_id === raceId && r.rider_id === this.currentRider.id && r.status !== 'canceled');
                 }
 
-                // 🔥 ФИКС: Жестко страхуем переменную от undefined
                 let squadMax = parseInt(race.squad_max);
-if (isNaN(squadMax) || squadMax < 1) squadMax = 1;
-if ((race.format === 'ttt' || race.format === 'relay') && squadMax <= 1) squadMax = 4;
+                if (isNaN(squadMax) || squadMax < 1) squadMax = 1;
+                if ((race.format === 'ttt' || race.format === 'relay') && squadMax <= 1) squadMax = 4;
+                const isTeamRace = race.format === 'ttt' || race.format === 'relay';
 
-const isTeamRace = race.format === 'ttt' || race.format === 'relay';
+                // 🔥 УМНЫЙ ГЕНЕРАТОР СОДЕРЖИМОГО КНОПКИ
+                const setBtnContent = (emoji, text, iconColor = 'currentColor') => {
+                    if (isCompact) {
+                        // Для шапки: ставим белую галочку и ТЕКСТ. УБРАЛИ класс-невидимку!
+                        let iconHtml = `<span class="btn-icon" style="margin-right:0; flex-shrink:0; font-size:14px;">${emoji}</span>`;
+                        if (emoji === '⚡' || emoji === '✅' || emoji === '💳' || emoji === '🤝') {
+                            iconHtml = `<svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0; flex-shrink:0;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                        }
+                        
+                        // Жестко переопределяем инлайн-стили, чтобы ширина всегда адаптировалась под текст
+                        b.style.setProperty('width', 'auto', 'important');
+                        b.style.setProperty('padding', '0 12px', 'important');
+                        b.style.setProperty('border-radius', '16px', 'important');
+                        
+                        b.innerHTML = `${iconHtml} <span style="margin-left:4px; font-size:9px; color:inherit; white-space:nowrap;">${text}</span>`;
+                    } else {
+                        // Для списка гонок (слева): оставляем обычный текст
+                        b.innerHTML = `${emoji} ${text}`;
+                    }
+                };
 
-                // 🔥 ПРИОРИТЕТ 1: Я УЖЕ В СТАРТ-ЛИСТЕ
+                // ПРИОРИТЕТ 1: Я УЖЕ В СТАРТ-ЛИСТЕ
                 if (myReg) {
-                    // 🔥 ЕСЛИ Я В ЭКИПАЖЕ, И ОН НЕ ПОЛОН - КНОПКА ПРИГЛАШЕНИЯ
                     if (myReg.squad_id && squadMax > 1) {
                         const currentSquadCount = allRosters.filter(r => r.squad_id === myReg.squad_id && r.status !== 'canceled').length;
                         if (currentSquadCount < squadMax) {
-                            b.innerHTML = `🔗 ПРИГЛАСИТЬ (${currentSquadCount}/${squadMax})`;
+                            setBtnContent('🔗', `ПРИГЛАСИТЬ (${currentSquadCount}/${squadMax})`, '#ffffff');
                             b.style.setProperty('background', '#a855f7', 'important');
                             b.style.setProperty('color', '#ffffff', 'important');
                             b.style.setProperty('border', 'none', 'important');
                             b.style.setProperty('box-shadow', '0 4px 15px rgba(168,85,247,0.3)', 'important');
                             b.style.pointerEvents = 'auto';
-                            b.style.display = 'block';
+                            b.style.display = isCompact ? 'inline-flex' : 'block';
                             return; 
                         }
                     }
 
-                    let statusText = '';
                     if (myReg.is_paid) {
-                        statusText = wave ? `✅ ОПЛАЧЕНО: ${wave.toUpperCase()}` : '✅ УЧАСТИЕ ПОДТВЕРЖДЕНО';
+                        setBtnContent('✅', wave ? `ОПЛАЧЕНО: ${wave.toUpperCase()}` : 'В СТАРТ-ЛИСТЕ', 'currentColor');
                         b.style.setProperty('background', 'var(--bg-surface-hover)', 'important');
                         b.style.setProperty('color', 'var(--text-main)', 'important');
                         b.style.setProperty('border', '1px solid var(--border)', 'important');
                         b.style.setProperty('box-shadow', 'none', 'important');
                     } else {
                         let customLabel = b.getAttribute('data-label');
-                        statusText = customLabel && customLabel.includes(':') ? `💳 ОПЛАТИТЬ: ` + customLabel.split(':')[1].trim() : (wave ? `💳 ОПЛАТИТЬ: ${wave.toUpperCase()}` : '💳 ОПЛАТИТЬ / ❌ ОТМЕНИТЬ');
+                        let text = customLabel && customLabel.includes(':') ? customLabel.split(':')[1].trim() : (wave ? `ОПЛАТИТЬ: ${wave.toUpperCase()}` : 'ОПЛАТИТЬ');
+                        setBtnContent('💳', text, '#ffffff'); // Иконка белая на желтом фоне!
                         b.style.setProperty('background', 'var(--primary)', 'important');
                         b.style.setProperty('color', '#000000', 'important');
                         b.style.setProperty('border', 'none', 'important');
                         b.style.setProperty('box-shadow', '0 4px 15px rgba(255, 193, 7, 0.3)', 'important');
                     }
-                    b.innerHTML = statusText;
                     b.style.pointerEvents = 'auto'; 
-                    b.style.display = 'block';
+                    b.style.display = isCompact ? 'inline-flex' : 'block';
                     return; 
                 }
 
-                // 🔥 ПРИОРИТЕТ 2: СТАТУСЫ ГОНКИ (ЗАКРЫТО / SOLD OUT)
+                // ПРИОРИТЕТ 2: СТАТУСЫ ГОНКИ (ЗАКРЫТО / SOLD OUT)
                 if (race.status !== 'Registration') {
-                    b.innerHTML = '⛔ РЕГИСТРАЦИЯ ЗАКРЫТА';
+                    setBtnContent('⛔', 'РЕГИСТРАЦИЯ ЗАКРЫТА');
                     b.style.setProperty('background', 'var(--bg-surface-hover)', 'important');
                     b.style.setProperty('color', 'var(--text-muted)', 'important');
                     b.style.setProperty('border', '1px solid var(--border)', 'important');
@@ -14033,14 +15957,14 @@ const isTeamRace = race.format === 'ttt' || race.format === 'relay';
 
                 if (isFull) {
                     if (isAdminOrJudge || race.creator_id === this.currentRider.id) {
-                        b.innerHTML = '⚠️ ДОЗАЯВИТЬ (SOLD OUT)';
+                        setBtnContent('⚠️', 'ДОЗАЯВИТЬ (SOLD OUT)', '#ffffff');
                         b.style.setProperty('background', 'var(--primary)', 'important');
                         b.style.setProperty('color', '#000000', 'important');
                         b.style.setProperty('border', 'none', 'important');
                         b.style.setProperty('box-shadow', '0 4px 15px rgba(255, 193, 7, 0.3)', 'important');
                         b.style.pointerEvents = 'auto';
                     } else {
-                        b.innerHTML = '⛔ МЕСТ НЕТ (SOLD OUT)';
+                        setBtnContent('⛔', 'МЕСТ НЕТ (SOLD OUT)');
                         b.style.setProperty('background', 'var(--bg-surface-hover)', 'important');
                         b.style.setProperty('color', 'var(--text-muted)', 'important');
                         b.style.setProperty('border', '1px solid var(--border)', 'important');
@@ -14050,22 +15974,27 @@ const isTeamRace = race.format === 'ttt' || race.format === 'relay';
                     return;
                 }
 
-                // 🔥 ПРИОРИТЕТ 3: НОВАЯ ЗАЯВКА
-                let label = b.getAttribute('data-label') || '⚡️ ЗАЯВИТЬСЯ';
-                if (wave && b.getAttribute('data-custom-name')) label = b.getAttribute('data-custom-name');
+                // ПРИОРИТЕТ 3: НОВАЯ ЗАЯВКА
+                let label = b.getAttribute('data-label') || 'ЗАЯВИТЬСЯ';
+                label = label.replace('⚡️ ', '').replace('⚡ ', ''); // Очищаем от старых эмодзи
+                if (wave && b.getAttribute('data-custom-name')) label = b.getAttribute('data-custom-name').replace('🏁 ', '');
                 
                 const pendingSquadRace = sessionStorage.getItem('pending_squad_race');
                 const pendingSquadName = sessionStorage.getItem('pending_squad_name');
                 
+                let emoji = '⚡';
+                let iconColor = '#ffffff';
+
                 if (isTeamRace && !myReg && race.status === 'Registration') {
                     if (pendingSquadRace === raceId) {
-                        // Меняем кнопку на фиолетовую, если поймали инвайт
-                        label = `🤝 ВСТУПИТЬ: ${this.escapeHTML(pendingSquadName).toUpperCase()}`;
+                        label = `ВСТУПИТЬ: ${this.escapeHTML(pendingSquadName).toUpperCase()}`;
+                        emoji = '🤝';
                         b.style.setProperty('background', '#a855f7', 'important');
                         b.style.setProperty('color', '#ffffff', 'important');
                         b.style.setProperty('box-shadow', '0 4px 15px rgba(168,85,247,0.3)', 'important');
                     } else {
                         label = `СОБРАТЬ ЭКИПАЖ`;
+                        emoji = '';
                         b.style.setProperty('background', 'var(--primary)', 'important');
                         b.style.setProperty('color', '#000000', 'important');
                         b.style.setProperty('box-shadow', '0 4px 15px rgba(255, 193, 7, 0.3)', 'important');
@@ -14076,17 +16005,16 @@ const isTeamRace = race.format === 'ttt' || race.format === 'relay';
                     b.style.setProperty('box-shadow', '0 4px 15px rgba(255, 193, 7, 0.3)', 'important');
                 }
 
-                b.innerHTML = label;
+                setBtnContent(emoji, label, iconColor);
                 b.style.pointerEvents = 'auto';
                 b.style.opacity = '1';
-                b.style.display = 'block';
+                b.style.display = isCompact ? 'inline-flex' : 'block';
                 b.style.setProperty('border', 'none', 'important');
             });
         } catch (e) {
             console.error("Ошибка синхронизации кнопок:", e);
         }
     }
-	
 async registerForRace(raceId, btn, event, wave = null) {
         event.stopPropagation(); 
         if (!this.currentRider) return;
@@ -15697,6 +17625,98 @@ selectPelotonFromDropdown(pelotonId) {
             alert("Ошибка при создании экипажа.");
             btn.innerText = 'ЗАЯВИТЬ ЭКИПАЖ';
             btn.disabled = false;
+        }
+    }
+	// 🔥 МОДАЛЬНОЕ ОКНО БЫСТРОГО ПОИСКА УЧАСТНИКА ДЛЯ ЛИЧКИ
+    openTeamMemberSearchModal(teamId) {
+        let modal = document.getElementById('teamMemberPickerModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'teamMemberPickerModal';
+            modal.className = 'modal-overlay';
+            modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10000000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px);';
+            document.body.appendChild(modal);
+        }
+
+        this.activePickerTeamId = teamId;
+
+        modal.innerHTML = `
+            <div class="modal-box" style="max-width: 440px; width: 92vw; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); font-family: 'Manrope', sans-serif; box-sizing: border-box;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="font-family: 'Unbounded'; font-size: 13px; font-weight: 800; color: var(--text-main);">
+                        👤 ВЫБОР АДРЕСАТА
+                    </div>
+                    <button onclick="document.getElementById('teamMemberPickerModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer;">&times;</button>
+                </div>
+                <input type="text" id="pickerMemberSearchInput" class="auth-input" placeholder="🔍 Введите имя или фамилию..." style="width:100%; padding: 12px; font-size: 13px; box-sizing:border-box; margin-bottom: 12px;" oninput="window.app.renderTeamMemberPickerList(this.value)">
+                <div id="pickerMemberList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+        this.renderTeamMemberPickerList('');
+
+        setTimeout(() => {
+            const inp = document.getElementById('pickerMemberSearchInput');
+            if (inp) inp.focus();
+        }, 100);
+    }
+
+    renderTeamMemberPickerList(query = '') {
+        const listContainer = document.getElementById('pickerMemberList');
+        if (!listContainer) return;
+
+        const q = query.toLowerCase().trim();
+        const teamId = this.activePickerTeamId;
+
+        let members = Object.values(this.ridersMap).filter(r => {
+            if (r.id === this.currentRider?.id || r.email === 'bot@sotka.one' || (r.email && r.email.startsWith('guest_'))) return false;
+            if (!teamId) return true;
+            const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
+            return rTeams.includes(teamId);
+        });
+
+        if (q) {
+            members = members.filter(r => `${r.first_name || ''} ${r.last_name || ''}`.toLowerCase().includes(q) || `${r.last_name || ''} ${r.first_name || ''}`.toLowerCase().includes(q));
+        }
+
+        members.sort((a,b) => (a.last_name || '').localeCompare(b.last_name || ''));
+
+        if (members.length === 0) {
+            listContainer.innerHTML = `<div style="text-align:center; padding:20px; font-size:11px; color:var(--text-muted); font-family:'Unbounded';">НИКТО НЕ НАЙДЕН</div>`;
+            return;
+        }
+
+        let html = '';
+        members.slice(0, 30).forEach(m => {
+            const name = `${m.first_name || ''} ${m.last_name || ''}`.trim();
+            html += `
+                <div onclick="window.app.selectMemberFromPicker('${m.id}', '${this.escapeHTML(name)}')" style="display:flex; justify-content:space-between; align-items:center; padding: 10px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 8px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <span style="font-weight:700; font-size:13px; color:var(--text-main);">${this.escapeHTML(name)}</span>
+                    <span style="font-size:10px; color:var(--primary); font-family:'Unbounded'; font-weight:800;">НАПИСАТЬ ➔</span>
+                </div>
+            `;
+        });
+        listContainer.innerHTML = html;
+    }
+
+    selectMemberFromPicker(riderId, riderName) {
+        document.getElementById('teamMemberPickerModal').style.display = 'none';
+
+        const scopeSelect = document.getElementById('recipientScopeSelect');
+        const targetScope = `direct_${riderId}`;
+
+        if (scopeSelect) {
+            let hasOption = Array.from(scopeSelect.options).some(opt => opt.value === targetScope);
+            if (!hasOption) {
+                const newOpt = document.createElement('option');
+                newOpt.value = targetScope;
+                newOpt.innerText = `👤 Лично: ${riderName}`;
+                scopeSelect.appendChild(newOpt);
+            }
+
+            scopeSelect.value = targetScope;
+            this.setRecipientScope(targetScope);
         }
     }
 	}
