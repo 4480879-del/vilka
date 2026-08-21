@@ -1645,6 +1645,14 @@ const p = { id: r.id, name: r.first_name, surname: r.last_name, year: r.yob, gen
                 { id: 'team', name: 'КОМАНДНЫЕ' },
                 { id: 'archive', name: 'РЕЗУЛЬТАТЫ' }
             ];
+			// 🔥 ВКЛАДКА МОДЕРАЦИИ ДЛЯ ОРГАНИЗАТОРА
+            if (isAdmin) {
+                const pendingCount = this.dataCalendar.filter(r => r.verification_status === 'pending').length;
+                filters.push({ 
+                    id: 'moderation', 
+                    name: `МОДЕРАЦИЯ ${pendingCount > 0 ? `(${pendingCount})` : ''}` 
+                });
+            }
 
             filters.forEach(f => {
                 const isActive = this.calendarFilter === f.id;
@@ -1674,21 +1682,34 @@ const p = { id: r.id, name: r.first_name, surname: r.last_name, year: r.yob, gen
             let baseEvents = this.dataCalendar.filter(r => {
                 const isFinished = r.status === 'Finished';
                 
+                if (this.calendarFilter === 'moderation') {
+                    return r.verification_status === 'pending';
+                }
                 if (this.calendarFilter === 'archive') {
                     if (!isFinished) return false;
                     return new Date(r.rawDate || r.date).getFullYear() === this.archiveYear;
                 }
                 if (isFinished) return false;
-                if (this.calendarFilter === 'races') return r.level === 'peloton';
+                if (this.calendarFilter === 'races') return (r.level === 'peloton' && r.verification_status !== 'pending');
                 if (this.calendarFilter === 'team') return r.level === 'team';
                 if (this.calendarFilter === 'fav') {
                     let bookmarks = this.app.currentRider?.bookmarks || [];
                     if (typeof bookmarks === 'string') { try { bookmarks = JSON.parse(bookmarks); } catch(e) { bookmarks = []; } }
                     if (!Array.isArray(bookmarks)) bookmarks = [];
+
+                    // 🔥 Считываем подписки на спортсменов и команды
+                    let subs = this.app.currentRider?.subscriptions || { riders: [], teams: [] };
+                    if (typeof subs === 'string') { try { subs = JSON.parse(subs); } catch(e) { subs = { riders: [], teams: [] }; } }
+                    const subRiders = Array.isArray(subs.riders) ? subs.riders : [];
+                    const subTeams = Array.isArray(subs.teams) ? subs.teams : [];
+
                     const isBookmarked = bookmarks.includes(r.id);
                     const isMyRegistration = r.isRegistered;
                     const isCreator = r.creator_id === this.app.currentRider?.id;
-                    return isBookmarked || isMyRegistration || isCreator;
+                    const isSubscribedCreator = r.creator_id && subRiders.includes(r.creator_id);
+                    const isSubscribedTeam = r.team_id && subTeams.includes(r.team_id);
+
+                    return isBookmarked || isMyRegistration || isCreator || isSubscribedCreator || isSubscribedTeam;
                 }
                 return true;
             });
@@ -1748,6 +1769,11 @@ const p = { id: r.id, name: r.first_name, surname: r.last_name, year: r.yob, gen
                 if (this.formatFilter !== 'all' && r.format !== this.formatFilter) return false;
                 return true;
             });
+			
+			// 🔥 Скрываем чужие тренировки без подписки из общего списка
+                if (this.calendarFilter === 'all' || this.calendarFilter === 'races') {
+                    eventsToRender = eventsToRender.filter(r => this.app.canUserSeeEvent(r));
+                }
 
             if (this.calendarFilter === 'archive') {
                 eventsToRender.sort((a, b) => new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date)); 
@@ -1857,10 +1883,19 @@ if (isManagerOrJudge || isAssignedJudge) {
                         posterBtn = `<button style="${textBtnStyle} background:var(--primary); color:#000; border:none; box-shadow:0 4px 10px rgba(255,193,7,0.3);" title="Создать постер для соцсетей" onclick="window.app.crm.generateRacePoster('${r.id}', '${this.app.currentRider?.id}')">${pText}</button>`;
                     }
 
+                    // 🔥 КНОПКИ БЫСТРОГО РЕШЕНИЯ ДЛЯ АДМИНИСТРАТОРА (МОДЕРАЦИЯ)
+                    let moderationActionsHtml = '';
+                    if (isAdmin && r.verification_status === 'pending') {
+                        moderationActionsHtml = `
+                            <button style="${textBtnStyle} background:rgba(0,230,118,0.15); color:var(--success); border:1px solid var(--success);" title="Утвердить старт как официальную гонку Лиги" onclick="window.app.crm.approveRaceAsOfficial('${r.id}')">🏆 УТВЕРДИТЬ КАК ГОНКУ</button>
+                            <button style="${textBtnStyle} background:rgba(59,130,246,0.15); color:var(--info); border:1px solid var(--info);" title="Оставить заезд как тренировку" onclick="window.app.crm.setRaceAsTraining('${r.id}')">🚴 ОСТАВИТЬ ТРЕНИРОВКОЙ</button>
+                        `;
+                    }
+
                     let secondaryHtml = '';
-if (posterBtn || inviteBtn || chatBtn || judgeBtn || manageRosterBtn || startPultBtn || editBtn || deleteBtn) {
-    secondaryHtml = `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">${posterBtn}${inviteBtn}${chatBtn}${judgeBtn}${manageRosterBtn}${startPultBtn}${editBtn}${deleteBtn}</div>`;
-}
+                    if (moderationActionsHtml || posterBtn || inviteBtn || chatBtn || judgeBtn || manageRosterBtn || startPultBtn || editBtn || deleteBtn) {
+                        secondaryHtml = `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">${moderationActionsHtml}${posterBtn}${inviteBtn}${chatBtn}${judgeBtn}${manageRosterBtn}${startPultBtn}${editBtn}${deleteBtn}</div>`;
+                    }
 
                     let bookmarks = this.app.currentRider?.bookmarks || [];
                     if (typeof bookmarks === 'string') { try { bookmarks = JSON.parse(bookmarks); } catch(e) { bookmarks = []; } }
@@ -3708,11 +3743,12 @@ async finalizeRaceProcess(raceId) {
         }
     }
 	
-   async openCreateEventModal(dateStr = null) {
+  async openCreateEventModal(dateStr = null, defaultEventType = null) {
         this.editEventId = null;
+        this.selectedDefaultEventType = defaultEventType;
 
         const titleEl = document.querySelector('#createEventModal h3');
-        if (titleEl) titleEl.innerText = 'КОНСТРУКТОР ГОНКИ';
+        if (titleEl) titleEl.innerText = 'КОНСТРУКТОР СОБЫТИЯ';
         
         // 🔥 Очищаем старые дистанции
         this.activeDistances = []; 
@@ -3724,14 +3760,15 @@ async finalizeRaceProcess(raceId) {
         const roles = this.app.usersMap[this.app.currentRider?.email] || []; 
         const rStr = JSON.stringify(roles); 
         const isAdmin = rStr.includes('superadmin') || rStr.includes('admin');
+        const isCaptain = rStr.includes('captain');
         const amISuper = rStr.includes('superadmin');
 
-        // 🔥 ФИЛЬТР ПЕЛОТОНОВ ДЛЯ ПУБЛИКАЦИИ ГОНКИ
+        // 🔥 ФИЛЬТР ПЕЛОТОНОВ ДЛЯ ПУБЛИКАЦИИ
         const myId = this.app.currentRider?.id;
         const myUserId = pb.authStore.model?.id;
         
         const pelotonsForPublish = Object.values(this.app.pelotonsMap).filter(p => {
-            if (amISuper) return true; // Бог публикует везде
+            if (amISuper || !p.is_private) return true;
             if (p.admin_id) {
                 const adminIds = Array.isArray(p.admin_id) ? p.admin_id : [p.admin_id];
                 if (adminIds.includes(myId) || adminIds.includes(myUserId)) return true;
@@ -3741,17 +3778,23 @@ async finalizeRaceProcess(raceId) {
 
         let pelotonOpts = '<option value="" disabled selected>Выберите лигу...</option>';
         pelotonsForPublish.forEach(p => {
-            // 🔥 ФИКС: Используем this.app.escapeHTML вместо this.escapeHTML
             const safeName = this.app && typeof this.app.escapeHTML === 'function' ? this.app.escapeHTML(p.name) : p.name;
             pelotonOpts += `<option value="${p.id}">${safeName}</option>`;
         });
 
-        // 🔥 ЛОГИКА УРОВНЕЙ СОБЫТИЯ
+        // 🔥 ЛОГИКА УРОВНЕЙ СОБЫТИЯ ПО РОЛЯМ И ВЫБОРУ
         const myTeams = Array.isArray(this.app.currentRider?.team_id) ? this.app.currentRider.team_id : (this.app.currentRider?.team_id ? [this.app.currentRider.team_id] : []);
+        
         let levelOpts = '';
-        if (isAdmin) levelOpts += `<option value="peloton">Официальная Гонка</option>`;
-        if (myTeams.length > 0) levelOpts += `<option value="team">Командная Тренировка</option>`;
-        levelOpts += `<option value="personal">Личный выезд</option>`;
+        if (isAdmin) {
+            levelOpts += `<option value="peloton" ${defaultEventType === 'peloton' ? 'selected' : ''}>🏆 Официальная Гонка Лиги</option>`;
+        }
+        levelOpts += `<option value="community_race" ${defaultEventType === 'community_race' ? 'selected' : ''}>🔥 Народная Гонка (На модерацию)</option>`;
+        
+        if (myTeams.length > 0 || isAdmin || isCaptain) {
+            levelOpts += `<option value="team" ${defaultEventType === 'team' ? 'selected' : ''}>👥 Командная Тренировка</option>`;
+        }
+        levelOpts += `<option value="personal" ${defaultEventType === 'personal' ? 'selected' : ''}>🚴‍♂️ Открытый выезд / Тренировка</option>`;
 
         let defaultDate = '';
         if (dateStr) {
@@ -3764,7 +3807,7 @@ async finalizeRaceProcess(raceId) {
         }
 
         // ==========================================
-        // 🔥 НОВЫЙ ЕДИНЫЙ МАКЕТ КОНСТРУКТОРА (MOBILE-FIRST)
+        // 🔥 ЕДИНЫЙ МАКЕТ КОНСТРУКТОРА
         // ==========================================
         const modalHtml = `
             <div class="modal-box" style="background: var(--bg-surface); width: 95vw; max-width: 700px; height: 90vh; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
@@ -3773,14 +3816,13 @@ async finalizeRaceProcess(raceId) {
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 40px; height: 40px; background: var(--primary); color: #000; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 20px;">⚙️</div>
                         <div>
-                            <h2 style="font-family:'Unbounded'; font-weight:800; font-size:18px; color:var(--text-main); margin:0; text-transform: uppercase;">КОНСТРУКТОР ГОНКИ</h2>
+                            <h2 style="font-family:'Unbounded'; font-weight:800; font-size:18px; color:var(--text-main); margin:0; text-transform: uppercase;">КОНСТРУКТОР СОБЫТИЯ</h2>
                             <div style="font-size: 11px; color: var(--text-muted); font-family: 'Roboto Mono';">Настройка параметров события</div>
                         </div>
                     </div>
                     <button onclick="document.getElementById('createEventModal').style.display='none'" style="background:var(--bg-body); color:var(--text-muted); border:1px solid var(--border); width: 32px; height: 32px; border-radius: 50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; transition:0.2s;">&times;</button>
                 </div>
 
-                <!-- 🔥 ЕДИНАЯ ЛЕНТА ПРОКРУТКИ -->
                 <div style="flex: 1; overflow-y: auto; padding: 25px 20px; background: var(--bg-surface); -webkit-overflow-scrolling: touch;">
                     <div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 25px;">
                         
@@ -3792,7 +3834,6 @@ async finalizeRaceProcess(raceId) {
                             <input type="text" id="evName" class="auth-input" style="width:100%; box-sizing: border-box; margin-bottom:15px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; font-size: 14px; outline:none;" placeholder="Например: Кубок Открытия">
                             <input type="hidden" id="evSlug">
 
-                            <!-- 🔥 Адаптивная сетка (1 колонка на мобилках, 2 на ПК) -->
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
                                 <div>
                                     <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Уровень</label>
@@ -3843,7 +3884,6 @@ async finalizeRaceProcess(raceId) {
                                 </div>
                             </div>
                             
-                            <!-- Сюда скрипт встроит блок добавления кругов и заездов -->
                             <div id="dynamicDistancesContainer"></div>
                         </div>
 
@@ -3886,7 +3926,7 @@ async finalizeRaceProcess(raceId) {
                 </div>
                 
                 <div style="padding: 20px 30px; border-top: 1px solid var(--border); background: var(--bg-surface-hover); flex-shrink: 0; display: flex; justify-content: center;">
-                    <button class="p-btn-black" id="submitEventBtn" style="background:var(--primary); color:#000; border:none; border-radius:12px; padding:18px 20px; width:100%; max-width: 600px; margin:0 auto; display:block; font-weight:800; font-size:14px; font-family:'Unbounded'; cursor:pointer; box-shadow: 0 10px 30px rgba(255, 193, 7, 0.3); transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="window.app.crm.submitEvent()">🚀 ОПУБЛИКОВАТЬ ГОНКУ</button>
+                    <button class="p-btn-black" id="submitEventBtn" style="background:var(--primary); color:#000; border:none; border-radius:12px; padding:18px 20px; width:100%; max-width: 600px; margin:0 auto; display:block; font-weight:800; font-size:14px; font-family:'Unbounded'; cursor:pointer; box-shadow: 0 10px 30px rgba(255, 193, 7, 0.3); transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="window.app.crm.submitEvent()">🚀 ОПУБЛИКОВАТЬ СОБЫТИЕ</button>
                 </div>
 
             </div>
@@ -3897,7 +3937,6 @@ async finalizeRaceProcess(raceId) {
             modalContainer.outerHTML = `<div class="modal-overlay" id="createEventModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.85); z-index: 999999; justify-content: center; align-items: center; backdrop-filter: blur(8px); padding: 10px; box-sizing: border-box;">${modalHtml}</div>`;
         }
 
-        // Заново вызываем отрисовку элементов
         this.initDistancesUI();
         this.initTaxonomyUI();
 
@@ -3912,340 +3951,335 @@ async finalizeRaceProcess(raceId) {
             if(document.getElementById('evAllowedTypes')) document.getElementById('evAllowedTypes').value = 'team,gruppetto';
         }
         
-        document.getElementById('evLevel').value = isAdmin ? 'peloton' : 'personal';
-        this.toggleEventFields(); 
+        // Устанавливаем выбранный в первом окне уровень
+        const levelSelect = document.getElementById('evLevel');
+        if (defaultEventType && Array.from(levelSelect.options).some(o => o.value === defaultEventType)) {
+            levelSelect.value = defaultEventType;
+        } else {
+            levelSelect.value = isAdmin ? 'peloton' : 'personal';
+        }
         
+        this.toggleEventFields(); 
         document.getElementById('createEventModal').style.display = 'flex';
     }
-	
-   async openEditEventModal(raceId) {
-    const race = this.dataCalendar.find(r => r.id === raceId);
-    if (!race) return;
-    this.editEventId = raceId;
-
-    const titleEl = document.querySelector('#createEventModal h3');
-    if (titleEl) titleEl.innerText = 'РЕДАКТИРОВАНИЕ';
-    
-    const submitBtn = document.querySelector('#createEventModal button[onclick*="submitEvent()"]');
-    if (submitBtn) submitBtn.innerText = '💾 СОХРАНИТЬ ИЗМЕНЕНИЯ';
-
-    // 🔥 ЗАПУСКАЕМ ИНТЕРФЕЙСЫ (До загрузки данных!)
-    this.activeDistances = []; 
-    this.initDistancesUI(); 
-    this.initTaxonomyUI();
-
-    // ШАГ 1: БАЗА
-    const nameEl = document.getElementById('evName');
-    if (nameEl) nameEl.value = race.name || '';
-    
-    // 🔥 1. Первичное заполнение алиаса из кэша
-    if (document.getElementById('evSlug')) document.getElementById('evSlug').value = race.slug || '';
-
-    if (document.getElementById('evStatus')) document.getElementById('evStatus').value = race.status || 'Registration';
-    
-    let defaultDate = '';
-    try {
-        const d = new Date(race.rawDate);
-        const offset = d.getTimezoneOffset() * 60000;
-        defaultDate = (new Date(d - offset)).toISOString().slice(0, 16);
-        const dateEl = document.getElementById('evDate');
-        if (dateEl) dateEl.value = defaultDate;
-    } catch(e) {}
-
-    const roles = this.app.usersMap[this.app.currentRider?.email] || []; 
-    const rStr = JSON.stringify(roles); 
-    const isAdmin = rStr.includes('superadmin') || rStr.includes('admin');
-    const amISuper = rStr.includes('superadmin'); // Нужно для фильтра пелотонов ниже
-
-    const myTeams = Array.isArray(this.app.currentRider?.team_id) ? this.app.currentRider.team_id : (this.app.currentRider?.team_id ? [this.app.currentRider.team_id] : []);
-    
-    let levelOpts = '';
-    const levelSelect = document.getElementById('evLevel'); 
-    if (levelSelect) {
-        levelSelect.innerHTML = '';
-        if (isAdmin) levelOpts += `<option value="peloton">Официальная Гонка</option>`;
-        if (myTeams.length > 0) levelOpts += `<option value="team">Командная Тренировка</option>`;
-        levelOpts += `<option value="personal">Личный выезд</option>`;
-        levelSelect.innerHTML = levelOpts;
-        levelSelect.value = race.level || 'personal';
-    } else {
-        if (isAdmin) levelOpts += `<option value="peloton">Официальная Гонка</option>`;
-        if (myTeams.length > 0) levelOpts += `<option value="team">Командная Тренировка</option>`;
-        levelOpts += `<option value="personal">Личный выезд</option>`;
-    }
-
-    // ШАГ 2: МАРШРУТ И ФОРМАТ
-    if (document.getElementById('evSurface')) document.getElementById('evSurface').value = race.surface || 'road';
-
-    let formatVal = race.format || 'mass'; 
-
-    if (document.getElementById('evFormat')) {
-        document.getElementById('evFormat').value = formatVal;
-    }
-
-    // ШАГ 4: ОРГАНИЗАЦИЯ
-    if (document.getElementById('evIsPublic')) document.getElementById('evIsPublic').checked = race.is_public || false; 
-
-    // 🔥 ФИЛЬТР ПЕЛОТОНОВ ДЛЯ ПУБЛИКАЦИИ ГОНКИ
-    const myId = this.app.currentRider?.id;
-    const myUserId = pb.authStore.model?.id;
-
-    const pelotonsForPublish = Object.values(this.app.pelotonsMap).filter(p => {
-        if (amISuper) return true; // Бог публикует везде
-        if (p.admin_id) {
-            const adminIds = Array.isArray(p.admin_id) ? p.admin_id : [p.admin_id];
-            if (adminIds.includes(myId) || adminIds.includes(myUserId)) return true; // Админ только в своих
-        }
-        return false; // В чужие публичные лиги лезть нельзя!
-    });
-
-    let pelotonOpts = '<option value="" disabled selected>Выберите лигу...</option>';
-    pelotonsForPublish.forEach(p => {
-        // Защита от потери метода escapeHTML
-        const safeName = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(p.name) : p.name;
-        pelotonOpts += `<option value="${p.id}">${safeName}</option>`;
-    });
-
-    const safeRaceName = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(race.name || '') : (race.name || '');
-    const safeRaceSlug = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(race.slug || '') : (race.slug || '');
-
-    // ==========================================
-    // 🔥 НОВЫЙ ЕДИНЫЙ МАКЕТ КОНСТРУКТОРА (ВКЛЕИВАЕМ СЮДА)
-    // ==========================================
-    const modalHtml = `
-        <div class="modal-box" style="background: var(--bg-surface); width: 95vw; max-width: 700px; height: 90vh; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
-            
-            <div style="padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-hover); flex-shrink: 0;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 40px; height: 40px; background: var(--primary); color: #000; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 20px;">⚙️</div>
-                    <div>
-                        <h2 style="font-family:'Unbounded'; font-weight:800; font-size:18px; color:var(--text-main); margin:0; text-transform: uppercase;">РЕДАКТИРОВАНИЕ</h2>
-                        <div style="font-size: 11px; color: var(--text-muted); font-family: 'Roboto Mono';">Настройка параметров события</div>
-                    </div>
-                </div>
-                <button onclick="document.getElementById('createEventModal').style.display='none'" style="background:var(--bg-body); color:var(--text-muted); border:1px solid var(--border); width: 32px; height: 32px; border-radius: 50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; transition:0.2s;">&times;</button>
-            </div>
-
-            <!-- 🔥 ЕДИНАЯ ЛЕНТА ПРОКРУТКИ -->
-            <div style="flex: 1; overflow-y: auto; padding: 25px 20px; background: var(--bg-surface); -webkit-overflow-scrolling: touch;">
-                <div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 25px;">
-                    
-                    <!-- БЛОК 1: ОСНОВНАЯ ИНФОРМАЦИЯ -->
-                    <div style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                        <div style="font-family:'Unbounded'; font-weight:800; font-size:14px; color:var(--text-main); margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">1. ОСНОВНАЯ ИНФОРМАЦИЯ</div>
-                        
-                        <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Название события *</label>
-                        <input type="text" id="evName" class="auth-input" style="width:100%; box-sizing: border-box; margin-bottom:15px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; font-size: 14px; outline:none;" placeholder="Например: Кубок Открытия" value="${safeRaceName}">
-                        <input type="hidden" id="evSlug" value="${safeRaceSlug}">
-
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                            <div>
-                                <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Уровень</label>
-                                <select id="evLevel" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;" onchange="window.app.crm.toggleEventFields()">
-                                    ${levelOpts}
-                                </select>
-                            </div>
-                            <div>
-                                <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Дата и время старта *</label>
-                                <input type="datetime-local" id="evDate" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;" value="${defaultDate}">
-                            </div>
-                        </div>
-
-                        <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Пелотон (Организатор)</label>
-                        <select id="evPeloton" class="auth-input" style="width:100%; box-sizing: border-box; margin-bottom:15px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none; display:none;" onchange="window.app.crm.loadCups(this.value)">
-                            ${pelotonOpts}
-                        </select>
-
-                        <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">🏆 Серия / Кубок (Необязательно)</label>
-                        <select id="evCup" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;" disabled>
-                            <option value="">Сначала выберите пелотон...</option>
-                        </select>
-                    </div>
-
-                    <!-- БЛОК 2: МАРШРУТ И ДИСТАНЦИИ -->
-                    <div style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                        <div style="font-family:'Unbounded'; font-weight:800; font-size:14px; color:var(--text-main); margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">2. МАРШРУТ И ДИСТАНЦИИ</div>
-                        
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                            <div>
-                                <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Покрытие</label>
-                                <select id="evSurface" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;">
-                                    <option value="road" ${race.surface === 'road' ? 'selected' : ''}>🛣️ Шоссе</option>
-                                    <option value="offroad" ${race.surface === 'offroad' ? 'selected' : ''}>🌲 Грунт / МТБ</option>
-                                    <option value="track" ${race.surface === 'track' ? 'selected' : ''}>🏟️ Трек</option>
-                                    <option value="indoor" ${race.surface === 'indoor' ? 'selected' : ''}>💻 Индор (Станок)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Общий формат гонки</label>
-                                <select id="evFormat" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;">
-                                    <option value="mass" ${race.format === 'mass' ? 'selected' : ''}>Группа / Масс-старт</option>
-                                    <option value="itt" ${race.format === 'itt' ? 'selected' : ''}>Индивидуальная (ITT)</option>
-                                    <option value="ttt" ${race.format === 'ttt' ? 'selected' : ''}>Командная (TTT)</option>
-                                    <option value="crit" ${race.format === 'crit' ? 'selected' : ''}>Критериум / По очкам</option>
-                                    <option value="relay" ${race.format === 'relay' ? 'selected' : ''}>Эстафета</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div id="dynamicDistancesContainer"></div>
-                    </div>
-
-                    <!-- БЛОК 3: ОРГАНИЗАЦИЯ -->
-                    <div style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
-                        <div style="font-family:'Unbounded'; font-weight:800; font-size:14px; color:var(--text-main); margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">3. ОРГАНИЗАЦИЯ</div>
-                        
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                            <div>
-                                <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Лимит участников</label>
-                                <input type="number" id="evMaxRiders" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;" placeholder="Пусто = Безлимит" value="${race.max_riders || ''}">
-                            </div>
-                            <div>
-                                <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Статус публикации</label>
-                                <select id="evStatus" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;">
-                                    <option value="Registration" ${race.status === 'Registration' ? 'selected' : ''}>Открытая регистрация</option>
-                                    <option value="Скоро" ${race.status === 'Скоро' ? 'selected' : ''}>Анонс (Только просмотр)</option>
-                                    <option value="LIVE" ${race.status === 'LIVE' ? 'selected' : ''}>LIVE (Гонка идет)</option>
-                                    <option value="Finished" ${race.status === 'Finished' ? 'selected' : ''}>Завершена (В архив)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <label id="evAllowedTypesLabel" style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold; display:none;">Командный допуск</label>
-                        <select id="evAllowedTypes" class="auth-input" style="width:100%; box-sizing: border-box; margin-bottom:15px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none; display:none;">
-                            <option value="team,gruppetto">Официальные клубы + Временные Группетто</option>
-                            <option value="team">Только Официальные клубы Лиги</option>
-                        </select>
-
-                        <label id="evIsPublicLabel" style="display:none; align-items:center; gap:12px; font-size:13px; color:var(--text-main); cursor:pointer; font-weight:bold; background: rgba(255,193,7,0.1); padding: 15px; border-radius: 8px; border: 1px dashed var(--primary); margin-bottom: 15px;">
-                            <input type="checkbox" id="evIsPublic" ${race.is_public ? 'checked' : ''} style="accent-color:var(--primary); width:20px; height:20px;"> 
-                            Сделать тренировку публичной (Видна всем)
-                        </label>
-
-                        <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold; margin-top:15px;">Назначить Судью</label>
-                        <select id="evJudge" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none; display:none;"></select>
-                    </div>
-
-                </div>
-            </div>
-            
-            <div style="padding: 20px 30px; border-top: 1px solid var(--border); background: var(--bg-surface-hover); flex-shrink: 0; display: flex; justify-content: center;">
-                <button class="p-btn-black" id="submitEventBtn" style="background:var(--primary); color:#000; border:none; border-radius:12px; padding:18px 20px; width:100%; max-width: 600px; margin: 0 auto; display: block; font-weight:800; font-size:14px; font-family:'Unbounded'; cursor:pointer; box-shadow: 0 10px 30px rgba(255, 193, 7, 0.3); transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="window.app.crm.submitEvent()">💾 СОХРАНИТЬ ИЗМЕНЕНИЯ</button>
-            </div>
-
-        </div>
-    `;
-
-    const modalContainer = document.getElementById('createEventModal');
-    if (modalContainer) {
-        modalContainer.outerHTML = `<div class="modal-overlay" id="createEventModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.85); z-index: 999999; justify-content: center; align-items: center; backdrop-filter: blur(8px); padding: 10px; box-sizing: border-box;">${modalHtml}</div>`;
-    }
-
-    // Заново вызываем отрисовку элементов дистанции
-    this.initDistancesUI();
-
-    // ПОДТЯГИВАЕМ ПОЛНЫЕ ДАННЫЕ ИЗ БАЗЫ
-    try {
-        const fullRace = await pb.collection('races').getOne(raceId, {requestKey: null});
+  async openEditEventModal(raceId) {
+        // 🔥 1. Надежный поиск гонки (в календаре CRM или карте гонок мессенджера)
+        let race = (this.dataCalendar ? this.dataCalendar.find(r => r.id === raceId) : null) || (this.app.racesMap ? this.app.racesMap[raceId] : null);
         
-        if (document.getElementById('evSlug') && fullRace.slug) document.getElementById('evSlug').value = fullRace.slug;
-        if (document.getElementById('evSurface')) document.getElementById('evSurface').value = fullRace.surface || 'road';
-        if (document.getElementById('evFormat')) document.getElementById('evFormat').value = fullRace.format || 'mass';
-        if (document.getElementById('evMaxRiders')) document.getElementById('evMaxRiders').value = fullRace.max_riders || '';
-
-        if (document.getElementById('evLapLength')) {
-            let laps = fullRace.laps || 1;
-            let dist = fullRace.distance || 0;
-            let lapLen = (dist / laps).toFixed(2);
-            document.getElementById('evLapLength').value = lapLen > 0 ? lapLen : dist;
-        }
-        
-        // Восстанавливаем данные дистанции
-        this.activeDistances = [{
-            id: 'd_edit_1',
-            name: (fullRace.name && fullRace.name.includes('[')) ? fullRace.name.split('[')[1].replace(']', '') : 'Основная',
-            laps: fullRace.laps || 1,
-            rule_id: fullRace.rating_rule_id || '',
-            rule_name: "Текущее правило",
-            cat_logic: fullRace.cat_logic || 'clusters',
-            cat_name: "Настройка",
-            squad_max: fullRace.squad_max || 1
-        }];
-        this.renderDistanceObjTags();
-
-        if (document.getElementById('newDistCatLogicInput')) document.getElementById('newDistCatLogicInput').value = fullRace.cat_logic || 'clusters';
-        if (document.getElementById('newDistLapsInput')) document.getElementById('newDistLapsInput').value = fullRace.laps || 1;
-        if (document.getElementById('newDistSquadInput')) document.getElementById('newDistSquadInput').value = fullRace.squad_max || 1;
-        
-        setTimeout(() => {
-            if (document.getElementById('newDistRuleInput') && fullRace.rating_rule_id) {
-                document.getElementById('newDistRuleInput').value = fullRace.rating_rule_id;
+        // Если объект не найден в памяти — быстро запрашиваем из базы
+        if (!race) {
+            try {
+                race = await pb.collection('races').getOne(raceId, { requestKey: null });
+            } catch(e) {
+                return alert("❌ Не удалось найти событие для редактирования.");
             }
-        }, 500);
-
-        // Восстанавливаем Пелотон и Кубок
-        const pelotonSelectEl = document.getElementById('evPeloton');
-        let pIdStr = "";
-        if (pelotonSelectEl) {
-            if (fullRace.peloton_id) pIdStr = Array.isArray(fullRace.peloton_id) ? fullRace.peloton_id[0] : fullRace.peloton_id;
-            pelotonSelectEl.value = pIdStr;
-            pelotonSelectEl.onchange = (e) => this.loadCups(e.target.value);
         }
 
-        let cupIdStr = "";
-        if (fullRace.cup_id) cupIdStr = Array.isArray(fullRace.cup_id) ? fullRace.cup_id[0] : fullRace.cup_id;
-        this.loadCups(pIdStr, cupIdStr);
-        
-        // Восстанавливаем Правила
-        this.loadRatingRulesUI(fullRace.rating_rule_id || '');
+        // 🔥 2. Проверка прав: Редактировать может Админ, Назначенный Судья или Создатель
+        const myRiderId = this.app.currentRider?.id;
+        const myUserId = pb.authStore.model?.id || this.app.currentRider?.user_id;
+        const roles = this.app.usersMap[this.app.currentRider?.email] || []; 
+        const rStr = JSON.stringify(roles); 
+        const isAdmin = rStr.includes('superadmin') || rStr.includes('admin');
+        const amISuper = rStr.includes('superadmin');
+        const isCaptain = rStr.includes('captain');
+        const isCreator = (race.creator_id === myRiderId || race.creator_id === myUserId);
 
+        if (!isAdmin && !isCreator) {
+            return alert("❌ Редактирование доступно только создателю события или администратору.");
+        }
+
+        this.editEventId = raceId;
+
+        // 🔥 3. Подготовка вариантов уровней
+        const myTeams = Array.isArray(this.app.currentRider?.team_id) ? this.app.currentRider.team_id : (this.app.currentRider?.team_id ? [this.app.currentRider.team_id] : []);
+        
+        let levelOpts = '';
         if (isAdmin) {
-            const judges = await pb.collection('users').getFullList({ filter: `role ~ "judge"`, requestKey:null });
-            const judgeEl = document.getElementById('evJudge');
-            if (judgeEl) {
-                judgeEl.innerHTML = `<option value="">Выберите Судью...</option>` + judges.map(j => `<option value="${j.id}">${j.name || j.username || 'Судья'}</option>`).join('');
-                if(fullRace.judge_id) judgeEl.value = fullRace.judge_id;
-            }
-
-            if(fullRace.allowed_types && document.getElementById('evAllowedTypes')) {
-                let aTypes = Array.isArray(fullRace.allowed_types) ? fullRace.allowed_types.join(',') : fullRace.allowed_types;
-                if(aTypes.includes('gruppetto')) document.getElementById('evAllowedTypes').value = 'team,gruppetto';
-                else document.getElementById('evAllowedTypes').value = 'team';
-            }
+            levelOpts += `<option value="peloton">🏆 Официальная Гонка Лиги</option>`;
         }
-    } catch(e) {
-        console.error("Не удалось загрузить полные данные гонки", e);
-    }
-    
-    document.getElementById('evLevel').value = race.level || (isAdmin ? 'peloton' : 'personal');
-    this.toggleEventFields(); 
-    
-    document.getElementById('createEventModal').style.display = 'flex';
-}
+        levelOpts += `<option value="community_race">🔥 Народная Гонка (На модерацию)</option>`;
+        if (myTeams.length > 0 || isAdmin || isCaptain) {
+            levelOpts += `<option value="team">👥 Командная Тренировка</option>`;
+        }
+        levelOpts += `<option value="personal">🚴‍♂️ Открытый выезд / Тренировка</option>`;
 
-	toggleEventFields() { 
-            const lvl = document.getElementById('evLevel').value; 
-            const isPeloton = (lvl === 'peloton');
+        // 🔥 4. Фильтр пелотонов (Суперадмины видят всё, остальные — публичные + свои)
+        const pelotonsForPublish = Object.values(this.app.pelotonsMap).filter(p => {
+            if (amISuper || !p.is_private) return true;
+            if (p.admin_id) {
+                const adminIds = Array.isArray(p.admin_id) ? p.admin_id : [p.admin_id];
+                if (adminIds.includes(myRiderId) || adminIds.includes(myUserId)) return true;
+            }
+            return false;
+        });
+
+        let pelotonOpts = '<option value="" disabled selected>Выберите лигу...</option>';
+        pelotonsForPublish.forEach(p => {
+            const safeName = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(p.name) : p.name;
+            pelotonOpts += `<option value="${p.id}">${safeName}</option>`;
+        });
+
+        let defaultDate = '';
+        try {
+            const rawDateVal = race.rawDate || race.date;
+            if (rawDateVal) {
+                const d = new Date(rawDateVal);
+                const offset = d.getTimezoneOffset() * 60000;
+                defaultDate = (new Date(d - offset)).toISOString().slice(0, 16);
+            }
+        } catch(e) {}
+
+        const safeRaceName = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(race.name || '') : (race.name || '');
+        const safeRaceSlug = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(race.slug || '') : (race.slug || '');
+
+        // 🔥 5. Сборка модального окна
+        const modalHtml = `
+            <div class="modal-box" style="background: var(--bg-surface); width: 95vw; max-width: 700px; height: 90vh; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+                
+                <div style="padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-hover); flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 40px; height: 40px; background: var(--primary); color: #000; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 20px;">⚙️</div>
+                        <div>
+                            <h2 style="font-family:'Unbounded'; font-weight:800; font-size:18px; color:var(--text-main); margin:0; text-transform: uppercase;">РЕДАКТИРОВАНИЕ СОБЫТИЯ</h2>
+                            <div style="font-size: 11px; color: var(--text-muted); font-family: 'Roboto Mono';">Настройка параметров заезда</div>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('createEventModal').style.display='none'" style="background:var(--bg-body); color:var(--text-muted); border:1px solid var(--border); width: 32px; height: 32px; border-radius: 50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; transition:0.2s;">&times;</button>
+                </div>
+
+                <div style="flex: 1; overflow-y: auto; padding: 25px 20px; background: var(--bg-surface); -webkit-overflow-scrolling: touch;">
+                    <div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 25px;">
+                        
+                        <!-- БЛОК 1: ОСНОВНАЯ ИНФОРМАЦИЯ -->
+                        <div style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                            <div style="font-family:'Unbounded'; font-weight:800; font-size:14px; color:var(--text-main); margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">1. ОСНОВНАЯ ИНФОРМАЦИЯ</div>
+                            
+                            <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Название события *</label>
+                            <input type="text" id="evName" class="auth-input" style="width:100%; box-sizing: border-box; margin-bottom:15px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; font-size: 14px; outline:none;" placeholder="Например: Кубок Открытия" value="${safeRaceName}">
+                            <input type="hidden" id="evSlug" value="${safeRaceSlug}">
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Уровень</label>
+                                    <select id="evLevel" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;" onchange="window.app.crm.toggleEventFields()">
+                                        ${levelOpts}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Дата и время старта *</label>
+                                    <input type="datetime-local" id="evDate" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;" value="${defaultDate}">
+                                </div>
+                            </div>
+
+                            <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Пелотон (Организатор)</label>
+                            <select id="evPeloton" class="auth-input" style="width:100%; box-sizing: border-box; margin-bottom:15px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none; display:none;" onchange="window.app.crm.loadCups(this.value)">
+                                ${pelotonOpts}
+                            </select>
+
+                            <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">🏆 Серия / Кубок (Необязательно)</label>
+                            <select id="evCup" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;" disabled>
+                                <option value="">Сначала выберите пелотон...</option>
+                            </select>
+                        </div>
+
+                        <!-- БЛОК 2: МАРШРУТ И ДИСТАНЦИИ -->
+                        <div style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                            <div style="font-family:'Unbounded'; font-weight:800; font-size:14px; color:var(--text-main); margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">2. МАРШРУТ И ДИСТАНЦИИ</div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Покрытие</label>
+                                    <select id="evSurface" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;">
+                                        <option value="road" ${race.surface === 'road' ? 'selected' : ''}>🛣️ Шоссе</option>
+                                        <option value="offroad" ${race.surface === 'offroad' ? 'selected' : ''}>🌲 Грунт / МТБ</option>
+                                        <option value="track" ${race.surface === 'track' ? 'selected' : ''}>🏟️ Трек</option>
+                                        <option value="indoor" ${race.surface === 'indoor' ? 'selected' : ''}>💻 Индор (Станок)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Общий формат гонки</label>
+                                    <select id="evFormat" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;">
+                                        <option value="mass" ${race.format === 'mass' ? 'selected' : ''}>Группа / Масс-старт</option>
+                                        <option value="itt" ${race.format === 'itt' ? 'selected' : ''}>Индивидуальная (ITT)</option>
+                                        <option value="ttt" ${race.format === 'ttt' ? 'selected' : ''}>Командная (TTT)</option>
+                                        <option value="crit" ${race.format === 'crit' ? 'selected' : ''}>Критериум / По очкам</option>
+                                        <option value="relay" ${race.format === 'relay' ? 'selected' : ''}>Эстафета</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div id="dynamicDistancesContainer"></div>
+                        </div>
+
+                        <!-- БЛОК 3: ОРГАНИЗАЦИЯ -->
+                        <div style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 16px; padding: 20px;">
+                            <div style="font-family:'Unbounded'; font-weight:800; font-size:14px; color:var(--text-main); margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">3. ОРГАНИЗАЦИЯ</div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Лимит участников</label>
+                                    <input type="number" id="evMaxRiders" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;" placeholder="Пусто = Безлимит" value="${race.max_riders || ''}">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold;">Статус публикации</label>
+                                    <select id="evStatus" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none;">
+                                        <option value="Registration" ${race.status === 'Registration' ? 'selected' : ''}>Открытая регистрация</option>
+                                        <option value="Скоро" ${race.status === 'Скоро' ? 'selected' : ''}>Анонс (Только просмотр)</option>
+                                        <option value="LIVE" ${race.status === 'LIVE' ? 'selected' : ''}>LIVE (Гонка идет)</option>
+                                        <option value="Finished" ${race.status === 'Finished' ? 'selected' : ''}>Завершена (В архив)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <label id="evAllowedTypesLabel" style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold; display:none;">Командный допуск</label>
+                            <select id="evAllowedTypes" class="auth-input" style="width:100%; box-sizing: border-box; margin-bottom:15px; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none; display:none;">
+                                <option value="team,gruppetto">Официальные клубы + Временные Группетто</option>
+                                <option value="team">Только Официальные клубы Лиги</option>
+                            </select>
+
+                            <label id="evIsPublicLabel" style="display:none; align-items:center; gap:12px; font-size:13px; color:var(--text-main); cursor:pointer; font-weight:bold; background: rgba(255,193,7,0.1); padding: 15px; border-radius: 8px; border: 1px dashed var(--primary); margin-bottom: 15px;">
+                                <input type="checkbox" id="evIsPublic" ${race.is_public ? 'checked' : ''} style="accent-color:var(--primary); width:20px; height:20px;"> 
+                                Сделать тренировку публичной (Видна всем)
+                            </label>
+
+                            <label style="display:block; font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px; font-weight:bold; margin-top:15px;">Назначить Судью</label>
+                            <select id="evJudge" class="auth-input" style="width:100%; box-sizing: border-box; border-radius:8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-main); padding: 14px; outline:none; display:none;"></select>
+                        </div>
+
+                    </div>
+                </div>
+                
+                <div style="padding: 20px 30px; border-top: 1px solid var(--border); background: var(--bg-surface-hover); flex-shrink: 0; display: flex; justify-content: center;">
+                    <button class="p-btn-black" id="submitEventBtn" style="background:var(--primary); color:#000; border:none; border-radius:12px; padding:18px 20px; width:100%; max-width: 600px; margin: 0 auto; display: block; font-weight:800; font-size:14px; font-family:'Unbounded'; cursor:pointer; box-shadow: 0 10px 30px rgba(255, 193, 7, 0.3); transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="window.app.crm.submitEvent()">💾 СОХРАНИТЬ ИЗМЕНЕНИЯ</button>
+                </div>
+
+            </div>
+        `;
+
+        const modalContainer = document.getElementById('createEventModal');
+        if (modalContainer) {
+            modalContainer.outerHTML = `<div class="modal-overlay" id="createEventModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.85); z-index: 999999; justify-content: center; align-items: center; backdrop-filter: blur(8px); padding: 10px; box-sizing: border-box;">${modalHtml}</div>`;
+        }
+
+        this.initDistancesUI();
+        this.initTaxonomyUI();
+
+        // 🔥 6. Восстановление данных заезда
+        try {
+            const fullRace = await pb.collection('races').getOne(raceId, { requestKey: null });
+            
+            if (document.getElementById('evSlug') && fullRace.slug) document.getElementById('evSlug').value = fullRace.slug;
+            if (document.getElementById('evSurface')) document.getElementById('evSurface').value = fullRace.surface || 'road';
+            if (document.getElementById('evFormat')) document.getElementById('evFormat').value = fullRace.format || 'mass';
+            if (document.getElementById('evMaxRiders')) document.getElementById('evMaxRiders').value = fullRace.max_riders || '';
+
+            if (document.getElementById('evLapLength')) {
+                let laps = fullRace.laps || 1;
+                let dist = fullRace.distance || 0;
+                let lapLen = (dist / laps).toFixed(2);
+                document.getElementById('evLapLength').value = lapLen > 0 ? lapLen : dist;
+            }
+            
+            this.activeDistances = [{
+                id: 'd_edit_1',
+                name: (fullRace.name && fullRace.name.includes('[')) ? fullRace.name.split('[')[1].replace(']', '') : 'Основная',
+                laps: fullRace.laps || 1,
+                rule_id: fullRace.rating_rule_id || '',
+                rule_name: "Текущее правило",
+                cat_logic: fullRace.cat_logic || 'clusters',
+                cat_name: "Настройка",
+                squad_max: fullRace.squad_max || 1
+            }];
+            this.renderDistanceObjTags();
+
+            if (document.getElementById('newDistCatLogicInput')) document.getElementById('newDistCatLogicInput').value = fullRace.cat_logic || 'clusters';
+            if (document.getElementById('newDistLapsInput')) document.getElementById('newDistLapsInput').value = fullRace.laps || 1;
+            if (document.getElementById('newDistSquadInput')) document.getElementById('newDistSquadInput').value = fullRace.squad_max || 1;
+            
+            setTimeout(() => {
+                if (document.getElementById('newDistRuleInput') && fullRace.rating_rule_id) {
+                    document.getElementById('newDistRuleInput').value = fullRace.rating_rule_id;
+                }
+            }, 500);
+
+            const pelotonSelectEl = document.getElementById('evPeloton');
+            let pIdStr = "";
+            if (pelotonSelectEl) {
+                if (fullRace.peloton_id) pIdStr = Array.isArray(fullRace.peloton_id) ? fullRace.peloton_id[0] : fullRace.peloton_id;
+                pelotonSelectEl.value = pIdStr;
+                pelotonSelectEl.onchange = (e) => this.loadCups(e.target.value);
+            }
+
+            let cupIdStr = "";
+            if (fullRace.cup_id) cupIdStr = Array.isArray(fullRace.cup_id) ? fullRace.cup_id[0] : fullRace.cup_id;
+            this.loadCups(pIdStr, cupIdStr);
+            
+            this.loadRatingRulesUI(fullRace.rating_rule_id || '');
+
+            if (isAdmin) {
+                const judges = await pb.collection('users').getFullList({ filter: `role ~ "judge"`, requestKey:null });
+                const judgeEl = document.getElementById('evJudge');
+                if (judgeEl) {
+                    judgeEl.innerHTML = `<option value="">Выберите Судью...</option>` + judges.map(j => `<option value="${j.id}">${j.name || j.username || 'Судья'}</option>`).join('');
+                    if(fullRace.judge_id) judgeEl.value = fullRace.judge_id;
+                }
+
+                if(fullRace.allowed_types && document.getElementById('evAllowedTypes')) {
+                    let aTypes = Array.isArray(fullRace.allowed_types) ? fullRace.allowed_types.join(',') : fullRace.allowed_types;
+                    if(aTypes.includes('gruppetto')) document.getElementById('evAllowedTypes').value = 'team,gruppetto';
+                    else document.getElementById('evAllowedTypes').value = 'team';
+                }
+            }
+
+            // Выставляем сохраненный уровень
+            let targetLevel = fullRace.level || 'personal';
+            if (fullRace.level === 'peloton' && fullRace.verification_status === 'pending') {
+                targetLevel = 'community_race';
+            }
+            if (document.getElementById('evLevel')) {
+                document.getElementById('evLevel').value = targetLevel;
+            }
+
+        } catch(e) {
+            console.error("Не удалось загрузить полные данные гонки", e);
+        }
+        
+        this.toggleEventFields(); 
+        document.getElementById('createEventModal').style.display = 'flex';
+    }
+	// 🔥 УПРАВЛЕНИЕ ВИДИМОСТЬЮ ПОЛЕЙ КОНСТРУКТОРА ПО УРОВНЯМ
+        toggleEventFields() { 
+            const lvl = document.getElementById('evLevel')?.value || 'personal'; 
+            const isOfficial = (lvl === 'peloton');
+            const isRace = (lvl === 'peloton' || lvl === 'community_race');
             const isTeam = (lvl === 'team');
             
             const oldType = document.getElementById('evType');
             if (oldType) oldType.style.display = 'none'; 
             
-            // 🔥 ПРЯЧЕМ ИЛИ ПОКАЗЫВАЕМ БЛОК ПРАВИЛ РЕЙТИНГА
+            // 1. Блок правил рейтинга (показываем только для официальных гонок)
             const ruleWrap = document.getElementById('ratingRuleWrapper');
             if (ruleWrap) {
-                ruleWrap.style.display = isPeloton ? 'block' : 'none'; 
+                ruleWrap.style.display = isOfficial ? 'block' : 'none'; 
             }
             
-            document.getElementById('evPeloton').style.display = (isPeloton || isTeam) ? 'block' : 'none'; 
-            document.getElementById('evJudge').style.display = isPeloton ? 'block' : 'none'; 
+            // 2. Селектор Лиги/Пелотона (нужен для всех гонок и командных тренировок)
+            const pelEl = document.getElementById('evPeloton');
+            if (pelEl) pelEl.style.display = (isRace || isTeam) ? 'block' : 'none'; 
             
-            if (document.getElementById('evAllowedTypesLabel')) document.getElementById('evAllowedTypesLabel').style.display = isPeloton ? 'block' : 'none';
-            if (document.getElementById('evAllowedTypes')) document.getElementById('evAllowedTypes').style.display = isPeloton ? 'block' : 'none';
+            // 3. Назначение судьи (только для официальных гонок)
+            const judgeEl = document.getElementById('evJudge');
+            if (judgeEl) judgeEl.style.display = isOfficial ? 'block' : 'none'; 
             
+            // 4. Командный допуск
+            if (document.getElementById('evAllowedTypesLabel')) document.getElementById('evAllowedTypesLabel').style.display = isRace ? 'block' : 'none';
+            if (document.getElementById('evAllowedTypes')) document.getElementById('evAllowedTypes').style.display = isRace ? 'block' : 'none';
+            
+            // 5. Чекбокс публичности (для командных тренировок)
             if (document.getElementById('evIsPublicLabel')) document.getElementById('evIsPublicLabel').style.display = isTeam ? 'flex' : 'none';
         }
-
+		
 // 🔥 УПРАВЛЕНИЕ ШАГАМИ КОНСТРУКТОРА ГОНКИ
         changeStep(direction) {
             let nextStep = (this.currentStep || 1) + direction;
@@ -4512,6 +4546,74 @@ async submitEvent() {
                 
             } else {
                 // --- РЕЖИМ СОЗДАНИЯ С НУЛЯ ---
+
+                // 🔥 ПРОВЕРКА НА ДУБЛИКАТЫ И АВТО-ПЕРЕХОД В ЧАТ (ЛЮБОЙ СТАТУС)
+                try {
+                    const targetDateObj = new Date(date);
+                    const startOfDay = new Date(targetDateObj);
+                    startOfDay.setUTCHours(0, 0, 0, 0);
+                    const endOfDay = new Date(targetDateObj);
+                    endOfDay.setUTCHours(23, 59, 59, 999);
+
+                    const startIso = startOfDay.toISOString().replace('T', ' ');
+                    const endIso = endOfDay.toISOString().replace('T', ' ');
+
+                    let checkRaces = [];
+                    try {
+                        checkRaces = await pb.collection('races').getFullList({
+                            filter: `date >= "${startIso}" && date <= "${endIso}"`,
+                            requestKey: null
+                        });
+                    } catch (e) {
+                        checkRaces = this.dataCalendar || [];
+                    }
+
+                    const cleanName = name.toLowerCase().trim().replace(/\[.*?\]/g, '').replace(/[^a-zа-яё0-9]/gi, '');
+
+                    const duplicateRace = checkRaces.find(r => {
+                        const existingCleanName = (r.name || '').toLowerCase().trim().replace(/\[.*?\]/g, '').replace(/[^a-zа-яё0-9]/gi, '');
+                        return existingCleanName && cleanName && (existingCleanName === cleanName || existingCleanName.includes(cleanName) || cleanName.includes(existingCleanName));
+                    });
+
+                    if (duplicateRace) {
+                        const duplicateDateFormatted = new Date(duplicateRace.date || duplicateRace.rawDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+                        const duplicateStatus = duplicateRace.status || 'В календаре';
+                        
+                        alert(`⚠️ Такое событие уже есть в календаре!\n\n«${duplicateRace.name}» (${duplicateDateFormatted}, статус: ${duplicateStatus}).\n\nСейчас откроется карточка этой гонки, где вы сможете подать заявку.`);
+                        
+                        const modal = document.getElementById('createEventModal');
+                        if (modal) modal.style.display = 'none';
+
+                        const targetChat = this.app.chats.find(c => c.race_id === duplicateRace.id || (c.raceObj && c.raceObj.id === duplicateRace.id));
+                        
+                        if (targetChat) {
+                            this.app.chatListFilter = 'races';
+                            this.app.switchTab('chats');
+                            this.app.openChat(targetChat.id);
+                        } else {
+                            this.app.openPelotonCalendar();
+                        }
+                        
+                        return; // ⛔ Прерываем создание дубликата
+                    }
+                } catch(dupErr) {
+                    console.warn("Ошибка проверки дубликатов:", dupErr);
+                }
+
+                const myRole = this.app.getUserMaxRole();
+                const isAdmin = this.app.ROLE_WEIGHTS[myRole] >= this.app.ROLE_WEIGHTS['admin'];
+                
+                // 🔥 1. ОПРЕДЕЛЕНИЕ СТАТУСА ВЕРИФИКАЦИИ И УРОВНЯ
+                let verificationStatus = 'verified';
+                let actualLevel = level;
+
+                if (level === 'community_race') {
+                    verificationStatus = isAdmin ? 'verified' : 'pending';
+                    actualLevel = 'peloton'; // В базе хранится как гонка
+                } else if (level === 'personal' || level === 'team') {
+                    verificationStatus = 'training';
+                }
+
                 const createdRaces = [];
                 for (let distObj of this.activeDistances) {
                     let finalName = this.activeDistances.length > 1 ? `${name} [${distObj.name}]` : name;
@@ -4522,115 +4624,101 @@ async submitEvent() {
 
                     let raceData = { 
                         ...baseData, 
+                        level: actualLevel,
                         name: finalName, 
                         distance: finalDist,
                         laps: finalLaps,
                         rating_rule_id: finalRuleId,
                         cat_logic: finalCatLogic,
-						squad_max: distObj.squad_max || 1
+                        squad_max: distObj.squad_max || 1,
+                        verification_status: verificationStatus,
+                        creator_id: pb.authStore.model?.id || this.app.currentRider?.user_id || this.app.currentRider?.id
                     };
                     
                     const newRace = await pb.collection('races').create(raceData, { requestKey: null });
                     createdRaces.push(newRace);
                 }
 
-                if (level === 'peloton' && createdRaces.length > 0) {
-                    const firstRaceId = createdRaces[0].id;
+                // 🔥 2. АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ЧАТ-РАЦИИ И ШТОРКИ
+                if (createdRaces.length > 0) {
+                    const firstRace = createdRaces[0];
+                    const firstRaceId = firstRace.id;
                     const d = new Date(date);
                     const chatDate = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-                    const chatName = `${name.toUpperCase()} ${chatDate} ${d.getFullYear()}`;
+                    const chatName = `${name.toUpperCase()} ${chatDate}`;
 
-                    try {
-                        const bot = await pb.collection('riders').getFirstListItem('email="bot@sotka.one"', { requestKey: null });
-                        
-                        let botText = "";
-                        let panelButtons = [];
-                        let isAnnounceFlag = false;
+                    let panelButtons = createdRaces.map(r => ({
+                        label: createdRaces.length > 1 ? `ЗАЯВКА: ${r.name.split('[')[1]?.replace(']', '') || 'СТАРТ'}` : '⚡ ЗАЯВИТЬСЯ НА СТАРТ',
+                        url: `[ACTION:REGISTER:${r.id}]`,
+                        blank: false
+                    }));
 
-                        // ЕСЛИ РЕГИСТРАЦИЯ ОТКРЫТА
-                        if (newStatus === 'Registration') {
-                            isAnnounceFlag = true; 
-                            botText = "🔥 ОТКРЫТА РЕГИСТРАЦИЯ!\n\nОрганизатор открыл регистрацию на событие: **" + name.toUpperCase() + "**.\n\nВыберите заезд и подайте заявку в один клик:\n\n";
-                            
-                            for (let r of createdRaces) {
-                            botText += `🏁 **${r.name}**\n[ACTION:REGISTER:${r.id}]\n\n`;
-                            
-                            let btnText = 'ЗАЯВИТЬСЯ';
-                            if (createdRaces.length > 1) {
-                                const distMatch = r.name.match(/\[(.*?)\]/);
-                                if (distMatch) btnText = `ЗАЯВКА: ${distMatch[1].toUpperCase()}`;
-                            }
+                    const panelData = {
+                        text: `📅 **${name.toUpperCase()}**\n\nОрганизатор: ${this.app.currentRider.first_name} ${this.app.currentRider.last_name}\nДата: ${chatDate}\n\nПодавайте заявку и координируйтесь в чате:`,
+                        buttons: panelButtons
+                    };
 
-                            panelButtons.push({
-                                label: btnText,
-                                url: `[ACTION:REGISTER:${r.id}]`,
-                                blank: false
-                            });
+                    const newChat = await pb.collection('chats').create({
+                        type: 'global',
+                        name: chatName,
+                        race_id: firstRaceId,
+                        peloton_id: pelotonId || "",
+                        participants: [this.app.currentRider.id],
+                        panel_data: JSON.stringify(panelData)
+                    }, { requestKey: null });
+
+                    // 🔥 3. СООБЩЕНИЕ ОТ БОТА
+                    const bot = await pb.collection('riders').getFirstListItem('email="bot@sotka.one"', { requestKey: null }).catch(() => null);
+                    if (bot) {
+                        let botNotice = '';
+                        if (newStatus === 'Скоро') {
+                            botNotice = `⏳ **АНОНС СОБЫТИЯ!**\n\nОрганизатор **${this.app.currentRider.first_name} ${this.app.currentRider.last_name}** добавил событие: **${name.toUpperCase()}**.\nРегистрация скоро откроется!`;
+                        } else if (verificationStatus === 'pending') {
+                            botNotice = `⏳ **СОБЫТИЕ ДОБАВЛЕНО В КАЛЕНДАРЬ**\n\nСтарт создан атлетом **${this.app.currentRider.first_name} ${this.app.currentRider.last_name}**.\nРегистрация открыта. Статус официального рейтинга ожидает подтверждения Главного судьи Сотки.`;
+                        } else if (verificationStatus === 'training') {
+                            botNotice = `🚴‍♂️ **ОТКРЫТАЯ ТРЕНИРОВКА**\n\nОрганизатор: **${this.app.currentRider.first_name} ${this.app.currentRider.last_name}**.\nКилометры заезда будут учтены в накат сезона.`;
+                        } else {
+                            botNotice = `🔥 **ОФИЦИАЛЬНЫЙ СТАРТ ЛИГИ!**\n\nРегистрация открыта. Гонка включена в официальный кубковый зачет Сотки.`;
                         }
-                        } 
-                        // ЕСЛИ ЭТО АНОНС (СКОРО)
-                        else if (newStatus === 'Скоро') {
-                            isAnnounceFlag = true; 
-                            botText = "⏳ АНОНС СОБЫТИЯ!\n\nОрганизатор добавил в календарь событие: **" + name.toUpperCase() + "**.\n\nРегистрация пока закрыта. Следите за новостями в этом чате, мы сообщим, когда можно будет подать заявку!";
-                        }
 
-                        const panelData = {
-                            text: newStatus === 'Скоро' ? "Регистрация скоро откроется." : "Выберите дистанцию для заявки:",
-                            buttons: panelButtons
-                        };
-
-                        // 1. Создаем чат
-                        const newChat = await pb.collection('chats').create({
-                            type: 'global', name: chatName,
-                            peloton_id: pelotonId, race_id: firstRaceId, participants: [bot.id],
-                            panel_data: JSON.stringify(panelData) // 🔥 Сохраняем в БД!
+                        await pb.collection('messages').create({
+                            chat_id: newChat.id,
+                            sender_id: bot.id,
+                            text: botNotice,
+                            is_announcement: true
                         }, { requestKey: null });
-
-                        // 2. Отправляем сообщение от бота
-                        if (botText) {
-                            await pb.collection('messages').create({
-                                chat_id: newChat.id,
-                                sender_id: bot.id,
-                                text: botText,
-                                is_announcement: isAnnounceFlag 
-                            }, { requestKey: null });
-                        }
-                        
-                        await pb.collection('chats').update(newChat.id, { updated: new Date().toISOString() }, { requestKey: null });
-                        
-                    } catch (e) {
-                        console.error("Ошибка создания чата или бота", e);
                     }
-                    
+
+                    // 🔥 4. НАЗНАЧЕНИЕ СУДЬИ В РОСТЕР (ЕСЛИ БЫЛ ВЫБРАН)
                     if (judgeId) {
                         try {
-                            const judgeRider = await pb.collection('riders').getFirstListItem(`email="${judgeId}"`, { requestKey: null });
-                            await pb.collection('race_rosters').create({
-                                race_id: firstRaceId, rider_id: judgeRider.id, status: 'judge'
-                            }, { requestKey: null });
+                            const judgeRider = await pb.collection('riders').getFirstListItem(`user_id="${judgeId}" || email="${judgeId}"`, { requestKey: null });
+                            if (judgeRider) {
+                                await pb.collection('race_rosters').create({
+                                    race_id: firstRaceId,
+                                    rider_id: judgeRider.id,
+                                    status: 'judge'
+                                }, { requestKey: null });
+                            }
                         } catch (e) {}
                     }
-                    
-                    // В. Отправляем PUSH умным способом
-                    if (typeof this.app.sendPushNotification === 'function') {
+
+                    // 🔥 5. ОТПРАВКА PUSH-УВЕДОМЛЕНИЯ
+                    if (typeof this.app.sendPushNotification === 'function' && newStatus === 'Registration') {
                         let targetUserIds = [];
                         let shouldSendPush = true;
 
                         if (level === 'personal') {
                             shouldSendPush = false;
-                        } 
-                        else if (level === 'team') {
+                        } else if (level === 'team') {
                             const teamId = baseData.team_id;
                             const allowedRiders = Object.values(this.app.ridersMap).filter(r => {
                                 const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
-                                return rTeams.includes(teamId);
+                                return rTeams.includes(teamId) && r.id !== this.app.currentRider.id;
                             });
                             targetUserIds = allowedRiders.map(r => r.id).filter(Boolean);
-                            if (targetUserIds.length === 0) targetUserIds = ['empty_team_push'];
-                        } 
-                        else if (level === 'peloton') {
+                        } else if (pelotonId) {
                             const targetPeloton = this.app.pelotonsMap[pelotonId];
-                            
                             if (targetPeloton && targetPeloton.is_private) {
                                 const allowedRiders = Object.values(this.app.ridersMap).filter(r => {
                                     const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
@@ -4638,31 +4726,53 @@ async submitEvent() {
                                         const t = this.app.teamsMap[tId];
                                         const tPels = t ? (Array.isArray(t.peloton_id) ? t.peloton_id : [t.peloton_id]) : [];
                                         return tPels.includes(pelotonId);
-                                    });
+                                    }) && r.id !== this.app.currentRider.id;
                                 });
                                 targetUserIds = allowedRiders.map(r => r.id).filter(Boolean);
-                                if (targetUserIds.length === 0) targetUserIds = ['empty_private_peloton'];
                             }
                         }
 
                         if (shouldSendPush) {
-                            // При создании с нуля мы можем получить ID чата только если гонка уровня peloton
-                            // (он создается выше).
-                            let chatPushUrl = 'https://vilka.sotka.one';
-                            try {
-                                const createdChat = await pb.collection('chats').getFirstListItem(`race_id="${createdRaces[0].id}"`, { requestKey: null });
-                                chatPushUrl = `https://vilka.sotka.one/?chat=${createdChat.id}`;
-                            } catch(e) {}
-                            
                             this.app.sendPushNotification(
-                                "🔥 ОТКРЫТА РЕГИСТРАЦИЯ!", 
-                                `На событие ${name.toUpperCase()} открыта подача заявок!`, 
-                                targetUserIds, 
-                                chatPushUrl
+                                "🔥 НОВОЕ СОБЫТИЕ В КАЛЕНДАРЕ!",
+                                `${name.toUpperCase()} — открыта регистрация!`,
+                                targetUserIds,
+                                `https://vilka.sotka.one/?chat=${newChat.id}`
                             );
                         }
                     }
+
+                    await this.app.loadChats();
                 }
+				// 🔥 1. СИНХРОННО ЗАПИСЫВАЕМ НОВЫЕ ГОНКИ В ПАМЯТЬ ПРИЛОЖЕНИЯ
+                createdRaces.forEach(newR => {
+                    if (this.app.racesMap) this.app.racesMap[newR.id] = newR;
+                    if (this.dataCalendar && !this.dataCalendar.some(x => x.id === newR.id)) {
+                        this.dataCalendar.unshift(newR);
+                    }
+                    if (this.app.crm && this.app.crm.dataCalendar && !this.app.crm.dataCalendar.some(x => x.id === newR.id)) {
+                        this.app.crm.dataCalendar.unshift(newR);
+                    }
+                });
+
+                // 🔥 2. ПОДГРУЖАЕМ ЧАТЫ И ОБНОВЛЯЕМ CRM
+                await this.app.loadChats();
+                if (typeof this.loadData === 'function') {
+                    this.loadData();
+                }
+
+                // 🔥 3. ПЕРЕРИСОВЫВАЕМ ЛЕВЫЙ СПИСОК ГОНОК
+                const searchInput = document.getElementById('chatSearch');
+                if (typeof this.app.renderChatList === 'function') {
+                    this.app.renderChatList(searchInput ? searchInput.value : "");
+                }
+
+                // 🔥 4. ЕСЛИ ОТКРЫТА СЕТКА КАЛЕНДАРЯ — МГНОВЕННО ПЕРЕРИСОВЫВАЕМ ЕЁ!
+                if (this.app.activeChatId === 'month_calendar' || document.getElementById('monthCalendarViewContainer')) {
+                    const targetDate = new Date(date);
+                    this.app.openMonthCalendarView(targetDate);
+                }
+
                 alert(`✅ Событие успешно опубликовано!\nСоздано заездов: ${createdRaces.length}`);
             }
 
@@ -4711,12 +4821,125 @@ async submitEvent() {
     }
 
     async deleteRace(raceId) {
-        if (!confirm("⚠️ ВНИМАНИЕ! Вы точно хотите удалить эту гонку и все её заявки навсегда?")) return;
+        if (!raceId) return;
+
+        // 🔥 1. Проверка прав создателя или администратора
+        const race = (this.dataCalendar ? this.dataCalendar.find(r => r.id === raceId) : null) 
+                  || (this.app.racesMap ? this.app.racesMap[raceId] : null);
+
+        const myRiderId = this.app.currentRider?.id;
+        const myUserId = pb.authStore.model?.id || this.app.currentRider?.user_id;
+        const roles = this.app.usersMap[this.app.currentRider?.email] || [];
+        const rStr = JSON.stringify(roles);
+        const isAdmin = rStr.includes('superadmin') || rStr.includes('admin');
+        const isCreator = race && (race.creator_id === myRiderId || race.creator_id === myUserId);
+
+        if (!isAdmin && !isCreator) {
+            return alert("❌ Удаление события доступно только его создателю или администратору.");
+        }
+
+        if (!confirm("⚠️ ВНИМАНИЕ! Вы точно хотите удалить это событие и связанный с ним чат навсегда?")) return;
+
         try {
+            // 🔥 2. Удаляем запись заезда из базы
             await pb.collection('races').delete(raceId, { requestKey: null });
-            alert("Гонка удалена.");
-            this.switchView('calendar');
-        } catch(e) { alert("Ошибка при удалении гонки"); }
+
+            // 🔥 3. Удаляем привязанный чат-рацию (чтобы не оставался в ленте)
+            const raceChat = this.app.chats?.find(c => c.race_id === raceId || c.raceObj?.id === raceId);
+            if (raceChat) {
+                try {
+                    await pb.collection('chats').delete(raceChat.id, { requestKey: null });
+                    this.app.chats = this.app.chats.filter(c => c.id !== raceChat.id);
+                } catch(chatErr) {
+                    console.warn("Не удалось удалить чат заезда:", chatErr);
+                }
+            }
+
+            // 🔥 4. Очищаем локальные кэши
+            if (this.dataCalendar) {
+                this.dataCalendar = this.dataCalendar.filter(r => r.id !== raceId);
+            }
+            if (this.app.racesMap) {
+                delete this.app.racesMap[raceId];
+            }
+
+            // 🔥 5. Мгновенно обновляем интерфейс
+            const modal = document.getElementById('createEventModal');
+            if (modal) modal.style.display = 'none';
+
+            if (typeof this.loadData === 'function') {
+                this.loadData();
+            }
+
+            const searchInput = document.getElementById('chatSearch');
+            if (typeof this.app.renderChatList === 'function') {
+                this.app.renderChatList(searchInput ? searchInput.value : "");
+            }
+
+            alert("✅ Событие и связанный чат успешно удалены.");
+
+        } catch(e) {
+            console.error("Ошибка при удалении гонки:", e);
+            alert("❌ Ошибка при удалении гонки: " + (e.message || "Сетевая ошибка"));
+        }
+    }
+	
+// 🔥 1. УТВЕРЖДЕНИЕ СТАРТА КАК ОФИЦИАЛЬНОЙ ГОНКИ
+    async approveRaceAsOfficial(raceId) {
+        if (!confirm("Утвердить старт как официальную гонку Лиги? Результаты пойдут в глобальный кубковый рейтинг Сотки.")) return;
+
+        try {
+            await pb.collection('races').update(raceId, {
+                verification_status: 'verified',
+                level: 'peloton',
+                is_public: true
+            }, { requestKey: null });
+
+            const raceChat = this.app.chats.find(c => c.race_id === raceId || c.raceObj?.id === raceId);
+            const bot = Object.values(this.app.ridersMap).find(r => r.email === 'bot@sotka.one');
+            if (raceChat && bot) {
+                await pb.collection('messages').create({
+                    chat_id: raceChat.id,
+                    sender_id: bot.id,
+                    text: `🏆 **СТАРТ ОФИЦИАЛЬНО УТВЕРЖДЕН ОРГКОМИТЕТОМ СОТКИ!**\n\nГонка включена в кубковый календарь. Финишные результаты пойдут в зачет глобального рейтинга и пересчет кластеров!`,
+                    is_announcement: true
+                }, { requestKey: null });
+            }
+
+            alert("✅ Гонка утверждена как официальный старт!");
+            this.loadData();
+        } catch(e) {
+            alert("Ошибка утверждения: " + e.message);
+        }
+    }
+
+    // 🔥 2. НАЗНАЧЕНИЕ ЗАЕЗДА ТРЕНИРОВКОЙ
+    async setRaceAsTraining(raceId) {
+        if (!confirm("Оставить заезд как тренировку? (Километры пойдут в накат, без начисления кубковых очков).")) return;
+
+        try {
+            await pb.collection('races').update(raceId, {
+                verification_status: 'training',
+                level: 'personal',
+                is_public: true
+            }, { requestKey: null });
+
+            const raceChat = this.app.chats.find(c => c.race_id === raceId || c.raceObj?.id === raceId);
+            const bot = Object.values(this.app.ridersMap).find(r => r.email === 'bot@sotka.one');
+            if (raceChat && bot) {
+                await pb.collection('messages').create({
+                    chat_id: raceChat.id,
+                    sender_id: bot.id,
+                    text: `🚴‍♂️ **СТАТУС: СОВМЕСТНАЯ ТРЕНИРОВКА**\n\nЗаезд утвержден как тренировочный. Дистанция будет зачислена в накат сезона.`,
+                    is_announcement: true
+                }, { requestKey: null });
+            }
+
+            alert("✅ Статус заезда изменен на тренировку.");
+            this.loadData();
+        } catch(e) {
+            alert("Ошибка изменения статуса: " + e.message);
+        }
     }
 
 // ==========================================
@@ -6138,57 +6361,64 @@ class MessengerApp {
     const mainTitle = chatsList[0]?.raceObj?.name?.split('[')[0]?.trim().toUpperCase() || slug.toUpperCase();
 
     let itemsHtml = '';
-    chatsList.forEach(c => {
-        const race = c.raceObj;
-        if (!race) return;
+        chatsList.forEach(c => {
+            const race = c.raceObj;
+            if (!race) return;
 
-        const dateObj = new Date(race.date);
-        const year = dateObj.getFullYear();
-        const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-        
-        let statusBadge = '';
-        if (race.status === 'Registration') {
-            statusBadge = `<span style="background:rgba(255,193,7,0.15); color:var(--primary); padding:3px 8px; border-radius:6px; font-size:9px; font-family:'Unbounded'; font-weight:800;">🔥 РЕГИСТРАЦИЯ</span>`;
-        } else if (race.status === 'LIVE') {
-            statusBadge = `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:9px; font-family:'Unbounded'; font-weight:800;">🔴 LIVE</span>`;
-        } else {
-            statusBadge = `<span style="background:var(--bg-surface-hover); color:var(--text-muted); padding:3px 8px; border-radius:6px; font-size:9px; font-family:'Unbounded'; font-weight:800;">📦 АРХИВ ${year}</span>`;
-        }
+            // 🔥 Достаем настоящее название этапа/гонки
+            const raceName = this.escapeHTML(race.name || c.name || mainTitle);
+            const dateObj = new Date(race.date);
+            const year = dateObj.getFullYear();
+            const dateStr = !isNaN(dateObj.getTime()) 
+                ? dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) 
+                : 'Дата уточняется';
 
-        itemsHtml += `
-            <div onclick="document.getElementById('seasonPickerModal').style.display='none'; window.app.openChat('${c.id}');" 
-                 style="background:var(--bg-body); border:1px solid var(--border); border-radius:12px; padding:14px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:0.2s;"
-                 onmouseover="this.style.borderColor='var(--primary)';" onmouseout="this.style.borderColor='var(--border)';">
-                <div>
-                    <div style="font-family:'Unbounded'; font-weight:800; font-size:13px; color:var(--text-main);">
-                        СЕЗОН ${year}
+            let statusBadge = '';
+            if (race.status === 'Registration') {
+                statusBadge = `<span style="background:rgba(255,193,7,0.15); color:var(--primary); padding:4px 8px; border-radius:6px; font-size:9px; font-family:'Unbounded'; font-weight:800; white-space:nowrap;">🔥 РЕГИСТРАЦИЯ</span>`;
+            } else if (race.status === 'LIVE') {
+                statusBadge = `<span style="background:rgba(239,68,68,0.15); color:var(--danger, #ef4444); padding:4px 8px; border-radius:6px; font-size:9px; font-family:'Unbounded'; font-weight:800; white-space:nowrap;">🔴 LIVE</span>`;
+            } else {
+                statusBadge = `<span style="background:var(--bg-surface-hover); color:var(--text-muted); padding:4px 8px; border-radius:6px; font-size:9px; font-family:'Unbounded'; font-weight:800; white-space:nowrap;">📦 АРХИВ ${year}</span>`;
+            }
+
+            itemsHtml += `
+                <div onclick="document.getElementById('seasonPickerModal').style.display='none'; window.app.openChat('${c.id}');" 
+                     style="background:var(--bg-body); border:1px solid var(--border); border-radius:12px; padding:14px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; transition:0.2s;" 
+                     onmouseover="this.style.borderColor='var(--primary)';" onmouseout="this.style.borderColor='var(--border)';">
+                    <div style="min-width:0; flex:1;">
+                        <!-- Название гонки -->
+                        <div style="font-family:'Unbounded'; font-weight:800; font-size:12px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:uppercase;">
+                            ${raceName}
+                        </div>
+                        <!-- Дата гонки -->
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:3px; font-family:'Roboto Mono', monospace;">
+                            ${dateStr}
+                        </div>
                     </div>
-                    <div style="font-size:11px; color:var(--text-muted); margin-top:3px; font-family:'Roboto Mono';">
-                        ${dateStr}
+                    <!-- Статус сбоку -->
+                    <div style="flex-shrink:0;">
+                        ${statusBadge}
                     </div>
                 </div>
-                ${statusBadge}
+            `;
+        });
+
+        // 🔥 Шапка: СЕРИЯ СТАРТОВ + Название турнира
+        modal.innerHTML = `
+            <div class="modal-box" style="max-width: 440px; width: 92vw; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 20px; padding: 22px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+                    <div style="font-family:'Unbounded'; font-size:14px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px;">
+                        🏆 СЕРИЯ СТАРТОВ
+                    </div>
+                    <button onclick="document.getElementById('seasonPickerModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px; max-height:60vh; overflow-y:auto;">
+                    ${itemsHtml}
+                </div>
             </div>
         `;
-    });
-
-    modal.innerHTML = `
-        <div class="modal-box" style="max-width: 440px; width: 92vw; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:12px;">
-                <div>
-                    <div style="font-family:'Unbounded'; font-size:14px; font-weight:800; color:var(--primary); text-transform:uppercase;">
-                        🏆 ${this.escapeHTML(mainTitle)}
-                    </div>
-                    <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Выберите сезон для перехода в чат</div>
-                </div>
-                <button onclick="document.getElementById('seasonPickerModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer;">&times;</button>
-            </div>
-
-            <div style="display:flex; flex-direction:column; gap:10px; max-height:60vh; overflow-y:auto;">
-                ${itemsHtml}
-            </div>
-        </div>
-    `;
 
     modal.style.display = 'flex';
 }
@@ -7267,15 +7497,22 @@ openCurtainEditModal() {
 
                 this.closeCurtainEditModal();
                 
-                // Пересчитываем права для немедленной перерисовки
+                // 🔥 Пересчитываем права для немедленной перерисовки (с учетом создателя события)
                 const myRole = this.getUserMaxRole();
-                const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin']; 
-                const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin']; 
-                const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
-                const isCaptain = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain'] && myTeams.includes(updatedChat.team_id); 
-                const isCreator = (updatedChat.type === 'private' || updatedChat.type === 'gruppetto') && updatedChat.participants[0] === this.currentRider.id;
-                const canManageChat = isSuper || isAdmin || isCaptain || isCreator;
-                
+                const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin'];
+                const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin'];
+                const myRiderId = this.currentRider?.id;
+                const myUserId = pb.authStore.model?.id || this.currentRider?.user_id;
+
+                const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
+                const isCaptain = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain'] && (updatedChat.type === 'team' || updatedChat.type === 'team_channel') && myTeams.includes(updatedChat.team_id);
+
+                const isRaceCreator = updatedChat.raceObj && (updatedChat.raceObj.creator_id === myRiderId || updatedChat.raceObj.creator_id === myUserId);
+                const isChatCreator = (updatedChat.captain === myRiderId) || (updatedChat.participants && updatedChat.participants[0] === myRiderId) || (updatedChat.created_by === myRiderId || updatedChat.created_by === myUserId);
+                const isCreator = isRaceCreator || isChatCreator;
+                const isAssignedJudge = updatedChat.raceObj && (updatedChat.raceObj.judge_id === myRiderId || updatedChat.raceObj.judge_id === myUserId);
+
+                const canManageChat = isSuper || isAdmin || isCaptain || isCreator || isAssignedJudge;
                 // Перерисовываем и открываем, чтобы показать результат
                 this.renderChatCurtain(updatedChat, canManageChat);
                 const panel = document.getElementById('chatCurtainPanel');
@@ -8307,62 +8544,69 @@ const r3 = getShortName(r.expand?.rider_3);
     }
 
        switchTab(tabId, event) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    
-    const targetTab = document.getElementById(`tab-${tabId}`);
-    if (targetTab) targetTab.classList.add('active');
-    
-    const targetNav = document.getElementById(`nav-btn-${tabId}`);
-    if (targetNav) targetNav.classList.add('active');
-    
-    // 🔥 1. Вкладка ЧАТЫ — открываем всплывающее меню над кнопкой
-    if (tabId === 'chats') {
-        if (typeof this.renderChatList === 'function') {
-            this.renderChatList();
-        }
-        if (event) {
-            this.openChatsDropdown(event);
-        }
-    }
-
-    // 2. Вкладка ПРОФИЛЬ
-    if (tabId === 'profile') { 
-        if (this.currentRider && this.currentRider.id) {
-            this.renderProfileTab(this.currentRider.id); 
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        
+        const targetTab = document.getElementById(`tab-${tabId}`);
+        if (targetTab) targetTab.classList.add('active');
+        
+        const targetNav = document.getElementById(`nav-btn-${tabId}`);
+        if (targetNav) targetNav.classList.add('active');
+        
+        // 🔥 1. Вкладка ГОНКИ / ЧАТЫ — показываем плавающий пульт
+        if (tabId === 'chats') {
+            if (typeof this.renderChatList === 'function') {
+                this.renderChatList();
+            }
+            // Вызываем показ плавающего пульта
+            if (typeof this.showFloatingDock === 'function') {
+                this.showFloatingDock();
+            }
         } else {
-            document.getElementById('profileTabContent').innerHTML = `
-            <div style="text-align:center; padding: 60px 20px; color:var(--danger); font-family:'Unbounded';">
-                <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
-                ПРОФИЛЬ НЕ ЗАГРУЖЕН
-                <button onclick="if(window.sotkaAuth){window.sotkaAuth.logout();}else{localStorage.clear();window.location.reload();}" style="margin-top: 30px; background: var(--danger); color: #fff; border: none; padding: 14px 24px; border-radius: 8px; font-family: 'Unbounded'; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(255,51,102,0.3); width: 100%;">
-                    🚪 ВЫЙТИ ИЗ АККАУНТА
-                </button>
-            </div>`; 
+            // Скрываем пульт на всех остальных вкладках
+            if (typeof this.hideFloatingDock === 'function') {
+                this.hideFloatingDock();
+            }
+        }
+
+        // 2. Вкладка ПРОФИЛЬ
+        if (tabId === 'profile') { 
+            if (this.currentRider && this.currentRider.id) {
+                this.renderProfileTab(this.currentRider.id); 
+            } else {
+                document.getElementById('profileTabContent').innerHTML = `
+                <div style="text-align:center; padding: 60px 20px; color:var(--danger); font-family:'Unbounded';">
+                    <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+                    ПРОФИЛЬ НЕ ЗАГРУЖЕН
+                    <button onclick="if(window.sotkaAuth){window.sotkaAuth.logout();}else{localStorage.clear();window.location.reload();}" style="margin-top: 30px; background: var(--danger); color: #fff; border: none; padding: 14px 24px; border-radius: 8px; font-family: 'Unbounded'; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(255,51,102,0.3); width: 100%;">
+                        🚪 ВЫЙТИ ИЗ АККАУНТА
+                    </button>
+                </div>`; 
+            }
+        }
+
+        // 3. Вкладка КОНТАКТЫ
+        if (tabId === 'contacts') this.renderContactsTab('');
+        
+        // 4. Вкладка ПЕЛОТОНЫ
+        if (tabId === 'pelotons') {
+            document.body.classList.add('peloton-mode');
+            this.renderPelotonsTab();
+            if (this.crm) {
+                this.crm.loadData();
+            }
+            this.openPelotonDropdown(event);
+        } else {
+            document.body.classList.remove('peloton-mode');
+        }
+        
+        // 5. Вкладка ДРАФТ
+        if (tabId === 'draft') {
+            this.loadDraftWallet();
+            this.loadDraftHistory();
         }
     }
 
-    // 3. Вкладка КОНТАКТЫ
-    if (tabId === 'contacts') this.renderContactsTab('');
-    
-    // 4. Вкладка ПЕЛОТОНЫ
-    if (tabId === 'pelotons') {
-        document.body.classList.add('peloton-mode');
-        this.renderPelotonsTab();
-        if (this.crm) {
-            this.crm.loadData();
-        }
-        this.openPelotonDropdown(event);
-    } else {
-        document.body.classList.remove('peloton-mode');
-    }
-    
-    // 5. Вкладка ДРАФТ
-    if (tabId === 'draft') {
-        this.loadDraftWallet();
-        this.loadDraftHistory();
-    }
-}
         getUserMaxRole() {
             const roles = this.usersMap[this.currentRider?.email] || []; let maxWeight = 0; let topRole = 'rider';
             for (let r of roles) { if (this.ROLE_WEIGHTS[r] > maxWeight) { maxWeight = this.ROLE_WEIGHTS[r]; topRole = r; } } return topRole;
@@ -9139,9 +9383,9 @@ const r3 = getShortName(r.expand?.rider_3);
                         }
                         .compact-action-btn .btn-icon { margin-right: 4px !important; width: 14px !important; height: 14px !important; }
                         
-                        /* Уменьшаем шрифты в шапке */
-                        .header-race-title { font-size: 13px !important; }
-                        .meta-scroller { font-size: 9px !important; gap: 4px !important; }
+                        /* Увеличиваем шрифты в шапке для лучшей читаемости */
+                        .header-race-title { font-size: 15px !important; }
+                        .meta-scroller { font-size: 11px !important; gap: 4px !important; }
                         
                         /* 🔥 НОВОЕ: ДЕЛАЕМ КОМПАКТНЫМ ПОЛЕ ВВОДА ВНИЗУ */
                         #inputWrapper {
@@ -9356,7 +9600,7 @@ const r3 = getShortName(r.expand?.rider_3);
                 const results = await Promise.allSettled([ 
     pb.collection('users').getFullList({ fields: 'id,email,role', requestKey: null }), 
     // Запрашиваем только нужные поля (без историй, паролей и лишних данных)
-    pb.collection('riders').getFullList({ fields: 'id,first_name,last_name,email,team_id,base_cluster,gender,yob,rating,avatar,roles', requestKey: null }), 
+	pb.collection('riders').getFullList({ fields: 'id,first_name,last_name,email,team_id,base_cluster,gender,yob,rating,avatar,roles,subscriptions', requestKey: null }), 
     pb.collection('teams').getFullList({ fields: 'id,name,peloton_id,points', sort: 'name', requestKey: null }), 
     pb.collection('pelotons').getFullList({ fields: 'id,name,is_private,admin_id,allowed_teams,allowed_riders', sort: 'name', requestKey: null }),
     pb.collection('races').getFullList({ sort: '-date', expand: 'rating_rule_id,cup_id', requestKey: null })
@@ -9838,7 +10082,8 @@ if (this.currentRider && !this.isGuest) {
                 } catch(err) {
                     console.warn("Не удалось отрисовать аварийную шапку", err);
                 }
-                
+                this.initEventsFloatingDock();
+				this.showFloatingDock();
                 if (typeof hideVilkaSplash === 'function') hideVilkaSplash(); 
             }
             this.initEmojiPicker();
@@ -11079,11 +11324,543 @@ appendMessageHTML(msg, container, prepend = false, isFeed = false) {
                 }
             }, 300); 
         }
+// 🔥 1. ИНИЦИАЛИЗАЦИЯ И ОТРИСОВКА ПУЛЬТА
+    // ==========================================
+    // 🔥 ИНИЦИАЛИЗАЦИЯ ПЛАВАЮЩЕГО ПУЛЬТА (С КНОПКОЙ "ОБЩИЙ")
+    // ==========================================
+    initEventsFloatingDock() {
+        let dock = document.getElementById('eventsFloatingDock');
+        if (!dock) {
+            dock = document.createElement('div');
+            dock.id = 'eventsFloatingDock';
+            const sidebar = document.querySelector('.sidebar') || document.body;
+            sidebar.appendChild(dock);
+        }
 
-        // ==========================================
+        // Проверяем, открыта ли сейчас сетка месяца
+        const isMonthCalOpen = (this.activeChatId === 'month_calendar');
+        const currentFilter = this.chatListFilter || 'races';
+
+        dock.innerHTML = `
+            <div class="dock-segments">
+                <button class="dock-seg-btn ${isMonthCalOpen ? 'active' : ''}" 
+                        id="dockBtn-month"
+                        onclick="window.app.openMonthCalendarView()">ОБЩИЙ</button>
+                
+                <button class="dock-seg-btn ${!isMonthCalOpen && currentFilter === 'races' ? 'active' : ''}" 
+                        id="dockBtn-races"
+                        onclick="window.app.setEventsFilter('races', this)">ГОНКИ</button>
+                
+                <button class="dock-seg-btn ${!isMonthCalOpen && currentFilter === 'trainings' ? 'active' : ''}" 
+                        id="dockBtn-trainings"
+                        onclick="window.app.setEventsFilter('trainings', this)">ТРЕНИРОВКИ</button>
+                
+                <button class="dock-seg-btn ${!isMonthCalOpen && currentFilter === 'archive' ? 'active' : ''}" 
+                        id="dockBtn-archive"
+                        onclick="window.app.setEventsFilter('archive', this)">АРХИВ</button>
+            </div>
+            
+            <div class="dock-divider"></div>
+            
+            <button class="dock-add-btn" onclick="window.app.openCreateEventSelector()" title="Создать событие">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+        `;
+
+        this.attachDockScrollListener();
+        this.showFloatingDock();
+    }
+    // 🔥 2. ТОГГЛ И ПОКАЗ ПУЛЬТА ПРИ КЛИКЕ НА «ГОНКИ»
+    toggleFloatingDock() {
+        let dock = document.getElementById('eventsFloatingDock');
+        if (!dock) {
+            this.initEventsFloatingDock();
+            dock = document.getElementById('eventsFloatingDock');
+        }
+
+        if (dock.classList.contains('dock-hidden')) {
+            this.showFloatingDock();
+        } else {
+            // Если уже открыт — перезапускаем таймер видимости
+            this.resetDockTimer();
+        }
+    }
+
+    showFloatingDock() {
+        let dock = document.getElementById('eventsFloatingDock');
+        if (!dock) {
+            this.initEventsFloatingDock();
+            dock = document.getElementById('eventsFloatingDock');
+        }
+        if (dock) {
+            dock.classList.remove('dock-hidden');
+        }
+        this.resetDockTimer();
+    }
+
+    hideFloatingDock() {
+        const dock = document.getElementById('eventsFloatingDock');
+        if (dock) dock.classList.add('dock-hidden');
+    }
+
+    resetDockTimer() {
+        if (this.dockHideTimeout) clearTimeout(this.dockHideTimeout);
+        this.dockHideTimeout = setTimeout(() => {
+            this.hideFloatingDock();
+        }, 10000);
+    }
+
+    // ==========================================
+    // 🔥 2. ПЕРЕКЛЮЧЕНИЕ ФИЛЬТРОВ И ЗАКРЫТИЕ СЕТКИ
+    // ==========================================
+    setEventsFilter(filterType, btnEl) {
+        // Если была открыта сетка месяца — закрываем её и возвращаемся к списку
+        if (this.activeChatId === 'month_calendar') {
+            const calView = document.getElementById('monthCalendarViewContainer');
+            if (calView) calView.remove();
+            
+            ['chatHeader', 'curtainContainer', 'inputWrapper', 'pinnedMessageBar', 'recipientSelectorBar', 'readOnlyNotice'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.removeProperty('display');
+            });
+            this.activeChatId = null;
+        }
+
+        this.chatListFilter = filterType;
+
+        // Переключаем активную подсветку в пульте
+        document.querySelectorAll('.dock-seg-btn').forEach(b => b.classList.remove('active'));
+        if (btnEl) {
+            btnEl.classList.add('active');
+        } else {
+            const targetBtn = document.getElementById(`dockBtn-${filterType}`);
+            if (targetBtn) targetBtn.classList.add('active');
+        }
+
+        // Перерисовываем список гонок слева
+        const searchVal = document.getElementById('chatSearch')?.value || "";
+        this.renderChatList(searchVal);
+
+        this.resetDockTimer();
+    }
+
+    attachDockScrollListener() {
+        const chatListEl = document.getElementById('chatList') || document.querySelector('.chat-list');
+        if (!chatListEl || this.hasDockScrollAttached) return;
+
+        let lastScrollTop = 0;
+        chatListEl.addEventListener('scroll', () => {
+            const currentScroll = chatListEl.scrollTop;
+            if (currentScroll > lastScrollTop + 15 && currentScroll > 60) {
+                this.hideFloatingDock();
+            } else if (currentScroll < lastScrollTop - 10) {
+                this.showFloatingDock();
+            }
+            lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
+        }, { passive: true });
+
+        this.hasDockScrollAttached = true;
+    }
+	
+// ==========================================
+    // 🔥 ЗАКРЫТИЕ СЕТКИ КАЛЕНДАРЯ (С ПОЛНЫМ ВОССТАНОВЛЕНИЕМ ЧАТА)
+    // ==========================================
+   // ==========================================
+    // 🔥 ЗАКРЫТИЕ СЕТКИ КАЛЕНДАРЯ
+    // ==========================================
+    closeMonthCalendarView(skipRestore = false) {
+        // 1. Удаляем сам слой сетки календаря
+        const calView = document.getElementById('monthCalendarViewContainer');
+        if (calView) calView.remove();
+
+        // 2. Принудительно прячем закреп по умолчанию
+        const pinnedBar = document.getElementById('pinnedMessageBar');
+        if (pinnedBar) pinnedBar.style.display = 'none';
+
+        // 3. Снимаем блокировки !important с постоянных элементов чата
+        ['chatHeader', 'curtainContainer', 'inputWrapper', 'recipientSelectorBar', 'readOnlyNotice'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.removeProperty('display');
+        });
+
+        // 4. Достаем ID предыдущего чата и сбрасываем временную переменную
+        const restoreChatId = (this.lastChatBeforeCalendar && this.lastChatBeforeCalendar !== 'month_calendar')
+            ? this.lastChatBeforeCalendar
+            : (this.chats && this.chats.length > 0 ? this.chats[0].id : null);
+        
+        this.lastChatBeforeCalendar = null;
+		
+        // 5. Возвращаем подсветку активного фильтра списка в пульте
+        document.querySelectorAll('.dock-seg-btn').forEach(b => b.classList.remove('active'));
+        const currentFilterBtn = document.getElementById(`dockBtn-${this.chatListFilter || 'races'}`);
+        if (currentFilterBtn) currentFilterBtn.classList.add('active');
+
+        // 🔥 6. ЕСЛИ ПЕРЕДАН skipRestore = true (например, при переходе в LiveBoard или открытии чата события) — НЕ ВОССТАНАВЛИВАЕМ СТАРЫЙ ЧАТ
+        if (skipRestore) {
+            this.activeChatId = null;
+            return;
+        }
+
+        // 7. Раздельная логика: ДЕСКТОП vs СМАРТФОН
+        if (window.innerWidth > 768) {
+            // На десктопе: восстанавливаем открытый чат справа
+            if (restoreChatId) {
+                this.openChat(restoreChatId);
+            } else {
+                this.activeChatId = null;
+                const emptyMsg = document.getElementById('emptyChatMsg');
+                if (emptyMsg) emptyMsg.style.display = 'flex';
+            }
+        } else {
+            // На смартфонах: закрываем правую шторку и возвращаемся к списку гонок слева
+            this.activeChatId = null;
+            if (typeof this.closeChatMobile === 'function') {
+                this.closeChatMobile();
+            }
+        }
+    }
+// ==========================================
+    // 🔥 ОТКРЫТИЕ И ОТРИСОВКА СЕТКИ КАЛЕНДАРЯ
+    // ==========================================
+    openMonthCalendarView(targetDate = new Date(), animDirection = null) {
+        this.currentCalViewDate = new Date(targetDate);
+
+        if (this.activeChatId && this.activeChatId !== 'month_calendar') {
+            this.lastChatBeforeCalendar = this.activeChatId;
+        }
+        this.activeChatId = 'month_calendar';
+		
+        // Подсвечиваем кнопку "ОБЩИЙ" в пульте
+        document.querySelectorAll('.dock-seg-btn').forEach(b => b.classList.remove('active'));
+        const monthDockBtn = document.getElementById('dockBtn-month');
+        if (monthDockBtn) monthDockBtn.classList.add('active');
+
+        if (typeof this.openChatMobile === 'function') this.openChatMobile();
+
+        const mainArea = document.getElementById('mainChatArea') || document.querySelector('.chat-area');
+        if (!mainArea) return;
+
+        // Скрываем элементы чата
+        ['chatHeader', 'curtainContainer', 'inputWrapper', 'recipientSelectorBar', 'pinnedMessageBar', 'readOnlyNotice'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.setProperty('display', 'none', 'important');
+        });
+
+        const emptyMsg = document.getElementById('emptyChatMsg');
+        if (emptyMsg) emptyMsg.style.display = 'none';
+
+        let calContainer = document.getElementById('monthCalendarViewContainer');
+        if (!calContainer) {
+            calContainer = document.createElement('div');
+            calContainer.id = 'monthCalendarViewContainer';
+            mainArea.appendChild(calContainer);
+        }
+        calContainer.style.setProperty('display', 'flex', 'important');
+
+        const year = this.currentCalViewDate.getFullYear();
+        const month = this.currentCalViewDate.getMonth();
+        const monthNames = ['ЯНВАРЬ', 'ФЕВРАЛЬ', 'МАРТ', 'АПРЕЛЬ', 'МАЙ', 'ИЮНЬ', 'ИЮЛЬ', 'АВГУСТ', 'СЕНТЯБРЬ', 'ОКТЯБРЬ', 'НОЯБРЬ', 'ДЕКАБРЬ'];
+
+        // Словари для покрытий и форматов
+        const safeFormats = (this.crm && this.crm.RACE_FORMATS) ? this.crm.RACE_FORMATS : { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
+        const safeSurfaces = (this.crm && this.crm.RACE_SURFACES) ? this.crm.RACE_SURFACES : { 'road': 'Шоссе', 'offroad': 'Грунт', 'track': 'Трек', 'indoor': 'Индор' };
+
+        // 🔥 СОБИРАЕМ ВСЕ СОБЫТИЯ ИЗ ВСЕХ КЭШЕЙ БЕЗ ПОТЕРИ
+        const racesFromCrm = (this.crm && this.crm.dataCalendar) ? this.crm.dataCalendar : [];
+        const racesFromChats = this.chats ? this.chats.map(c => c.raceObj).filter(Boolean) : [];
+        const racesFromMap = this.racesMap ? Object.values(this.racesMap) : [];
+
+        const allRacesMap = new Map();
+        [...racesFromCrm, ...racesFromChats, ...racesFromMap].forEach(r => {
+            if (r && r.id) allRacesMap.set(r.id, r);
+        });
+        const allRaces = Array.from(allRacesMap.values());
+
+        const eventsByDate = {};
+        allRaces.forEach(r => {
+            if (!r || !r.date) return;
+            const d = new Date(r.date);
+            if (isNaN(d.getTime())) return;
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            if (!eventsByDate[key]) eventsByDate[key] = [];
+            eventsByDate[key].push(r);
+        });
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        let startDayIndex = (firstDayOfMonth.getDay() + 6) % 7;
+        const totalDays = lastDayOfMonth.getDate();
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+        let daysHtml = '';
+        const todayStr = new Date().toISOString().split('T')[0];
+        const duckUrl = 'https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg';
+
+        // Дни прошлого месяца
+        for (let i = startDayIndex - 1; i >= 0; i--) {
+            const dNum = prevMonthLastDay - i;
+            daysHtml += `<div class="month-cal-day other-month"><span class="month-cal-day-num">${dNum}</span></div>`;
+        }
+
+        // Дни текущего месяца
+        for (let day = 1; day <= totalDays; day++) {
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isToday = (dateKey === todayStr);
+            const daysEvents = eventsByDate[dateKey] || [];
+
+            let pillsHtml = '';
+            let dotsHtml = '';
+
+            daysEvents.forEach(r => {
+                let pillClass = 'cal-pill-race';
+                let dotClass = 'race';
+
+                if (r.status === 'LIVE') {
+                    pillClass = 'cal-pill-live';
+                    dotClass = 'live';
+                } else if (r.status === 'Finished') {
+                    pillClass = 'cal-pill-finished';
+                    dotClass = 'finished';
+                } else if (r.level === 'personal' || r.level === 'team' || r.verification_status === 'training') {
+                    pillClass = 'cal-pill-training';
+                    dotClass = 'training';
+                }
+
+                const chat = this.chats ? this.chats.find(c => (c.race_id === r.id || c.raceObj?.id === r.id || c.id === r.id)) : null;
+                const clickAction = chat
+                    ? `window.app.openChat('${chat.id}')`
+                    : `window.app.closeMonthCalendarView(true); window.app.crm.openLiveBoard('${r.id}', event);`;
+
+                // Формируем строку: ШОССЕ • КОМАНДА
+                const formatName = r.format ? (safeFormats[r.format] || '') : '';
+                const surfaceName = r.surface ? (safeSurfaces[r.surface] || '') : '';
+                const typeLabel = [surfaceName, formatName].filter(Boolean).join(' • ').toUpperCase();
+
+                // 1. Десктоп: плашка с уточкой, названием и микрострокой типа заезда
+                pillsHtml += `
+                    <div class="cal-event-pill ${pillClass}" onclick="event.stopPropagation(); ${clickAction}" title="${this.escapeHTML(r.name)} ${typeLabel ? `(${typeLabel})` : ''}">
+                        <div style="display:flex; align-items:center; gap:4px; width:100%; min-width:0;">
+                            <img src="${duckUrl}" class="cal-pill-duck" alt="Duck">
+                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; font-weight:800;">${this.escapeHTML(r.name)}</span>
+                        </div>
+                        ${typeLabel ? `<div class="cal-pill-subtext">${typeLabel}</div>` : ''}
+                    </div>
+                `;
+
+                // 2. Смартфоны: мини-уточка с цветным диодом
+                dotsHtml += `
+                    <div class="cal-duck-badge" title="${this.escapeHTML(r.name)}">
+                        <img src="${duckUrl}" alt="Duck">
+                        <span class="cal-duck-dot ${dotClass}"></span>
+                    </div>
+                `;
+            });
+
+            const onDayClick = `if (window.innerWidth <= 600) { window.app.openDayAgendaModal('${dateKey}'); } else { window.app.openCreateEventSelector('${dateKey}'); }`;
+
+            daysHtml += `
+                <div class="month-cal-day ${isToday ? 'today' : ''}" onclick="${onDayClick}">
+                    <span class="month-cal-day-num">${day}</span>
+                    <div style="display:flex; flex-direction:column; gap:2px; overflow-y:auto; max-height:80px; width:100%; min-width:0;">
+                        ${pillsHtml}
+                    </div>
+                    <div class="cal-mobile-dots">
+                        ${dotsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        const totalRendered = startDayIndex + totalDays;
+        const nextDays = (7 - (totalRendered % 7)) % 7;
+        for (let n = 1; n <= nextDays; n++) {
+            daysHtml += `<div class="month-cal-day other-month"><span class="month-cal-day-num">${n}</span></div>`;
+        }
+
+        let animClass = '';
+        if (animDirection === 'next') animClass = 'slide-next';
+        if (animDirection === 'prev') animClass = 'slide-prev';
+
+        calContainer.innerHTML = `
+            <div class="month-cal-header">
+                <div class="month-cal-nav">
+                    <button class="month-cal-btn-arrow" onclick="window.app.openMonthCalendarView(new Date(${year}, ${month - 1}, 1), 'prev')">‹</button>
+                    <div class="month-cal-title">
+                        ${monthNames[month]} ${year}
+                    </div>
+                    <button class="month-cal-btn-arrow" onclick="window.app.openMonthCalendarView(new Date(${year}, ${month + 1}, 1), 'next')">›</button>
+                    <button class="month-cal-btn-today" onclick="window.app.openMonthCalendarView(new Date())">СЕГОДНЯ</button>
+                </div>
+
+                <div class="month-cal-actions">
+                    <button class="month-cal-btn-create" onclick="window.app.openCreateEventSelector()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span class="create-text">СОЗДАТЬ</span>
+                    </button>
+                    <button class="month-cal-btn-close" onclick="window.app.closeMonthCalendarView()" title="Закрыть сетку">&times;</button>
+                </div>
+            </div>
+
+            <div class="month-cal-weekdays">
+                <div>ПН</div><div>ВТ</div><div>СР</div><div>ЧТ</div><div>ПТ</div><div style="color:var(--primary);">СБ</div><div style="color:var(--primary);">ВС</div>
+            </div>
+
+            <div class="month-cal-grid ${animClass}">
+                ${daysHtml}
+            </div>
+        `;
+
+        this.attachCalendarSwipeGestures(calContainer, year, month);
+    }
+    // ==========================================
+    // 👆 ДЕТЕКТОР СВАЙПОВ ВЛЕВО / ВПРАВО
+    // ==========================================
+    attachCalendarSwipeGestures(container, year, month) {
+        if (!container) return;
+
+        let startX = 0;
+        let startY = 0;
+        let endX = 0;
+        let endY = 0;
+
+        container.ontouchstart = (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            endX = startX;
+            endY = startY;
+        };
+
+        container.ontouchmove = (e) => {
+            endX = e.touches[0].clientX;
+            endY = e.touches[0].clientY;
+        };
+
+        container.ontouchend = () => {
+            const diffX = endX - startX;
+            const diffY = endY - startY;
+
+            // Порог свайпа: смещение от 45px и горизонтальный вектор преобладает над вертикальным
+            if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.3) {
+                if (diffX < 0) {
+                    // Свайп влево ➔ Следующий месяц
+                    this.openMonthCalendarView(new Date(year, month + 1, 1), 'next');
+                } else {
+                    // Свайп вправо ➔ Предыдущий месяц
+                    this.openMonthCalendarView(new Date(year, month - 1, 1), 'prev');
+                }
+            }
+        };
+    }
+// ==========================================
+    // 📱 ШТОРКА СОБЫТИЙ ВЫБРАННОГО ДНЯ (ДЛЯ СМАРТФОНОВ)
+    // ==========================================
+    openDayAgendaModal(dateKey) {
+        const d = new Date(dateKey);
+        const dateFormatted = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        const safeFormats = (this.crm && this.crm.RACE_FORMATS) ? this.crm.RACE_FORMATS : { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
+        const safeSurfaces = (this.crm && this.crm.RACE_SURFACES) ? this.crm.RACE_SURFACES : { 'road': 'Шоссе', 'offroad': 'Грунт', 'track': 'Трек', 'indoor': 'Индор' };
+
+        const allRaces = (this.crm && this.crm.dataCalendar && this.crm.dataCalendar.length > 0)
+            ? this.crm.dataCalendar
+            : (this.chats ? this.chats.map(c => c.raceObj).filter(Boolean) : []);
+
+        const dayEvents = allRaces.filter(r => {
+            if (!r || !r.date) return false;
+            const rd = new Date(r.date);
+            const key = `${rd.getFullYear()}-${String(rd.getMonth() + 1).padStart(2, '0')}-${String(rd.getDate()).padStart(2, '0')}`;
+            return key === dateKey;
+        });
+
+        let eventsHtml = '';
+        if (dayEvents.length === 0) {
+            eventsHtml = `
+                <div style="text-align:center; padding:30px 10px; color:var(--text-muted); font-size:12px; font-family:'Unbounded';">
+                    На этот день нет запланированных стартов
+                </div>
+            `;
+        } else {
+            dayEvents.forEach(r => {
+                const chat = this.chats ? this.chats.find(c => (c.race_id === r.id || c.raceObj?.id === r.id || c.id === r.id)) : null;
+                const clickAction = chat
+    ? `document.getElementById('dayAgendaModal').style.display='none'; window.app.openChat('${chat.id}');`
+    : `document.getElementById('dayAgendaModal').style.display='none'; window.app.closeMonthCalendarView(true); window.app.crm.openLiveBoard('${r.id}', event);`;
+
+                const timeStr = new Date(r.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                const distStr = r.distance ? `${r.distance} км` : '';
+
+                // 🔥 Формируем тип и покрытие: ШОССЕ • КОМАНДА
+                const formatName = r.format ? (safeFormats[r.format] || '') : '';
+                const surfaceName = r.surface ? (safeSurfaces[r.surface] || '') : '';
+                const typeLabel = [surfaceName, formatName].filter(Boolean).join(' • ').toUpperCase();
+
+                eventsHtml += `
+                    <div onclick="${clickAction}" style="background:var(--bg-body); border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+                        <div style="min-width:0; flex:1;">
+                            ${typeLabel ? `
+                                <div style="font-family:'Unbounded', sans-serif; font-size:8px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">
+                                    ${typeLabel}
+                                </div>
+                            ` : ''}
+                            <div style="font-family:'Unbounded'; font-weight:800; font-size:12px; color:var(--text-main); text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${this.escapeHTML(r.name)}
+                            </div>
+                            <div style="font-size:11px; color:var(--text-muted); margin-top:3px; font-family:'Roboto Mono';">
+                                ⏱ ${timeStr} ${distStr ? `• ${distStr}` : ''}
+                            </div>
+                        </div>
+                        <span style="color:var(--primary); font-size:11px; font-family:'Unbounded'; font-weight:800; white-space:nowrap; flex-shrink:0;">В ЭФИР ➔</span>
+                    </div>
+                `;
+            });
+        }
+
+        let modal = document.getElementById('dayAgendaModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'dayAgendaModal';
+            modal.className = 'modal-overlay';
+            modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000000; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(6px);';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="modal-box" style="width:100%; max-width:500px; background:var(--bg-surface); border-radius:24px 24px 0 0; padding:20px; max-height:75vh; display:flex; flex-direction:column; box-shadow:0 -10px 40px rgba(0,0,0,0.5); border-top:1px solid var(--border);">
+                <div style="width:40px; height:4px; background:var(--border); border-radius:10px; margin:-8px auto 14px auto;"></div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                    <div>
+                        <div style="font-size:10px; font-family:'Unbounded'; font-weight:800; color:var(--primary); text-transform:uppercase;">КАЛЕНДАРЬ ДНЯ</div>
+                        <div style="font-family:'Unbounded'; font-size:13px; font-weight:800; color:var(--text-main); text-transform:uppercase;">${dateFormatted}</div>
+                    </div>
+                    <button onclick="document.getElementById('dayAgendaModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer;">&times;</button>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; margin-bottom:15px;">
+                    ${eventsHtml}
+                </div>
+
+                <button onclick="document.getElementById('dayAgendaModal').style.display='none'; window.app.openCreateEventSelector('${dateKey}')" style="width:100%; background:var(--primary); color:#000; border:none; padding:12px; border-radius:12px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer;">
+                    ➕ ДОБАВИТЬ СОБЫТИЕ НА ЭТОТ ДЕНЬ
+                </button>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+    }
+      // ==========================================
         // 📜 РЕНДЕР ЧАТОВ С ЗАКРЕПАМИ И КНОПКАМИ ШЕРИНГА
         // ==========================================
         renderChatList(filterText = "") {
+			if (!document.getElementById('eventsFloatingDock')) {
+            this.initEventsFloatingDock();
+        }
             const container = document.getElementById('chatList'); 
             if (!container) return; 
             container.innerHTML = '';
@@ -11103,7 +11880,7 @@ appendMessageHTML(msg, container, prepend = false, isFeed = false) {
 
             let filteredChats = Array.isArray(this.chats) ? [...this.chats] : [];
             
-            // 1. Фильтрация по пелотону
+            // 1. Фильтрация по пелотону (СОХРАНЯЕМ)
             if (this.currentPelotonFilter && this.currentPelotonFilter !== 'all') { 
                 filteredChats = filteredChats.filter(c => { 
                     if (c.type === 'direct') return true; 
@@ -11114,45 +11891,66 @@ appendMessageHTML(msg, container, prepend = false, isFeed = false) {
                 }); 
             }
 
-            // 2. Фильтрация по категории из меню (ГОНКИ / АРХИВ / ЛИЧНЫЕ / ПОДДЕРЖКА)
-            // 2. Фильтрация по категории из меню (ГОНКИ / АРХИВ / ЛИЧНЫЕ / ПОДДЕРЖКА)
+            // 2. Фильтрация по категории из меню (ГОНКИ / ТРЕНИРОВКИ / АРХИВ / ЛИЧНЫЕ / ПОДДЕРЖКА)
             const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
             const now = Date.now();
 
             if (!filterText) {
+                // 🏁 Вкладка "ГОНКИ" (Официальные старты пелотона)
                 if (this.chatListFilter === 'races') {
                     filteredChats = filteredChats.filter(c => {
-                        // 🏁 В "ГОНКИ" пропускаем СТРОГО чаты гонок с привязанным объектом raceObj
-                        if (c.type !== 'global' || !c.raceObj) return false;
-                        
-                        if (c.raceObj.status === 'Finished' && c.raceObj.date) {
-                            const raceDate = new Date(c.raceObj.date).getTime();
-                            if (!isNaN(raceDate) && (now - raceDate) > oneWeekMs) return false;
-                        }
-                        return true;
+                        if (c.type !== 'global' && !c.race_id) return false;
+                        const raceObj = c.raceObj 
+                            || (this.crm && this.crm.dataCalendar ? this.crm.dataCalendar.find(r => r.id === c.race_id) : null)
+                            || (this.racesMap ? this.racesMap[c.race_id] : null);
+
+                        if (!raceObj || raceObj.status === 'Finished') return false;
+                        // Скрываем тренировки из официальных гонок
+                        if (raceObj.level === 'personal' || raceObj.verification_status === 'training') return false;
+
+                        return this.canUserSeeEvent(raceObj, c);
                     });
+
+                // 🚴‍♂️ Вкладка "ТРЕНИРОВКИ" (Личные выезды и командные тренировки)
+                } else if (this.chatListFilter === 'trainings') {
+                    filteredChats = filteredChats.filter(c => {
+                        if (c.type !== 'global' && !c.race_id) return false;
+                        const raceObj = c.raceObj 
+                            || (this.crm && this.crm.dataCalendar ? this.crm.dataCalendar.find(r => r.id === c.race_id) : null)
+                            || (this.racesMap ? this.racesMap[c.race_id] : null);
+
+                        if (!raceObj || raceObj.status === 'Finished') return false;
+                        const isTraining = raceObj.level === 'personal' || raceObj.level === 'team' || raceObj.verification_status === 'training';
+                        if (!isTraining) return false;
+
+                        return this.canUserSeeEvent(raceObj, c);
+                    });
+
+                // 📦 Вкладка "АРХИВ" (Завершенные заезды)
                 } else if (this.chatListFilter === 'archive') {
                     filteredChats = filteredChats.filter(c => {
-                        if (c.type !== 'global' || !c.raceObj) return false;
-                        if (c.raceObj.status === 'Finished') {
-                            if (c.raceObj.date) {
-                                const raceDate = new Date(c.raceObj.date).getTime();
-                                if (!isNaN(raceDate) && (now - raceDate) > oneWeekMs) return true;
-                            } else {
-                                return true;
-                            }
-                        }
-                        return false;
+                        if (c.type !== 'global' && !c.race_id) return false;
+                        const raceObj = c.raceObj 
+                            || (this.crm && this.crm.dataCalendar ? this.crm.dataCalendar.find(r => r.id === c.race_id) : null)
+                            || (this.racesMap ? this.racesMap[c.race_id] : null);
+
+                        if (!raceObj || raceObj.status !== 'Finished') return false;
+
+                        return this.canUserSeeEvent(raceObj, c);
                     });
+
+                // 💬 Вкладка "ЛИЧНЫЕ" (СОХРАНЯЕМ)
                 } else if (this.chatListFilter === 'direct') {
-                    // 💬 В "ЛИЧНЫЕ" отправляем личку, командные чаты, каналы и группетто
                     filteredChats = filteredChats.filter(c => 
                         c.type === 'direct' || 
                         c.type === 'team' || 
                         c.type === 'team_channel' || 
                         c.type === 'private' || 
-                        c.type === 'gruppetto'
+                        c.type === 'gruppetto' ||
+                        c.type === 'radar'
                     );
+
+                // 🎧 Вкладка "ПОДДЕРЖКА" (СОХРАНЯЕМ)
                 } else if (this.chatListFilter === 'support') {
                     filteredChats = filteredChats.filter(c => c.type === 'support' || (c.name && c.name.toLowerCase().includes('поддержк')));
                 }
@@ -11201,60 +11999,76 @@ appendMessageHTML(msg, container, prepend = false, isFeed = false) {
                 else unpinnedChats.push(c);
             });
 
-            pinnedChats.sort((a, b) => pinnedIds.indexOf(a.id) - pinnedIds.indexOf(b.id));
-
-            unpinnedChats.sort((a, b) => {
-                // 🔥 ФИКС: Строгая хронология для Календаря (Гонки и Архив)
-                // Игнорируем непрочитанные сообщения, чтобы список не прыгал!
-                if (this.chatListFilter === 'races' || this.chatListFilter === 'archive') {
-                    const dateA = new Date(a.raceObj?.date || 0).getTime();
-                    const dateB = new Date(b.raceObj?.date || 0).getTime();
-                    
-                    if (this.chatListFilter === 'archive') {
-                        return dateB - dateA; // Архив: от свежих завершенных к старым
-                    }
-                    return dateA - dateB; // Будущие гонки: от ближайших к дальним
-                }
-
-                // 💬 Для остальных вкладок (Рация, Личка, Команды): поднимаем непрочитанные наверх
-                const unreadA = (this.unreadCounts && this.unreadCounts[a.id] > 0) ? 1 : 0;
-                const unreadB = (this.unreadCounts && this.unreadCounts[b.id] > 0) ? 1 : 0;
-                if (unreadA !== unreadB) return unreadB - unreadA;
-
-                // На всякий случай (страховка)
-                if (a.type === 'global' && b.type === 'global') {
-                    const dateA = new Date(a.raceObj?.date || 0).getTime();
-                    const dateB = new Date(b.raceObj?.date || 0).getTime();
+            // 🔥 СОРТИРУЕМ ЛИЧНЫЙ КАЛЕНДАРЬ ПО ДАТЕ (а не по времени добавления)
+                pinnedChats.sort((a, b) => {
+                    const dateA = new Date(a.raceObj?.date || a.updated || a.created || 0).getTime();
+                    const dateB = new Date(b.raceObj?.date || b.updated || b.created || 0).getTime();
+                    if (this.chatListFilter === 'archive') return dateB - dateA;
                     return dateA - dateB;
-                }
+                });
 
-                // Обычные чаты сортируем по времени последнего сообщения
-                const dA = new Date(a.updated || a.created || 0).getTime();
-                const dB = new Date(b.updated || b.created || 0).getTime();
-                return dB - dA;
-            });
+                unpinnedChats.sort((a, b) => {
+                    // 🔥 ФИКС: Строгая хронология для Календаря (Гонки и Архив)
+                    // Игнорируем непрочитанные сообщения, чтобы список не прыгал!
+                    if (this.chatListFilter === 'races' || this.chatListFilter === 'archive') {
+                        const dateA = new Date(a.raceObj?.date || 0).getTime();
+                        const dateB = new Date(b.raceObj?.date || 0).getTime();
+                        
+                        if (this.chatListFilter === 'archive') {
+                            return dateB - dateA; // Архив: от свежих завершенных к старым
+                        }
+                        return dateA - dateB; // Будущие гонки: от ближайших к дальним
+                    }
 
-            const finalChatsToRender = [...pinnedChats, ...unpinnedChats];
+                    // 💬 Для остальных вкладок (Рация, Личка, Команды): поднимаем непрочитанные наверх
+                    const unreadA = (this.unreadCounts && this.unreadCounts[a.id] > 0) ? 1 : 0;
+                    const unreadB = (this.unreadCounts && this.unreadCounts[b.id] > 0) ? 1 : 0;
+                    if (unreadA !== unreadB) return unreadB - unreadA;
 
-            // Отрисовка списка чатов
-            finalChatsToRender.forEach(c => {
+                    // На всякий случай (страховка)
+                    if (a.type === 'global' && b.type === 'global') {
+                        const dateA = new Date(a.raceObj?.date || 0).getTime();
+                        const dateB = new Date(b.raceObj?.date || 0).getTime();
+                        return dateA - dateB;
+                    }
+
+                    // Обычные чаты сортируем по времени последнего сообщения
+                    const dA = new Date(a.updated || a.created || 0).getTime();
+                    const dB = new Date(b.updated || b.created || 0).getTime();
+                    return dB - dA;
+                });
+
+                const finalChatsToRender = [...pinnedChats, ...unpinnedChats];
+
+                // 🔥 ПЕРЕМЕННЫЕ ДЛЯ ЗАГОЛОВКОВ КАЛЕНДАРЯ
+                const currentYear = new Date().getFullYear();
+                let hasRenderedPinnedHeader = false;
+                let hasRenderedUnpinnedHeader = false;
+
+                // Отрисовка списка чатов
+                finalChatsToRender.forEach(c => {
+                    
+                    // 🔥 АВТОМАТИЧЕСКАЯ ВСТАВКА ЗАГОЛОВКОВ "МОЙ [ГОД]" И "ВСЕ СОБЫТИЯ"
+                    const isPinnedChat = pinnedIds.includes(c.id);
+                    
+                    if (isPinnedChat && !hasRenderedPinnedHeader) {
+                        const hEl = document.createElement('div');
+                        hEl.innerHTML = `<div style="padding: 10px 15px 4px 15px; font-family: 'Unbounded', sans-serif; font-size: 15px; font-weight: 900; color: var(--text-main); text-transform: uppercase;">Мой ${currentYear}</div>`;
+                        container.appendChild(hEl);
+                        hasRenderedPinnedHeader = true;
+                    }
+
+                    // Если у нас есть личный календарь, мы должны визуально отделить от него все остальные гонки
+                    if (!isPinnedChat && pinnedChats.length > 0 && !hasRenderedUnpinnedHeader) {
+                        const sepEl = document.createElement('div');
+                        sepEl.innerHTML = `<div style="padding: 20px 15px 6px 15px; font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Все события</div>`;
+                        container.appendChild(sepEl);
+                        hasRenderedUnpinnedHeader = true;
+                    }
+
                 let rawName = (this.getChatName ? this.getChatName(c) : c.name) || "Чат"; 
                 let name = this.escapeHTML(rawName); 
                 let avatarLetter = rawName.charAt(0).toUpperCase();
-                
-                if (c.type === 'global' && c.raceObj && c.raceObj.date) {
-                    const dateObj = new Date(c.raceObj.date);
-                    if (!isNaN(dateObj.getTime())) {
-                        const day = dateObj.getDate();
-                        const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-                        avatarLetter = `
-                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;">
-                                <span style="font-size: 22px; font-weight: 800; font-family: 'Unbounded', sans-serif;">${day}</span>
-                                <span style="font-size: 12px; font-weight: 700; opacity: 0.6; font-family: 'Roboto Mono', monospace; margin-top: 1px;">${month}</span>
-                            </div>
-                        `;
-                    }
-                }
                 
                 let avatarStyle = '';
                 if (c.type === 'global') {
@@ -11271,17 +12085,22 @@ appendMessageHTML(msg, container, prepend = false, isFeed = false) {
                 if (c.type === 'direct') { 
                     subText = 'Личные сообщения'; 
                 } else if (c.type === 'global' && c.raceObj) {
-                    // 🔥 ФИКС: Умно обращаемся к словарям в модуле CRM и используем полный резервный список
                     const safeFormats = (this.crm && this.crm.RACE_FORMATS) ? this.crm.RACE_FORMATS : { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
                     const safeSurfaces = (this.crm && this.crm.RACE_SURFACES) ? this.crm.RACE_SURFACES : { 'road': 'Шоссе', 'offroad': 'Грунт', 'track': 'Трек', 'indoor': 'Индор' };
                     let formatName = c.raceObj.format ? (safeFormats[c.raceObj.format] || 'Заезд') : 'Заезд';
                     let surfaceName = c.raceObj.surface ? (safeSurfaces[c.raceObj.surface] || '') : '';
+                    
+                    // 🔥 УБРАЛИ СТАТУС ИЗ ПОДЗАГОЛОВКА: Оставили только покрытие и формат
                     subText = surfaceName ? `${surfaceName} • ${formatName}` : formatName;
+                    
+                    // 🔥 ВЕРНУЛИ УДАЛЕННУЮ СТРОКУ: Акцентный цвет для LIVE и Регистраций
                     if (c.raceObj.status === 'LIVE' || c.raceObj.status === 'Registration') subColor = 'var(--danger)';
                 }
 
                 const isActiveOrExpanded = (this.activeChatId === c.id || this.expandedRaceId === c.id);
-const activeClass = isActiveOrExpanded ? 'active' : '';
+                const activeClass = isActiveOrExpanded ? 'active' : '';
+                
+                // Базовый HTML аватара (для личных чатов и команд)
                 let avatarHtml = `<div class="avatar" style="${avatarStyle}">${avatarLetter}</div>`;
                 
                 if (c.type === 'direct' && c.expand && c.expand.participants) { 
@@ -11289,6 +12108,26 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                     if (otherRider && typeof this.renderAvatar === 'function') {
                         avatarHtml = this.renderAvatar(otherRider.id, avatarStyle, avatarLetter);
                     } 
+                }
+
+                // 🔥 НОВЫЙ ДИЗАЙН ДАТЫ ГОНКИ: Крупная типографика без кружка
+                if (c.type === 'global' && c.raceObj && c.raceObj.date) {
+                    const dateObj = new Date(c.raceObj.date);
+                    if (!isNaN(dateObj.getTime())) {
+                        const day = dateObj.getDate();
+                        const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+                        
+                        // 🔥 ТОЧЕЧНАЯ ПРАВКА: Определяем цвет в зависимости от статуса гонки
+                        const isFinished = c.raceObj.status === 'Finished';
+                        const dayColor = isFinished ? 'var(--text-muted)' : 'var(--text-main)';
+
+                        avatarHtml = `
+                            <div style="display: flex; align-items: baseline; min-width: 62px; flex-shrink: 0; padding-left: 4px; white-space: nowrap;">
+                                <span style="font-family: 'Unbounded', sans-serif; font-size: 28px; font-weight: 900; line-height: 1; color: ${dayColor}; letter-spacing: -1px;">${day}</span>
+                                <span style="font-family: 'Roboto Mono', monospace; font-size: 12px; font-weight: 800; color: var(--text-muted); margin-left: 2px;">.${month}</span>
+                            </div>
+                        `;
+                    }
                 }
 
                 // 🔘 КНОПКИ СПРАВА: НЕПРОЧИТАННОЕ (ЖЕЛТОЕ) + ШЕРИНГ + ЗАКРЕП
@@ -11300,12 +12139,19 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                 }
 
                 const isPinned = pinnedIds.includes(c.id);
+                
+                // 🔥 НОВАЯ ЛОГИКА КАЛЕНДАРЯ: Плюс в кружке, галочка и анимация вращения
                 const pinIconHtml = `
-                    <button onclick="window.app.togglePinChat('${c.id}', event)" style="background:none; border:none; padding:6px; margin-left:2px; cursor:pointer; opacity: ${isPinned ? '1' : '0.25'}; transition: 0.2s; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${isPinned ? '1' : '0.25'}'" title="${isPinned ? 'Открепить' : 'Закрепить'}">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="${isPinned ? 'var(--text-muted)' : 'none'}" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="17" x2="12" y2="22"></line>
-                            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.68V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3v4.68a2 2 0 0 1-1.11 1.87l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
-                        </svg>
+                    <button onclick="
+                        const svg = this.querySelector('svg');
+                        if (svg) svg.style.transform = 'rotate(360deg) scale(1.2)';
+                        setTimeout(() => window.app.togglePinChat('${c.id}', event), 250);
+                        event.stopPropagation();
+                    " style="background:none; border:none; padding:6px; margin-left:2px; cursor:pointer; opacity: ${isPinned ? '1' : '0.4'}; transition: 0.2s; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${isPinned ? '1' : '0.4'}'" title="${isPinned ? 'Убрать из моего календаря' : 'Добавить в мой календарь'}">
+                        ${isPinned 
+                            ? `<svg style="transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
+                            : `<svg style="transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`
+                        }
                     </button>
                 `;
 
@@ -11327,27 +12173,44 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                 // 🔥 ВЕТВЛЕНИЕ: КАРТОЧКА ГОНКИ ИЛИ ОБЫЧНЫЙ ЛИЧНЫЙ ДИАЛОГ
                 if (c.raceObj) {
                     el.onclick = (e) => {
-                        if (!e.target.closest('.race-accordion-body')) {
+                        // Игнорируем клики по кнопкам и внутренностям раскрытой карточки
+                        if (!e.target.closest('.race-accordion-body') && !e.target.closest('button')) {
                             const body = el.querySelector('.race-accordion-body');
+                            const arrow = el.querySelector('.enter-chat-arrow');
+                            const headerPlate = el.querySelector('.race-header-clickable');
+                            
                             if (body) {
                                 const isOpen = body.style.display === 'block';
                                 
-                                // Скрываем все остальные аккордеоны
-                                document.querySelectorAll('.race-accordion-body').forEach(b => b.style.display = 'none');
-                                
-                                // 🔥 Снимаем рамки со всех чатов, кроме того, который сейчас открыт в правой панели
-                                document.querySelectorAll('.chat-item').forEach(item => {
-                                    if (item.id !== 'chat-item-' + this.activeChatId) {
-                                        item.classList.remove('active');
-                                    }
-                                });
-
-                                body.style.display = isOpen ? 'none' : 'block';
-                                this.expandedRaceId = isOpen ? null : c.id;
-                                
-                                // 🔥 Добавляем рамку текущему раскрытому аккордеону
                                 if (!isOpen) {
+                                    // 1-й КЛИК: Раскрываем карточку
+                                    document.querySelectorAll('.race-accordion-body').forEach(b => b.style.display = 'none');
+                                    document.querySelectorAll('.enter-chat-arrow').forEach(a => a.style.display = 'none');
+                                    document.querySelectorAll('.race-header-clickable').forEach(h => {
+                                        h.style.background = 'transparent';
+                                        h.style.borderColor = 'transparent';
+                                    });
+                                    
+                                    // Снимаем активные рамки с других карточек
+                                    document.querySelectorAll('.chat-item').forEach(item => {
+                                        if (item.id !== 'chat-item-' + this.activeChatId) {
+                                            item.classList.remove('active');
+                                        }
+                                    });
+
+                                    body.style.display = 'block';
+                                    this.expandedRaceId = c.id;
                                     el.classList.add('active');
+                                    
+                                    // Включаем стиль кнопки для открытой шапки
+                                    if (arrow) arrow.style.display = 'flex';
+                                    if (headerPlate) {
+                                        headerPlate.style.background = 'var(--bg-body)';
+                                        headerPlate.style.borderColor = 'var(--border)';
+                                    }
+                                } else {
+                                    // 2-й КЛИК: Переход в эфир и чат гонки
+                                    window.app.openChat(c.id);
                                 }
                             }
                         }
@@ -11361,11 +12224,10 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
 
                     let myRegContext = this.myRosters ? this.myRosters[r.id] : null;
                     
-                    // 🔥 ЛОГИКА ДЛЯ ИКОНКИ КУБКА (УМНЫЙ ПОИСК ВО ВСЕХ КЭШАХ)
+                    // ЛОГИКА ДЛЯ ИКОНКИ КУБКА
                     let cupId = null;
                     let cupName = 'КУБОК';
                     
-                    // 1. Ищем в самом объекте гонки (если сервер прислал expand)
                     if (r.cup_id) {
                         cupId = Array.isArray(r.cup_id) ? r.cup_id[0] : r.cup_id;
                         if (r.expand && r.expand.cup_id) {
@@ -11373,17 +12235,13 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                         }
                     }
                     
-                    // 2. Если имя всё ещё "КУБОК", ищем в глобальном кэше календаря
                     if (cupName === 'КУБОК' && this.crm && this.crm.dataCalendar) {
                         const calRace = this.crm.dataCalendar.find(cr => cr.id === r.id);
                         if (calRace) {
-                            // Формат 1: Готовый объект из CRM
                             if (calRace.cupId && calRace.cupName) {
                                 cupId = calRace.cupId;
                                 cupName = calRace.cupName;
-                            } 
-                            // Формат 2: Сырой объект PocketBase из быстрого старта (init)
-                            else if (calRace.cup_id && calRace.expand && calRace.expand.cup_id) {
+                            } else if (calRace.cup_id && calRace.expand && calRace.expand.cup_id) {
                                 cupId = Array.isArray(calRace.cup_id) ? calRace.cup_id[0] : calRace.cup_id;
                                 cupName = Array.isArray(calRace.expand.cup_id) ? calRace.expand.cup_id[0].name : calRace.expand.cup_id.name;
                             }
@@ -11395,10 +12253,8 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                         cupIconHtml = `<button onclick="event.stopPropagation(); window.app.crm.openCupStandings('${cupId}')" style="background:transparent; border:none; outline:none; padding:0; margin:0 5px 0 0; cursor:pointer; font-size:14px; display:inline-block; transition:transform 0.2s; pointer-events:auto; position:relative; z-index:10; -webkit-tap-highlight-color:transparent;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'" title="Рейтинг: ${cupName.toUpperCase()}">🏆</button>`;
                     }
                     
-                    // 🔥 УМНАЯ ЛОГИКА ВРЕМЕНИ (Читаемый дизайн + данные из LIVE BOARD)
                     let displayTimeHtml = `<span>${baseTimeStr}</span>`; 
 
-                    // 1. Ищем гонщика в live_board гонки (по Фамилии и Имени)
                     let liveResult = null;
                     if (r.live_board) {
                         const board = Array.isArray(r.live_board) ? r.live_board : Object.values(r.live_board);
@@ -11406,7 +12262,6 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                         liveResult = board.find(item => item && item.name && item.name.toLowerCase() === myFullName);
                     }
 
-                    // 2. Если есть результат
                     if (liveResult && liveResult.timeStr && liveResult.timeStr !== "0" && liveResult.timeStr !== "00:00.00") {
                         const isLive = r.status !== 'Finished';
                         const icon = isLive ? '⚡' : '🏁';
@@ -11416,7 +12271,6 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                         
                         displayTimeHtml = `<span style="background: ${bgColor}; color: ${textColor}; padding: 3px 6px; border-radius: 6px; font-weight: 800;" title="${title}">${icon} ${liveResult.timeStr}</span>`;
                     } 
-                    // 3. Если назначен индивидуальный старт
                     else if (myRegContext && myRegContext.planned_start) {
                         let personalTimeStr = myRegContext.planned_start;
                         if (personalTimeStr.endsWith(':00') && personalTimeStr.length === 8) personalTimeStr = personalTimeStr.substring(0, 5); 
@@ -11438,37 +12292,42 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                         }
 
                         mainActionBtnHtml = `
-                            <button class="sync-btn-${r.id}" data-label="⚡ ЗАЯВИТЬСЯ НА ГОНКУ" onclick="window.app.registerForRace('${r.id}', this, event)" style="width: 100%; height: 38px; ${regBtnStyle} border-radius: 8px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; cursor: pointer; transition: 0.2s;">
+                            <button class="sync-btn-${r.id}" data-label="⚡ ЗАЯВИТЬСЯ НА ГОНКУ" onclick="window.app.registerForRace('${r.id}', this, event)" style="width: 100%; height: 42px; ${regBtnStyle} border-radius: 10px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; cursor: pointer; transition: 0.2s;">
                                 ${regBtnText}
                             </button>
                         `;
                     } else if (r.status === 'LIVE') {
                         mainActionBtnHtml = `
-                            <button onclick="window.app.openLiveBoard('${r.id}', event)" style="width: 100%; height: 38px; background: var(--danger, #ef4444); color: #ffffff; border: none; border-radius: 8px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <button onclick="window.app.openLiveBoard('${r.id}', event)" style="width: 100%; height: 42px; background: var(--danger, #ef4444); color: #ffffff; border: none; border-radius: 10px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
                                 <div style="width:6px; height:6px; background:#fff; border-radius:50%; animation: dot-pulse 1s infinite;"></div> ХОД ГОНКИ (LIVE)
                             </button>
                         `;
                     } else if (r.status === 'Finished') {
                         mainActionBtnHtml = `
-                            <button onclick="window.app.openLiveBoard('${r.id}', event)" style="width: 100%; height: 38px; background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; cursor: pointer;">
-                                🏆 ИТОГИ ГОНКИ
+                            <button onclick="window.app.openLiveBoard('${r.id}', event)" style="width: 100%; height: 42px; background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border); border-radius: 10px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; cursor: pointer;">
+                                РЕЗУЛЬТАТЫ
                             </button>
                         `;
                     } else if (r.status === 'Скоро') {
                         mainActionBtnHtml = `
-                            <button disabled style="width: 100%; height: 38px; background: var(--bg-surface-hover); color: var(--text-muted); border: 1px dashed var(--border); border-radius: 8px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; cursor: not-allowed;">
+                            <button disabled style="width: 100%; height: 42px; background: var(--bg-surface-hover); color: var(--text-muted); border: 1px dashed var(--border); border-radius: 10px; font-family: 'Unbounded'; font-weight: 800; font-size: 11px; cursor: not-allowed;">
                                 ⏳ АНОНС
                             </button>
                         `;
                     }
 
-                    const displayState = (this.expandedRaceId === c.id) ? 'block' : 'none';
+                    const isExpanded = (this.expandedRaceId === c.id);
+                    const displayState = isExpanded ? 'block' : 'none';
+                    const plateBg = isExpanded ? 'var(--bg-body)' : 'transparent';
+                    const plateBorder = isExpanded ? '1px solid var(--border)' : '1px solid transparent';
 
-                    // 🔥 ОПРЕДЕЛЯЕМ ПРАВА АДМИНА ДЛЯ ТЕКУЩЕЙ ГОНКИ
+                    // ПРАВА АДМИНА
                     const myRoleW = Math.max(...(this.usersMap[this.currentRider?.email] || []).map(role => this.ROLE_WEIGHTS[role] || 20), 20);
                     const isGlobalAdmin = myRoleW >= this.ROLE_WEIGHTS['admin'];
-                    const isCreator = r.creator_id === this.currentRider?.id;
-                    const isAssignedJudge = r.judge_id === this.currentRider?.id || (r.judgeRiderId && r.judgeRiderId === this.currentRider?.id);
+                    const myRiderId = this.currentRider?.id;
+                    const myUserId = pb.authStore.model?.id || this.currentRider?.user_id;
+                    const isCreator = (r.creator_id === myRiderId || r.creator_id === myUserId || (c && c.participants && c.participants[0] === myRiderId));
+                    const isAssignedJudge = r.judge_id === myRiderId || r.judge_id === myUserId || (r.judgeRiderId && r.judgeRiderId === myRiderId);
                     const canManageRoster = isGlobalAdmin || isCreator || isAssignedJudge;
 
                     let adminMenuHtml = '';
@@ -11476,82 +12335,125 @@ const activeClass = isActiveOrExpanded ? 'active' : '';
                         const menuId = `admin-menu-${r.id}`;
                         let menuItems = '';
 
-                        // Судейский пульт
-                        if (r.status === 'LIVE' || r.status === 'Finished') {
+                        if ((isGlobalAdmin || isAssignedJudge) && (r.status === 'LIVE' || r.status === 'Finished')) {
                             menuItems += `<div class="admin-menu-item" onclick="window.open('https://sotka.one/repult?race_id=${r.id}', '_blank')">⚖️ Судейский пульт</div>`;
                         }
-                        
-                        // QR-код оставляем, так как его нет в правой панели старт-листа
                         menuItems += `<div class="admin-menu-item" onclick="window.app.crm.openRaceQrModal('${r.id}', '${this.escapeHTML(r.name)}')">📱 QR-код Стартового пульта</div>`;
-                        
-                        // Управление статусом гонки
                         if (r.status !== 'Finished' && r.status !== 'LIVE') {
-                            menuItems += `<div class="admin-menu-item text-danger" onclick="window.app.crm.startManualLiveRace('${r.id}')">🔴 Дать старт гонке (LIVE)</div>`;
+                            menuItems += `<div class="admin-menu-item text-danger" onclick="window.app.crm.startManualLiveRace('${r.id}')">🔴 Дать старт заезду (LIVE)</div>`;
                         }
                         if (r.status === 'LIVE') {
-                            menuItems += `<div class="admin-menu-item text-success" onclick="window.app.crm.finalizeRaceProcess('${r.id}')">🏁 Закрыть и распределить очки</div>`;
+                            menuItems += `<div class="admin-menu-item text-success" onclick="window.app.crm.finalizeRaceProcess('${r.id}')">🏁 Завершить заезд</div>`;
                         }
-                        
-                        // Редактирование и удаление
                         if (r.status === 'Registration' || r.status === 'Скоро') {
                             menuItems += `<div class="admin-menu-item" onclick="window.app.crm.openEditEventModal('${r.id}')">✏️ Редактировать параметры</div>`;
-                            menuItems += `<div class="admin-menu-item text-danger" onclick="window.app.crm.deleteRace('${r.id}')">🗑️ Удалить гонку навсегда</div>`;
+                            menuItems += `<div class="admin-menu-item text-danger" onclick="window.app.crm.deleteRace('${r.id}')">🗑️ Удалить событие навсегда</div>`;
                         }
 
                         adminMenuHtml = `
                             <div style="position:relative; margin-top: 8px; width: 100%;">
-                                <button onclick="const m = document.getElementById('${menuId}'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; event.stopPropagation();" style="width:100%; background:var(--bg-body); color:var(--text-main); border:1px solid var(--primary); padding:10px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition: 0.2s;">
-                                    <span>⚙️ УПРАВЛЕНИЕ СОБЫТИЕМ</span> <span style="font-size: 8px;">▼</span>
+                                <button onclick="const m = document.getElementById('${menuId}'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; event.stopPropagation();" style="width:100%; background:var(--bg-body); color:var(--text-main); border:1px solid var(--border); padding:10px 12px; border-radius:8px; font-family:'Unbounded'; font-size:10px; font-weight:800; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition: 0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)';">
+                                    <span style="display:flex; align-items:center; gap:6px;">УПРАВЛЕНИЕ СОБЫТИЕМ</span>
+                                    <svg style="width:14px; height:14px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 </button>
                                 <div id="${menuId}" style="display:none; position:absolute; top:100%; left:0; width:100%; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; margin-top:4px; z-index:100; box-shadow:0 10px 25px rgba(0,0,0,0.5); overflow:hidden;">
-                                    <style>
-                                        .admin-menu-item { padding: 12px 16px; font-size: 12px; font-family: 'Manrope'; color: var(--text-main); cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; }
-                                        .admin-menu-item:last-child { border-bottom: none; }
-                                        .admin-menu-item:hover { background: var(--bg-surface-hover); color: var(--primary); }
-                                        .admin-menu-item.text-danger { color: #ef4444; }
-                                        .admin-menu-item.text-danger:hover { background: rgba(239, 68, 68, 0.1); }
-                                        .admin-menu-item.text-success { color: #10b981; }
-                                        .admin-menu-item.text-success:hover { background: rgba(16, 185, 129, 0.1); }
-                                    </style>
                                     ${menuItems}
                                 </div>
                             </div>
                         `;
-                        
-                        document.addEventListener('click', (e) => {
-                            const m = document.getElementById(menuId);
-                            if (m && e.target.closest(`#${menuId}`) === null) m.style.display = 'none';
-                        });
+                    }
+
+                    let panelData = null;
+                    try {
+                        panelData = typeof c.panel_data === 'string' ? JSON.parse(c.panel_data) : (c.panel_data || {});
+                    } catch(e) {}
+                    const hasMap = Boolean(panelData && panelData.embed_code);
+                    
+                    let distanceBlockHtml = '';
+                    if (hasMap) {
+                        let mapOnClick = `event.stopPropagation(); const chatData = window.app.chats.find(x => x.id === '${c.id}'); if (chatData) { try { const d = typeof chatData.panel_data === 'string' ? JSON.parse(chatData.panel_data) : (chatData.panel_data || {}); if (d.embed_code) { window.app.currentMapEmbed = d.embed_code; window.app.openMapModal(); } } catch(e) {} }`;
+                        distanceBlockHtml = `
+                            <div onclick="${mapOnClick}" style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; border-right:1px solid var(--border); padding: 10px 0; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(255,193,7,0.15)';" onmouseout="this.style.background='transparent';" title="Открыть интерактивную карту">
+                                <svg style="width:16px; height:16px; stroke:var(--text-main); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+                                <span style="font-family:'Unbounded', sans-serif; font-size:8px; font-weight:800; text-transform:uppercase; color:var(--text-main); letter-spacing:0.5px;">Карта ➔</span>
+                                <span style="font-family:'Roboto Mono', monospace; font-size:12px; font-weight:700; color:var(--primary); line-height:1;">${distStr}</span>
+                            </div>
+                        `;
+                    } else {
+                        distanceBlockHtml = `
+                            <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; border-right:1px solid var(--border); padding: 10px 0;">
+                                <svg style="width:16px; height:16px; stroke:var(--text-muted); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                                <span style="font-family:'Unbounded', sans-serif; font-size:8px; font-weight:800; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.5px;">Дистанция</span>
+                                <span style="font-family:'Roboto Mono', monospace; font-size:12px; font-weight:700; color:var(--text-main); line-height:1;">${distStr}</span>
+                            </div>
+                        `;
                     }
 
                     const accordionBody = `
-                        <div class="race-accordion-body" style="display:${displayState}; width:100%; flex-basis:100%; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); cursor:default;">
-                            <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:10px; font-family:'Roboto Mono', monospace; font-weight:bold;">
-                                ${displayTimeHtml}
-                                <span>${distStr}</span>
-                                <span>${countRiders} чел.</span>
+                        <div class="race-accordion-body" style="display:${displayState}; width:100%; flex-basis:100%; margin-top:10px; padding-top:12px; border-top:1px dashed var(--border); cursor:default; position:relative;">
+                            <div style="display:grid; grid-template-columns: repeat(3, 1fr); background:var(--bg-body); border-radius:12px; border:1px solid var(--border); position:relative; z-index:2; margin-bottom:12px; align-items:center;">
+                                <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; border-right:1px solid var(--border); padding: 10px 0;">
+                                    <svg style="width:16px; height:16px; stroke:var(--text-muted); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                    <span style="font-family:'Unbounded', sans-serif; font-size:8px; font-weight:800; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.5px;">Старт</span>
+                                    <span style="font-family:'Roboto Mono', monospace; font-size:12px; font-weight:700; color:var(--text-main); line-height:1; display:flex; align-items:center;">${displayTimeHtml}</span>
+                                </div>
+                                ${distanceBlockHtml}
+                                <div onclick="${canManageRoster ? `window.app.crm.openRaceRoster('${r.id}', '${this.escapeHTML(r.name)}', '${r.type || ''}')` : `window.app.openLiveBoard('${r.id}', event)`}; event.stopPropagation();" style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; padding: 10px 0; background: rgba(255, 193, 7, 0.1); border-radius: 0 12px 12px 0; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(255, 193, 7, 0.25)';" onmouseout="this.style.background='rgba(255, 193, 7, 0.1)';">
+                                    <svg style="width:16px; height:16px; stroke:var(--text-main); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    <span style="font-family:'Unbounded', sans-serif; font-size:8px; font-weight:800; text-transform:uppercase; color:var(--text-main); letter-spacing:0.5px;">Участники ➔</span>
+                                    <span style="font-family:'Roboto Mono', monospace; font-size:12px; font-weight:700; color:var(--primary); line-height:1;">${countRiders} <span style="font-family:'Unbounded', sans-serif; font-size:8px; color:var(--text-muted);">ЧЕЛ</span></span>
+                                </div>
                             </div>
-                            <div style="margin-bottom:8px;">${mainActionBtnHtml}</div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                                <button onclick="window.app.openChat('${c.id}')" style="background:transparent; color:var(--text-main); border:1px solid var(--border); height:36px; border-radius:8px; font-family:'Unbounded'; font-weight:800; font-size:10px; cursor:pointer; transition:0.2s;" onmouseover="this.style.background='var(--bg-surface-hover)'" onmouseout="this.style.background='transparent'">💬 ЧАТ ГОНКИ</button>
-                                <button onclick="${canManageRoster ? `window.app.crm.openRaceRoster('${r.id}', '${this.escapeHTML(r.name)}', '${r.type || ''}')` : `window.app.openLiveBoard('${r.id}', event)`}" style="background:var(--bg-surface-hover); color:var(--text-main); border:1px solid var(--border); height:36px; border-radius:8px; font-family:'Unbounded'; font-weight:800; font-size:10px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)'">📋 СТАРТ-ЛИСТ</button>
+                            
+                            <div style="position:relative; z-index:2; margin-bottom:12px; display:flex; gap:8px;">
+                                <div style="flex:1; min-width:0;">
+                                    ${mainActionBtnHtml}
+                                </div>
+                                <button onclick="window.app.openChat('${c.id}')" style="width:42px; height:42px; flex-shrink:0; background:var(--bg-body); color:var(--text-main); border:1px solid var(--border); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)';" title="Информация, регламент и чат гонки">
+                                    <svg style="width:24px; height:24px; stroke:currentColor; stroke-width:2.5; fill:none; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <circle cx="12" cy="6.5" r="0.8" fill="currentColor"></circle>
+                                        <line x1="12" y1="12" x2="12" y2="17"></line>
+                                    </svg>
+                                </button>
                             </div>
-                            ${adminMenuHtml}
+                            
+                            <div>
+                                ${adminMenuHtml}
+                            </div>
                         </div>
                     `;
 
                     el.style.flexWrap = 'wrap'; 
                     el.innerHTML = `
-                        ${avatarHtml}
-                        <div class="chat-info" style="min-width:0; flex:1;">
-                            <!-- 🔥 ДОБАВИЛИ ФЛЕКСБОКС ДЛЯ ИКОНКИ КУБКА И ИМЕНИ -->
-                            <div class="chat-name" style="font-family:'Unbounded'; font-size:12px; font-weight:800; color:var(--text-main); display:flex; align-items:center;">
-                                ${cupIconHtml}
-                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${name}</span>
+                        <!-- 🔥 ИНТЕРАКТИВНАЯ КНОПКА-ПЛАШКА ШАПКИ (ВАРИАНТ 2) -->
+                        <div class="race-header-clickable" title="Нажмите, чтобы открыть эфир и чат гонки" 
+                             style="display:flex; align-items:center; gap:10px; width:100%; box-sizing:border-box; transition: all 0.2s ease; border-radius:12px; padding:8px 10px; cursor:pointer; background:${plateBg}; border:${plateBorder};" 
+                             onmouseover="if(this.closest('.chat-item').classList.contains('active')){ this.style.background='rgba(255,193,7,0.12)'; this.style.borderColor='var(--primary)'; }" 
+                             onmouseout="if(this.closest('.chat-item').classList.contains('active')){ this.style.background='var(--bg-body)'; this.style.borderColor='var(--border)'; }">
+                            
+                            ${avatarHtml}
+                            
+                            <div class="chat-info" style="min-width:0; flex:1;">
+                                <div class="chat-name" style="font-family:'Unbounded'; font-size:12px; font-weight:800; color:var(--text-main); display:flex; align-items:center;">
+                                    ${cupIconHtml}
+                                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${name}</span>
+                                </div>
+                                <div class="chat-preview" style="font-size:11px; color:${subColor}; margin-top:2px;">
+                                    <span>${subText}</span>
+                                </div>
                             </div>
-                            <div class="chat-preview" style="font-size:11px; color:${subColor}">${subText} • ${r.status || ''}</div>
+
+                            <!-- Правые контролы + Желтая стрелка входа в чат -->
+                            <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
+                                ${rightControlsHtml}
+                                <div class="enter-chat-arrow" style="display:${isExpanded ? 'flex' : 'none'}; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--primary); color:#000; margin-left:4px; box-shadow:0 2px 8px rgba(255,193,7,0.4);" title="Открыть чат и регламент">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
-                        ${rightControlsHtml}
                         ${accordionBody}
                     `;
                 } else {
@@ -11733,17 +12635,112 @@ setChatListFilter(type) {
 }
         openChatMobile() { if (window.innerWidth <= 768) document.getElementById('mainChatArea').classList.add('mobile-open'); }
         closeChatMobile() { document.getElementById('mainChatArea').classList.remove('mobile-open'); }
-        openMobileCreateMenu() { 
-            document.getElementById('mobileCreateMenuModal').style.display = 'flex'; 
+        // 🔥 ДИСПЕТЧЕР КНОПКИ "+": Разделение логики для "Гонок" и "Рации"
+        openMobileCreateMenu() {
+            const isContactsTab = document.getElementById('tab-contacts')?.classList.contains('active');
             
-            // 🔥 Показываем кнопку PUSH только админам
+            // 🏁 Вкладка "ГОНКИ": открываем селектор создания старта
+            if (!isContactsTab) {
+                this.openCreateEventSelector();
+                return;
+            }
+
+            // 📻 Вкладка "РАЦИЯ": открываем меню коммуникации
+            const menuModal = document.getElementById('mobileCreateMenuModal');
+            if (menuModal) menuModal.style.display = 'flex'; 
+            
             const myRole = this.getUserMaxRole();
             const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin'];
             const pushBtn = document.getElementById('btnOpenPushMenu');
             if (pushBtn) pushBtn.style.display = isAdmin ? 'flex' : 'none';
         }
 
-        // ==========================================
+        // 🔥 ОКНО ВЫБОРА ФОРМАТА СОБЫТИЯ
+// 🔥 МОДАЛЬНОЕ ОКНО ВЫБОРА ФОРМАТА СОБЫТИЯ (НАДЁЖНАЯ ВЕРСИЯ)
+      // ==========================================
+    // 🔥 МОДАЛЬНОЕ ОКНО ВЫБОРА ТИПА СОБЫТИЯ
+    // ==========================================
+    openCreateEventSelector(dateStr = null) {
+        // 1. Проверка авторизации
+        if (this.isGuest || !this.currentRider || this.currentRider.id === 'anonymous_guest') {
+            if (confirm("Для создания события необходимо войти в аккаунт SOTKA. Перейти ко входу?")) {
+                this.openLoginScreen();
+            }
+            return;
+        }
+
+        // 2. Безопасное определение прав (с защитой от undefined)
+        const myRole = typeof this.getUserMaxRole === 'function' ? this.getUserMaxRole() : 'rider';
+        const roles = (this.usersMap && this.currentRider?.email) ? (this.usersMap[this.currentRider.email] || []) : [];
+        const rStr = JSON.stringify(roles);
+
+        const roleWeights = this.ROLE_WEIGHTS || { superadmin: 100, admin: 80, judge: 60, captain: 40, rider: 20 };
+        const myWeight = roleWeights[myRole] || 20;
+
+        const isSuper = myWeight >= (roleWeights['superadmin'] || 100);
+        const isAdmin = myWeight >= (roleWeights['admin'] || 80);
+        const isJudge = myWeight >= (roleWeights['judge'] || 60);
+        const isCaptain = rStr.includes('captain');
+        const isRacer = !this.currentRider.base_cluster || this.currentRider.base_cluster !== 'O';
+
+        if (!isSuper && !isAdmin && !isJudge && !isCaptain && !isRacer) {
+            alert("❌ Создание гонок и тренировок доступно спортсменам со статусом «Гонщик» (Кластеры A+ – E, V), Капитанам и Администраторам.\n\nСпортсменам со статусом «Велосипедист» доступно участие во всех открытых стартах.");
+            return;
+        }
+
+        // 3. Создание или переиспользование модального окна
+        let modal = document.getElementById('createEventSelectorModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'createEventSelectorModal';
+            document.body.appendChild(modal);
+        }
+
+        // Гарантированно выводим поверх всех слоёв интерфейса
+        modal.className = 'modal-overlay';
+        modal.style.cssText = 'position:fixed !important; inset:0 !important; width:100vw !important; height:100vh !important; background:rgba(0,0,0,0.85) !important; z-index:99999999 !important; display:flex !important; align-items:center !important; justify-content:center !important; backdrop-filter:blur(8px) !important; padding:15px !important; box-sizing:border-box !important;';
+
+        // Формируем строковый параметр для вставки в onclick
+        const safeDateParam = dateStr ? `'${dateStr}'` : 'null';
+
+        modal.innerHTML = `
+            <div class="modal-box" style="max-width:440px; width:92vw; background:var(--bg-surface); border:1px solid var(--border); border-radius:24px; padding:24px; font-family:'Manrope', sans-serif; box-shadow:0 20px 60px rgba(0,0,0,0.6); position:relative;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+                    <div>
+                        <div style="font-family:'Unbounded'; font-weight:800; font-size:14px; color:var(--primary); text-transform:uppercase;">ДОБАВИТЬ В КАЛЕНДАРЬ</div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Выберите тип события</div>
+                    </div>
+                    <button onclick="document.getElementById('createEventSelectorModal').style.display='none'" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; line-height:1; padding:0 5px;">&times;</button>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div onclick="document.getElementById('createEventSelectorModal').style.display='none'; if(window.app.crm) window.app.crm.openCreateEventModal(${safeDateParam}, 'personal');" 
+                         style="background:var(--bg-body); border:1px solid var(--border); padding:16px; border-radius:16px; cursor:pointer; transition:0.2s;" 
+                         onmouseover="this.style.borderColor='var(--text-main)';" onmouseout="this.style.borderColor='var(--border)';">
+                        <div style="font-family:'Unbounded'; font-weight:800; font-size:12px; color:var(--text-main); margin-bottom:4px;">ТРЕНИРОВКА / ЗАЕЗД</div>
+                        <div style="font-size:11px; color:var(--text-muted); line-height:1.4;">Заезд для себя и друзей. Километры пойдут в накат сезона без официального рейтинга.</div>
+                    </div>
+
+                    <div onclick="document.getElementById('createEventSelectorModal').style.display='none'; if(window.app.crm) window.app.crm.openCreateEventModal(${safeDateParam}, 'community_race');" 
+                         style="background:var(--bg-body); border:1px solid var(--border); padding:16px; border-radius:16px; cursor:pointer; transition:0.2s;" 
+                         onmouseover="this.style.borderColor='var(--primary)';" onmouseout="this.style.borderColor='var(--border)';">
+                        <div style="font-family:'Unbounded'; font-weight:800; font-size:12px; color:var(--primary); margin-bottom:4px;">ВЕЛОГОНКА</div>
+                        <div style="font-size:11px; color:var(--text-muted); line-height:1.4;">Старты других организаторов. Поступает Главному судье на утверждение статуса.</div>
+                    </div>
+
+                    ${isAdmin ? `
+                    <div onclick="document.getElementById('createEventSelectorModal').style.display='none'; if(window.app.crm) window.app.crm.openCreateEventModal(${safeDateParam}, 'peloton');" 
+                         style="background:rgba(255,193,7,0.1); border:1px solid var(--primary); padding:16px; border-radius:16px; cursor:pointer; transition:0.2s;"
+                         onmouseover="this.style.background='rgba(255,193,7,0.2)';" onmouseout="this.style.background='rgba(255,193,7,0.1)';">
+                        <div style="font-family:'Unbounded'; font-weight:800; font-size:12px; color:var(--primary); margin-bottom:4px;">ВЕЛОГОНКА ПЕЛОТОНА</div>
+                        <div style="font-size:11px; color:var(--text-muted); line-height:1.4;">Официальные старты Сотки с судейским пультом и автоматическим обсчетом рейтинга.</div>
+                    </div>` : ''}
+                </div>
+            </div>
+        `;
+    }
+	// ==========================================
         // 🔥 ЛОГИКА МАССОВЫХ PUSH-РАССЫЛОК
         // ==========================================
         async openPushModal() {
@@ -11869,7 +12866,7 @@ async renderContactsTab(filterText = "") {
         container.innerHTML = '';
         
         // ==========================================
-        // 🔥 1. НОВОСТНАЯ ЛЕНТА (STORIES) - С ФОТО И АВАТАРКАМИ
+        // 🔥 1. НОВОСТНАЯ ЛЕНТА (STORIES)
         // ==========================================
         if (!filterText) {
             let storyCards = [];
@@ -11878,12 +12875,10 @@ async renderContactsTab(filterText = "") {
                 for (let c of this.chats) {
                     let count = this.unreadCounts[c.id] || 0;
                     
-                    // Берем только Рацию с непрочитанными сообщениями (исключаем гонки)
                     if (count > 0 && c.type !== 'global') {
                         let sName = "Сообщение";
                         let finalImage = null;
 
-                        // 1. 🔥 Ищем фото в последнем сообщении этого чата НАПРЯМУЮ ИЗ БАЗЫ
                         try {
                             const msgsWithFiles = await pb.collection('messages').getList(1, 1, {
                                 filter: `chat_id="${c.id}" && file != null && file != ""`,
@@ -11897,27 +12892,22 @@ async renderContactsTab(filterText = "") {
                                 if (fField) {
                                     const fName = Array.isArray(fField) ? fField[0] : fField;
                                     try { 
-                                        // Принудительно задаем имя коллекции для генератора
                                         if (!m.collectionName && !m.collectionId) m.collectionName = 'messages';
                                         finalImage = pb.files.getUrl(m, fName); 
                                     } 
                                     catch(e) { finalImage = `${pb.baseUrl}/api/files/messages/${m.id}/${fName}`; }
                                 }
                             }
-                        } catch(e) { console.warn("Не удалось получить фото из чата", e); }
+                        } catch(e) {}
 
-                        // 2. Достаем имя и аватарку для ЛИЧНЫХ СООБЩЕНИЙ (если фото не отправляли)
                         if (c.type === 'direct') {
                             const otherId = c.participants?.find(p => p !== this.currentRider?.id);
-                            
                             if (otherId) {
                                 let otherRider = this.ridersMap[otherId];
-                                
-                                // Если гонщика нет в кэше, качаем из базы!
                                 if (!otherRider) {
                                     try {
                                         otherRider = await pb.collection('riders').getOne(otherId, { requestKey: null });
-                                        this.ridersMap[otherId] = otherRider; // Сохраняем в кэш
+                                        this.ridersMap[otherId] = otherRider;
                                     } catch(e) {}
                                 }
 
@@ -11926,7 +12916,6 @@ async renderContactsTab(filterText = "") {
                                     if (!finalImage && otherRider.avatar) {
                                         const fName = Array.isArray(otherRider.avatar) ? otherRider.avatar[0] : otherRider.avatar;
                                         try { 
-                                            // 🔥 Железная защита для ссылок на аватары
                                             if (!otherRider.collectionName && !otherRider.collectionId) otherRider.collectionName = 'riders';
                                             finalImage = pb.files.getUrl(otherRider, fName); 
                                         } 
@@ -11934,9 +12923,7 @@ async renderContactsTab(filterText = "") {
                                     }
                                 }
                             }
-                        } 
-                        // 3. Достаем имя и обложку для ГРУППОВЫХ ЧАТОВ
-                        else {
+                        } else {
                             try {
                                 let rawName = this.getChatName(c);
                                 if (rawName) sName = rawName;
@@ -11954,18 +12941,14 @@ async renderContactsTab(filterText = "") {
                             }
                         }
 
-                        // 4. Фолбэк на Уточку (если вообще нет никаких картинок)
                         finalImage = finalImage || 'https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg';
-                        
                         storyCards.push({ id: c.id, name: this.escapeHTML(sName), count: count, image: finalImage });
                     }
                 }
             }
 
-            // Отрисовка ленты
             if (storyCards.length > 0) {
                 let storiesHtml = `<div class="stories-scroll-container" style="display:flex; overflow-x:auto; gap:12px; padding:5px 5px 20px 5px; scrollbar-width:none; -webkit-overflow-scrolling:touch;">`;
-                
                 storyCards.forEach(card => {
                     const isDuck = card.image.includes('__18.svg');
                     const bgStyle = isDuck 
@@ -11983,14 +12966,268 @@ async renderContactsTab(filterText = "") {
                         </div>
                     `;
                 });
-                
                 storiesHtml += `</div><style>.stories-scroll-container::-webkit-scrollbar { display: none; }</style>`;
                 container.innerHTML += storiesHtml;
             }
         }
 
         // ==========================================
-        // 2. КАНАЛЫ, КОМАНДНЫЕ ЧАТЫ И ГРУППЫ (УЛУЧШЕННЫЕ)
+        // 🔥 2. СПОРТСМЕНЫ (АККОРДЕОН НАВЕРХУ)
+        // ==========================================
+        let all = Object.values(this.ridersMap).filter(r => r.id !== this.currentRider.id && r.email !== 'bot@sotka.one' && !(r.email && r.email.startsWith('guest_')));
+        
+        if (this.currentPelotonFilter !== 'all') { 
+            all = all.filter(r => { 
+                const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
+                if (rTeams.length === 0) return true; 
+                return rTeams.some(tId => {
+                    const rTeam = this.teamsMap[tId]; 
+                    if (!rTeam) return true; 
+                    let tPeloton = rTeam.peloton_id; 
+                    if (!tPeloton) return true; 
+                    if (Array.isArray(tPeloton)) return tPeloton.includes(this.currentPelotonFilter); 
+                    return tPeloton === this.currentPelotonFilter; 
+                });
+            }); 
+        }
+        
+        if (filterText) { 
+            const q = filterText.toLowerCase(); 
+            all = all.filter(r => (r.first_name || '').toLowerCase().includes(q) || (r.last_name || '').toLowerCase().includes(q)); 
+        }
+        
+        const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
+        
+        const getSortWeight = (rider) => { 
+            const roles = this.usersMap[rider.email] || []; 
+            const maxRoleWeight = Math.max(...roles.map(role => this.ROLE_WEIGHTS[role] || 20), 20); 
+            const rTeams = Array.isArray(rider.team_id) ? rider.team_id : (rider.team_id ? [rider.team_id] : []);
+            const isSameTeam = myTeams.some(id => rTeams.includes(id));
+            
+            if (maxRoleWeight >= this.ROLE_WEIGHTS['admin']) return 1; 
+            if (maxRoleWeight >= this.ROLE_WEIGHTS['captain'] && isSameTeam) return 2; 
+            if (isSameTeam) return 3; 
+            return 4; 
+        };
+
+        let totalUnreadAthletes = 0;
+
+        // Сортировка: Непрочитанные -> Свежие диалоги -> Роли -> Алфавит
+        all.sort((a, b) => { 
+            let dChatA = this.chats.find(c => c.type === 'direct' && c.participants?.includes(a.id));
+            let dChatB = this.chats.find(c => c.type === 'direct' && c.participants?.includes(b.id));
+
+            let unreadA = dChatA ? (this.unreadCounts[dChatA.id] || 0) : 0;
+            let unreadB = dChatB ? (this.unreadCounts[dChatB.id] || 0) : 0;
+
+            if (unreadA > 0 && unreadB === 0) return -1;
+            if (unreadB > 0 && unreadA === 0) return 1;
+
+            let timeA = dChatA ? new Date(dChatA.updated || dChatA.created || 0).getTime() : 0;
+            let timeB = dChatB ? new Date(dChatB.updated || dChatB.created || 0).getTime() : 0;
+
+            if (timeA > 0 || timeB > 0) {
+                if (timeA !== timeB) return timeB - timeA;
+            }
+
+            const wA = getSortWeight(a); 
+            const wB = getSortWeight(b); 
+            if (wA !== wB) return wA - wB; 
+            
+            return (a.last_name || "").localeCompare(b.last_name || ""); 
+        });
+
+        all.forEach(r => {
+            let dChat = this.chats.find(c => c.type === 'direct' && c.participants?.includes(r.id));
+            if (dChat) totalUnreadAthletes += (this.unreadCounts[dChat.id] || 0);
+        });
+        
+        if (all.length > 0) {
+            const isExpanded = filterText !== "" || totalUnreadAthletes > 0;
+            const displayState = isExpanded ? 'block' : 'none';
+            const rotateDeg = isExpanded ? '180deg' : '0deg';
+
+            const accItem = document.createElement('div');
+            accItem.className = `chat-item ${isExpanded ? 'active' : ''}`;
+            accItem.style.cssText = 'padding: 0; flex-direction: column; align-items: stretch; margin-bottom: 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;';
+
+            let accBadgeHtml = totalUnreadAthletes > 0 ? `<div style="background: var(--primary, #ffc107); color: #000000; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; margin-right: 8px; font-family: 'Roboto Mono', monospace;">${totalUnreadAthletes}</div>` : '';
+
+            accItem.innerHTML = `
+                <div class="accordion-header" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; cursor: pointer; width: 100%; box-sizing: border-box; transition: background 0.2s;" onmouseover="this.style.background='var(--bg-surface-hover)';" onmouseout="this.style.background='transparent';">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="avatar" style="background: rgba(255,193,7,0.1); color: var(--primary); border: 1px solid var(--primary); width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                        <div style="display: flex; flex-direction: column; text-align: left;">
+                            <span style="font-family: 'Unbounded'; font-size: 12px; font-weight: 800; color: var(--text-main); text-transform: uppercase;">Спортсмены</span>
+                            <span style="font-family: 'Roboto Mono', monospace; font-size: 10px; color: var(--text-muted);">Личные сообщения</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        ${accBadgeHtml}
+                        <svg class="accordion-arrow" style="width:16px; height:16px; stroke:var(--text-muted); stroke-width:2; fill:none; transition: transform 0.3s; transform: ${rotateDeg};" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                </div>
+                <div class="race-accordion-body" style="display: ${displayState}; width: 100%; border-top: 1px dashed var(--border); padding: 10px 8px; box-sizing: border-box; cursor: default; background: var(--bg-body);">
+                    <div id="athletesListInner" style="display: flex; flex-direction: column; gap: 6px; max-height: 480px; overflow-y: auto; padding-right: 2px;"></div>
+                </div>
+            `;
+
+            accItem.querySelector('.accordion-header').onclick = (e) => {
+                e.stopPropagation();
+                const body = accItem.querySelector('.race-accordion-body');
+                const svg = accItem.querySelector('.accordion-arrow');
+                const isOpen = body.style.display === 'block';
+                if (!isOpen) {
+                    body.style.display = 'block';
+                    if (svg) svg.style.transform = 'rotate(180deg)';
+                    accItem.classList.add('active');
+                } else {
+                    body.style.display = 'none';
+                    if (svg) svg.style.transform = 'rotate(0deg)';
+                    accItem.classList.remove('active');
+                }
+            };
+
+            container.appendChild(accItem);
+            const innerContainer = accItem.querySelector('#athletesListInner');
+
+            // 🔥 ПРОСТОРНЫЙ РЕНДЕР КАРТОЧЕК СПОРТСМЕНОВ
+            // 🔥 РЕНДЕР КАРТОЧЕК СПОРТСМЕНОВ: ФОТО-ФОН С РАЗМЫТИЕМ / КРУПНАЯ УТОЧКА
+            all.forEach(r => {
+                const el = document.createElement('div'); 
+                el.className = 'contact-item rider-card'; 
+                el.style.cssText = 'position: relative; display: flex; align-items: stretch; margin-bottom: 6px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-surface); cursor: pointer; transition: 0.2s; overflow: hidden; min-height: 100px; box-sizing: border-box;';
+                
+                el.onclick = (e) => { 
+                    e.stopPropagation();
+                    document.querySelectorAll('.group-item').forEach(i => i.style.background = 'transparent');
+                    document.querySelectorAll('.rider-card').forEach(i => i.style.borderColor = 'var(--border)');
+                    el.style.borderColor = 'var(--primary)';
+                    window.app.startDirectChat(r.id); 
+                };
+                
+                const safeFirstName = this.escapeHTML(r.first_name || '');
+                const safeLastName = this.escapeHTML(r.last_name || '');
+
+                let dChat = this.chats.find(c => c.type === 'direct' && c.participants?.includes(r.id));
+                let unreadCount = dChat ? (this.unreadCounts[dChat.id] || 0) : 0;
+                let badgeHtml = unreadCount > 0 ? `<div style="background:var(--primary); color:#000; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:10px; font-family:'Roboto Mono'; box-shadow:0 2px 5px rgba(255,193,7,0.4);">${unreadCount}</div>` : '';
+
+                // 1. Команда со ссылкой на чат
+                const rawTeamName = this.getRiderTeamName(r);
+                const safeTeamName = this.escapeHTML(rawTeamName);
+                const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
+                const primaryTeamId = rTeams[0] || null;
+
+                let teamElementHtml = `<span style="color:var(--text-muted); font-family:'Unbounded'; font-size:9px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:115px;">${safeTeamName}</span>`;
+                if (primaryTeamId && safeTeamName !== 'Без команды' && safeTeamName !== 'ONE TEAM' && !safeTeamName.includes('[G:')) {
+                    teamElementHtml = `<span onclick="event.stopPropagation(); window.app.openChatForTeam('${primaryTeamId}')" style="color:var(--text-muted); font-family:'Unbounded'; font-size:9px; font-weight:800; cursor:pointer; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:115px; transition:0.2s;" onmouseover="this.style.color='var(--primary)'; this.style.textDecoration='underline';" onmouseout="this.style.color='var(--text-muted)'; this.style.textDecoration='none';" title="Открыть чат команды ${safeTeamName}">${safeTeamName}</span>`;
+                }
+
+                // 2. Год рождения
+                const yobHtml = r.yob ? `<span style="color:var(--text-muted); opacity:0.3; font-size:8px;">•</span><span style="color:var(--text-muted); font-family:'Roboto Mono'; font-size:10px; font-weight:700; white-space:nowrap;">${r.yob}</span>` : '';
+
+                // 3. Роли и статус
+                let roles = [];
+                if (r.email && r.email.trim() !== '') roles = this.usersMap[r.email] || [];
+                if (r.roles) {
+                    let rRoles = Array.isArray(r.roles) ? r.roles : [r.roles];
+                    roles = [...new Set([...roles, ...rRoles])];
+                }
+                const rStr = JSON.stringify(roles);
+                const cluster = r.base_cluster || 'B';
+
+                let roleName = cluster === 'O' ? 'ВЕЛОСИПЕДИСТ' : 'ГОНЩИК';
+                let roleBg = 'rgba(255,255,255,0.06)';
+                let roleColor = 'var(--text-muted)';
+                let roleBorder = 'var(--border)';
+
+                if (rStr.includes('superadmin')) { 
+                    roleName = 'СУПЕР'; roleBg = 'rgba(168,85,247,0.15)'; roleColor = '#a855f7'; roleBorder = 'rgba(168,85,247,0.3)'; 
+                } else if (rStr.includes('admin')) { 
+                    roleName = 'ОРГ'; roleBg = 'rgba(59,130,246,0.15)'; roleColor = 'var(--info)'; roleBorder = 'rgba(59,130,246,0.3)'; 
+                } else if (rStr.includes('judge')) { 
+                    roleName = 'СУДЬЯ'; roleBg = 'rgba(239,68,68,0.15)'; roleColor = 'var(--danger)'; roleBorder = 'rgba(239,68,68,0.3)'; 
+                } else if (rStr.includes('captain')) { 
+                    roleName = 'КАПИТАН'; roleBg = 'rgba(255,193,7,0.15)'; roleColor = 'var(--primary)'; roleBorder = 'rgba(255,193,7,0.3)'; 
+                }
+
+                // 4. Кластер
+                let clusterBg = cluster === 'O' ? 'transparent' : 'rgba(255,193,7,0.1)';
+                let clusterColor = cluster === 'O' ? 'var(--text-muted)' : 'var(--primary)';
+                let clusterBorder = cluster === 'O' ? 'var(--border)' : 'var(--primary)';
+
+                // 5. Очки рейтинга
+                const ratingPts = (r.rating || 0);
+
+                // 6. Подготовка фонового слоя (Аватар с размытием краев ИЛИ крупная уточка)
+                let avatarUrl = "";
+                if (r.avatar) {
+                    const fileName = Array.isArray(r.avatar) ? r.avatar[0] : r.avatar;
+                    try {
+                        if (!r.collectionName && !r.collectionId) r.collectionName = 'riders';
+                        avatarUrl = pb.files.getUrl(r, fileName);
+                    } catch(e) {
+                        avatarUrl = `${pb.baseUrl}/api/files/riders/${r.id}/${fileName}`;
+                    }
+                }
+
+                let bgLayerHtml = '';
+                if (avatarUrl) {
+                    bgLayerHtml = `
+                        <div style="position: absolute; right: 0; top: 0; bottom: 0; width: 140px; z-index: 1; pointer-events: none; overflow: hidden;">
+                            <img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 20%; -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.95) 100%); mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.95) 100%); opacity: 0.85; filter: saturate(1.1);">
+                        </div>
+                    `;
+                } else {
+                    bgLayerHtml = `
+                        <div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 56px; height: 56px; z-index: 1; pointer-events: none; display: flex; align-items: center; justify-content: center;">
+                            <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" style="width: 100%; height: 100%; object-fit: contain; opacity: 0.16;" alt="Duck Watermark">
+                        </div>
+                    `;
+                }
+
+                // 🔥 1. Задаем карточке комфортную высоту для 3-х строк
+                el.style.cssText = 'position: relative; display: flex; align-items: stretch; margin-bottom: 6px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-surface); cursor: pointer; transition: 0.2s; overflow: hidden; min-height: 120px; box-sizing: border-box;';
+
+                // 🔥 2. Разметка карточки на 3 строки
+                el.innerHTML = `
+                    <div style="position: relative; z-index: 2; flex: 1; min-width: 0; padding: 10px 8px 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+                        
+                        <!-- 1-я строка: Имя и Фамилия -->
+                        <div style="font-weight: 800; font-size: 13px; font-family: 'Unbounded', sans-serif; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px;">
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeFirstName} ${safeLastName}</span>
+                            ${badgeHtml}
+                        </div>
+                        
+                        <!-- 2-я строка: Команда и Год рождения -->
+                        <div style="display: flex; gap: 6px; align-items: center; font-size: 10px; line-height: 1.2;">
+                            ${teamElementHtml}
+                            ${yobHtml}
+                        </div>
+
+                        <!-- 3-я строка: Статус, Кластер и Очки рейтинга -->
+                        <div style="display: flex; gap: 5px; align-items: center; font-size: 10px; line-height: 1.2; margin-top: 1px;">
+                            <span style="background:${roleBg}; color:${roleColor}; border:1px solid ${roleBorder}; padding:1px 5px; border-radius:4px; font-family:'Unbounded', sans-serif; font-size:8px; font-weight:800; text-transform:uppercase; white-space:nowrap; line-height:1.2;">${roleName}</span>
+                            <span style="background:${clusterBg}; color:${clusterColor}; border:1px solid ${clusterBorder}; padding:1px 5px; border-radius:4px; font-family:'Roboto Mono', monospace; font-weight:800; font-size:9px; white-space:nowrap; line-height:1.2;">${cluster}</span>
+                            <span style="color:var(--text-muted); opacity:0.3; font-size:8px;">•</span>
+                            <span style="font-family: 'Roboto Mono', monospace; font-weight: 800; font-size: 10px; color: var(--primary); white-space: nowrap;">${ratingPts} pts</span>
+                        </div>
+                    </div>
+
+                    ${bgLayerHtml}
+                `;
+                innerContainer.appendChild(el);
+            });
+        }
+
+        // ==========================================
+        // 🔥 3. КОМАНДЫ И ГРУППЫ
         // ==========================================
         let groupChats = this.chats.filter(c => ['team_channel', 'team', 'private', 'gruppetto'].includes(c.type));
         
@@ -12011,7 +13248,6 @@ async renderContactsTab(filterText = "") {
             grpTitle.innerText = "КОМАНДЫ";
             container.appendChild(grpTitle);
 
-            // 🔥 Расчет статистики команд
             let allTeamStats = {};
             Object.keys(this.teamsMap).forEach(tId => {
                 const teamMembers = Object.values(this.ridersMap).filter(r => {
@@ -12030,7 +13266,6 @@ async renderContactsTab(filterText = "") {
                 allTeamStats[tId] = { tId, top3, total, males, females, members: teamMembers, name: teamName, isNeutral };
             });
 
-            // Группируем чаты (отбираем ТОЛЬКО команды с чатами)
             let teamsToRender = {};
             let nonTeamChats = [];
 
@@ -12046,7 +13281,6 @@ async renderContactsTab(filterText = "") {
                 }
             });
 
-            // Раздаем места
             let renderedTeamsArr = Object.values(teamsToRender);
             let neutralTeams = renderedTeamsArr.filter(t => t.stat.isNeutral);
             let compTeams = renderedTeamsArr.filter(t => !t.stat.isNeutral);
@@ -12058,7 +13292,6 @@ async renderContactsTab(filterText = "") {
 
             let sortedTeams = [...neutralTeams, ...compTeams].sort((a, b) => a.stat.sortOrder - b.stat.sortOrder);
 
-            // Отрисовываем карточки команд
             sortedTeams.forEach(tGroup => {
                 const el = document.createElement('div');
                 el.className = 'contact-item group-item'; 
@@ -12088,7 +13321,6 @@ async renderContactsTab(filterText = "") {
                     : 'background:var(--bg-surface-hover); color:var(--text-muted); font-family:"Unbounded"; font-weight:900; border: 1px solid var(--border);';
                 
                 let unread = 0;
-                
                 let chatsHtml = `<div style="margin-top: 15px;"><div style="font-size:9px; color:var(--text-muted); font-family:'Unbounded'; margin-bottom:6px; text-transform:uppercase;">Связь с командой:</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">`;
                 tGroup.chats.forEach(c => {
                     let cUnread = (this.unreadCounts && this.unreadCounts[c.id]) || 0;
@@ -12099,14 +13331,13 @@ async renderContactsTab(filterText = "") {
                     else if (c.type === 'team') { cIcon = ''; cName = 'ЧАТ'; }
                     
                     let cBadge = cUnread > 0 ? `<span style="background:var(--primary); color:#000; padding:2px 6px; border-radius:10px; font-size:9px; margin-left:4px;">${cUnread}</span>` : '';
-                    
                     chatsHtml += `<button onclick="window.app.openChat('${c.id}')" style="background:var(--bg-surface-hover); border:1px solid var(--border); color:var(--text-main); border-radius:8px; padding:10px 4px; font-family:'Unbounded'; font-size:9px; font-weight:800; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)';">${cIcon} ${cName} ${cBadge}</button>`;
                 });
                 chatsHtml += `</div></div>`;
                 
                 const badgeHtml = unread > 0 ? `<div style="background:var(--primary); color:#000; font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; margin-left:auto; font-family:'Roboto Mono'; box-shadow:0 2px 5px rgba(255,193,7,0.4);">${unread}</div>` : '';
 
-                const myRoleWeight = Math.max(...(this.usersMap[this.currentRider?.email] || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
+                const myRoleWeight = Math.max(...((this.usersMap && this.usersMap[this.currentRider?.email]) || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
                 const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
                 const isCaptain = myRoleWeight >= this.ROLE_WEIGHTS['captain'] && myTeams.includes(tGroup.teamId);
                 const isAdmin = myRoleWeight >= this.ROLE_WEIGHTS['admin'];
@@ -12173,7 +13404,9 @@ async renderContactsTab(filterText = "") {
                 container.appendChild(el);
             });
 
-            // Отрисовываем Прочие чаты (Группетто, Избранное и т.д.)
+            // ==========================================
+            // 🔥 4. ПРОЧИЕ ЧАТЫ
+            // ==========================================
             if (nonTeamChats.length > 0) {
                 const othTitle = document.createElement('div');
                 othTitle.style.cssText = "font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; padding:15px 15px 5px; text-transform:uppercase;";
@@ -12216,124 +13449,7 @@ async renderContactsTab(filterText = "") {
                 });
             }
         }
-
-        // ==========================================
-        // 3. СПОРТСМЕНЫ (КАРТОЧКИ ЛИЧНЫХ СООБЩЕНИЙ)
-        // ==========================================
-        let all = Object.values(this.ridersMap).filter(r => r.id !== this.currentRider.id && r.email !== 'bot@sotka.one' && !(r.email && r.email.startsWith('guest_')));
-        
-        if (this.currentPelotonFilter !== 'all') { 
-            all = all.filter(r => { 
-                const rTeams = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
-                if (rTeams.length === 0) return true; 
-                return rTeams.some(tId => {
-                    const rTeam = this.teamsMap[tId]; 
-                    if (!rTeam) return true; 
-                    let tPeloton = rTeam.peloton_id; 
-                    if (!tPeloton) return true; 
-                    if (Array.isArray(tPeloton)) return tPeloton.includes(this.currentPelotonFilter); 
-                    return tPeloton === this.currentPelotonFilter; 
-                });
-            }); 
-        }
-        
-        if (filterText) { const q = filterText.toLowerCase(); all = all.filter(r => r.first_name.toLowerCase().includes(q) || r.last_name.toLowerCase().includes(q)); }
-        
-        const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
-        
-        const getSortWeight = (rider) => { 
-            const roles = this.usersMap[rider.email] || []; 
-            const maxRoleWeight = Math.max(...roles.map(role => this.ROLE_WEIGHTS[role] || 20), 20); 
-            const rTeams = Array.isArray(rider.team_id) ? rider.team_id : (rider.team_id ? [rider.team_id] : []);
-            const isSameTeam = myTeams.some(id => rTeams.includes(id));
-            
-            let dChat = this.chats.find(c => c.type === 'direct' && c.participants.includes(rider.id));
-            let hasUnread = dChat && this.unreadCounts[dChat.id] > 0;
-
-            if (hasUnread) return 0; 
-            if (maxRoleWeight >= this.ROLE_WEIGHTS['admin']) return 1; 
-            if (maxRoleWeight >= this.ROLE_WEIGHTS['captain'] && isSameTeam) return 2; 
-            if (isSameTeam) return 3; 
-            return 4; 
-        };
-        
-        all.sort((a, b) => { const wA = getSortWeight(a); const wB = getSortWeight(b); if (wA !== wB) return wA - wB; return a.last_name.localeCompare(b.last_name); });
-        
-        if (all.length > 0) {
-            const ridersTitle = document.createElement('div');
-            ridersTitle.style.cssText = "font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; padding:15px 15px 10px; text-transform:uppercase;";
-            ridersTitle.innerText = "СПОРТСМЕНЫ (ЛИЧНЫЕ СООБЩЕНИЯ)";
-            container.appendChild(ridersTitle);
-        }
-
-        all.forEach(r => {
-            const el = document.createElement('div'); 
-            el.className = 'contact-item rider-card'; 
-            
-            el.onclick = () => { 
-                document.querySelectorAll('.group-item').forEach(i => i.style.background = 'transparent');
-                document.querySelectorAll('.rider-card').forEach(i => i.style.borderColor = 'var(--border)');
-                el.style.borderColor = 'var(--primary)';
-                window.app.startDirectChat(r.id); 
-            };
-            
-            const safeFirstName = this.escapeHTML(r.first_name);
-            const safeLastName = this.escapeHTML(r.last_name);
-            const safeTeamName = this.escapeHTML(this.getRiderTeamName(r));
-            const safeFirstChar = safeFirstName.charAt(0) || '?';
-
-            let dChat = this.chats.find(c => c.type === 'direct' && c.participants.includes(r.id));
-            let unreadCount = dChat ? (this.unreadCounts[dChat.id] || 0) : 0;
-            let badgeHtml = unreadCount > 0 ? `<div style="background:var(--primary); color:#000; font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; margin-left:8px; font-family:'Roboto Mono'; box-shadow:0 2px 5px rgba(255,193,7,0.4);">${unreadCount}</div>` : '';
-
-            // 🔥 ДОСТАЕМ ССЫЛКУ НА ФОТО
-            let avatarUrl = "";
-            if (r.avatar) {
-                const fileName = Array.isArray(r.avatar) ? r.avatar[0] : r.avatar;
-                try {
-                    if (!r.collectionName && !r.collectionId) r.collectionName = 'riders';
-                    avatarUrl = pb.files.getUrl(r, fileName);
-                } catch(e) {
-                    avatarUrl = `${pb.baseUrl}/api/files/riders/${r.id}/${fileName}`;
-                }
-            }
-
-            // 🔥 ФОРМИРУЕМ АВАТАР
-            let avatarBlock = '';
-            if (avatarUrl) {
-                avatarBlock = `<img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block;">`;
-            } else {
-                avatarBlock = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-start; padding-left: 20px; box-sizing: border-box; font-family: 'Unbounded'; font-weight: 900; font-size: 24px; color: var(--text-muted); background: var(--bg-surface-hover);">${safeFirstChar}</div>`;
-            }
-
-            el.style.cssText = 'display: flex; align-items: stretch; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-surface); cursor: pointer; transition: 0.2s; overflow: hidden; min-height: 64px;';
-            
-            el.innerHTML = `
-                <div style="flex: 1; min-width: 0; padding: 12px 4px 12px 12px; display: flex; flex-direction: column; justify-content: center; gap: 6px;">
-                    <div style="display:flex; align-items:center;">
-                        <div style="font-weight:800; font-size:13px; font-family:'Unbounded'; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center;">
-                            ${safeFirstName} ${safeLastName} ${badgeHtml}
-                        </div>
-                    </div>
-                    
-                    <div style="font-size:10px; display:flex; gap:8px; align-items:center; flex-wrap:nowrap; overflow:hidden;">
-                        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink: 1; min-width: 30px;">
-                            ${this.getTeamLinkHtml(r.team_id, safeTeamName, 'var(--text-muted)')}
-                        </span> 
-                        <div style="flex-shrink: 0; display: flex; gap: 4px; white-space: nowrap;">
-                            ${this.getRoleBadge(r.id)}
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="width: 90px; flex-shrink: 0; clip-path: polygon(20% 0, 100% 0, 100% 100%, 0% 100%); background: var(--bg-surface-hover);">
-                    ${avatarBlock}
-                </div>
-            `;
-            container.appendChild(el);
-        });
     }
-        
 	   filterContacts(val) { this.renderContactsTab(val); }
 
         async startDirectChat(targetRiderId) {
@@ -12994,19 +14110,24 @@ async joinRadar(chatId, event) {
         `;
     }
 	
- // ==========================================
+// ==========================================
     // 🔥 2. ГЕНЕРАТОР ТАБЛО ПРИВЕТСТВИЯ С РЕАЛЬНЫМИ ДАННЫМИ
     // ==========================================
-   async renderWelcomeDashboard() {
+    async renderWelcomeDashboard() {
+        // 🔥 ЕСЛИ ПОЛЬЗОВАТЕЛЬ УЖЕ НАЖАЛ "В ПЕЛОТОН" — ЗАПРЕЩАЕМ ПОВТОРНОЕ ОТКРЫТИЕ
+        if (this.welcomeDashboardDismissed) return;
         if (!this.currentRider || this.isGuest) return;
-        const r = this.currentRider;
 
+        const r = this.currentRider;
         let modal = document.getElementById('welcomeDashboardModal');
+
+        // Если табло ещё нет в DOM — создаём скелетон
         if (!modal) {
             this.renderWelcomeSkeleton();
             modal = document.getElementById('welcomeDashboardModal');
         }
-        
+        if (!modal) return;
+
         modal.innerHTML = `
             <div class="board-container">
                 <div class="hero-yellow-card">
@@ -13346,17 +14467,21 @@ async joinRadar(chatId, event) {
     // ==========================================
     // 🔥 3. ЗАКРЫТИЕ ТАБЛО И ПЕРЕХОД В ПЕЛОТОН
     // ==========================================
-    closeWelcomeOverlay(skipRouting = false) {
-        const overlay = document.getElementById('welcomeDashboardModal');
-        if (overlay) {
-            overlay.style.opacity = '0';
-            overlay.style.transform = 'scale(0.95)';
+    closeWelcomeOverlay(skipAutoOpen = false) {
+        // 🔥 ФИКСИРУЕМ, ЧТО ПОЛЬЗОВАТЕЛЬ УЖЕ ЗАКРЫЛ ТАБЛО
+        this.welcomeDashboardDismissed = true;
+
+        const modal = document.getElementById('welcomeDashboardModal');
+        if (modal) {
+            modal.style.opacity = '0';
+            modal.style.transform = 'scale(0.96)';
             setTimeout(() => {
-                overlay.style.display = 'none';
-                if (!skipRouting) {
-                    this.openUpcomingRaceChat(); 
-                }
+                if (modal && modal.parentNode) modal.remove();
             }, 300);
+        }
+
+        if (!skipAutoOpen) {
+            this.openUpcomingRaceChat();
         }
     }
 
@@ -13409,17 +14534,32 @@ async joinRadar(chatId, event) {
         }
 		// 🔥 ОТКРЫТИЕ ЧАТА КОМАНДЫ ПРЯМО СО СТАРТОВОГО ТАБЛО
     openMyTeamChatFromDashboard() {
+        this.welcomeDashboardDismissed = true; // Запоминаем выход
         const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
         
         if (myTeams.length > 0) {
-            this.closeWelcomeOverlay(true); // Закрываем стартовый экран
-            this.openChatForTeam(myTeams[0]); // Открываем агрегатор команды
+            this.closeWelcomeOverlay(true);
+            this.openChatForTeam(myTeams[0]);
         } else {
             alert("Вы пока не состоите в команде.");
         }
     }
 	async openChat(chatId) {
         try {
+            // 🔥 1. ВСЕГДА УБИРАЕМ СЛОЙ КАЛЕНДАРЯ ПРИ ОТКРЫТИИ ЛЮБОГО ЧАТА
+            const calView = document.getElementById('monthCalendarViewContainer');
+            if (calView) calView.remove();
+
+            // Принудительно скрываем закреп перед загрузкой
+            const pinnedBar = document.getElementById('pinnedMessageBar');
+            if (pinnedBar) pinnedBar.style.display = 'none';
+
+            // Снимаем блокировки со стандартных панелей чата
+            ['chatHeader', 'curtainContainer', 'inputWrapper', 'recipientSelectorBar', 'readOnlyNotice'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.removeProperty('display');
+            });
+
             const ws = document.getElementById('pelotonWorkspace');
             const mainChat = document.getElementById('mainChatArea');
             if (ws) ws.style.display = 'none';
@@ -13432,7 +14572,7 @@ async joinRadar(chatId, event) {
                 return String(val).trim();
             };
 
-            const chat = this.chats.find(c => c.id === chatId); 
+            const chat = this.chats.find(c => c.id === chatId);
             if (!chat) return;
 
             const cleanRaceId = getCleanId(chat.race_id);
@@ -13503,9 +14643,19 @@ async joinRadar(chatId, event) {
             const myRole = this.getUserMaxRole(); 
             const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin']; 
             const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin']; 
+            const myRiderId = this.currentRider?.id;
+            const myUserId = pb.authStore.model?.id || this.currentRider?.user_id;
+
             const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
-            const isCaptain = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain'] && chat.type === 'team' && myTeams.includes(chat.team_id);
-            const isCreator = (chat.type === 'private' || chat.type === 'gruppetto' || chat.type === 'radar') && (chat.captain === this.currentRider?.id || (chat.participants && chat.participants[0] === this.currentRider?.id));
+            const isCaptain = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain'] && (chat.type === 'team' || chat.type === 'team_channel') && myTeams.includes(chat.team_id);
+            
+            // 🔥 Создатель события (гонки/тренировки) или создатель чата/группетто
+            const isRaceCreator = chat.raceObj && (chat.raceObj.creator_id === myRiderId || chat.raceObj.creator_id === myUserId);
+            const isChatCreator = (chat.captain === myRiderId) || (chat.participants && chat.participants[0] === myRiderId) || (chat.created_by === myRiderId || chat.created_by === myUserId);
+            const isCreator = isRaceCreator || isChatCreator;
+
+            // Назначенный судья
+            const isAssignedJudge = chat.raceObj && (chat.raceObj.judge_id === myRiderId || chat.raceObj.judge_id === myUserId);
             
             let isMyPelotonChat = false; 
             const chatP = chat.peloton_id ? (Array.isArray(chat.peloton_id) ? chat.peloton_id[0] : chat.peloton_id) : null; 
@@ -13519,7 +14669,9 @@ async joinRadar(chatId, event) {
                 const pelotonObj = this.pelotonsMap[chatP]; 
                 if (pelotonObj && pelotonObj.admin_id === this.userIdMap[this.currentRider?.email]) isMyPelotonChat = true;
             }
-            const canManageChat = isSuper || (isAdmin && isMyPelotonChat) || isCaptain || isCreator;
+
+            // 🔥 Итоговый допуск: админ, судья, капитан или создатель
+            const canManageChat = isSuper || (isAdmin && isMyPelotonChat) || isCaptain || isCreator || isAssignedJudge;
 
             // 5. ПОДСЧЕТ УЧАСТНИКОВ
             let pCount = chat.participants ? chat.participants.length : 0;
@@ -13593,10 +14745,10 @@ async joinRadar(chatId, event) {
                             </button>
                         `;
                     } else if (r.status === 'Finished') {
-                        let iconSvg = `<span class="btn-icon" style="font-size:14px; margin-right:4px;">🏆</span>`;
+                        let iconSvg = `<span class="btn-icon" style="font-size:14px; margin-right:4px;"></span>`;
                         actionBtnHtml = `
                             <button class="compact-action-btn" onclick="window.app.openLiveBoard('${r.id}', event)" style="background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border); border-radius: 16px; height: 32px; padding: 0 12px; width: auto; font-family: 'Unbounded'; font-weight: 800; font-size: 9px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; margin: 0;">
-                                ${iconSvg} <span style="margin-left: 4px;">ИТОГИ</span>
+                                ${iconSvg}<span style="margin-left: 4px;">ИТОГИ</span>
                             </button>
                         `;
                     } else if (r.status === 'Скоро') {
@@ -13684,8 +14836,6 @@ async joinRadar(chatId, event) {
                             ${fullDateStr ? `<span>${fullDateStr}</span>` : ''}
                             ${formatName ? `<span style="opacity:0.4; margin: 0 4px;">•</span><span>${formatName}</span>` : ''}
                             ${distStr ? `<span style="opacity:0.4; margin: 0 4px;">•</span><span>${distStr}</span>` : ''}
-                            <span style="opacity:0.4; margin: 0 4px;">•</span>
-                            <span onclick="window.app.openLiveBoard('${r.id}', event)" style="cursor: pointer; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;" title="Открыть старт-лист">${pCount} чел. ➝</span>
                         </div>
                     `;
 
@@ -14136,37 +15286,96 @@ async joinRadar(chatId, event) {
             input.style.height = '90px'; input.focus();
         }
 
-        async renderPinnedMessage() {
-            const chat = this.chats.find(c => c.id === this.activeChatId);
-            const bar = document.getElementById('pinnedMessageBar'); const textEl = document.getElementById('pinnedMessageText'); const unpinBtn = document.getElementById('unpinBtn');
-            if (chat && chat.pinned_message) {
-                try {
-                    const msg = await pb.collection('messages').getOne(chat.pinned_message, {requestKey: null}); let pinText = msg.text || (msg.file ? 'Вложение' : 'Закрепленное сообщение'); let btnHtml = '';
-                    const regMatch = pinText.match(/\[ACTION:REGISTER:([a-zA-Z0-9_]+)\]/); if (regMatch) { const raceId = regMatch[1]; pinText = pinText.replace(regMatch[0], '').trim(); btnHtml = `<button class="sync-btn-${raceId}" style="background:var(--primary); color:#000; border:none; padding:4px 10px; border-radius:6px; font-size:10px; font-family:'Unbounded'; font-weight:800; cursor:pointer; margin-left:10px; flex-shrink:0;" onclick="window.app.registerForRace('${raceId}', this, event)">ЗАЯВИТЬСЯ</button>`; }
-                    const liveMatch = pinText.match(/\[ACTION:LIVE:([a-zA-Z0-9_]+)\]/); if (liveMatch) { const raceId = liveMatch[1]; pinText = pinText.replace(liveMatch[0], '').trim(); btnHtml = `<button style="background:var(--danger); color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:10px; font-family:'Unbounded'; font-weight:800; cursor:pointer; margin-left:10px; flex-shrink:0; display:flex; align-items:center; gap:5px;" onclick="window.app.openLiveBoard('${raceId}', event)"><div style="width:6px; height:6px; background:#fff; border-radius:50%; animation: dot-pulse 1s infinite;"></div>LIVE</button>`; }
-                    
-                    textEl.style.display = 'flex'; textEl.style.alignItems = 'center'; textEl.innerHTML = `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${pinText}</span>${btnHtml}`; bar.style.display = 'flex';
-                    
-                    const myRole = this.getUserMaxRole(); const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin']; const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin']; 
-                    // 🔥 ФИКС: Массивы
-                    const myTeams = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
-                    const isCaptain = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain'] && (chat.type === 'team' || chat.type === 'team_channel') && myTeams.includes(chat.team_id); 
-                    const isCreator = chat.type === 'private' && chat.participants && chat.participants[0] === this.currentRider.id;
-                    let isMyP = false; 
-                    const chatP = chat.peloton_id ? (Array.isArray(chat.peloton_id) ? chat.peloton_id[0] : chat.peloton_id) : null; 
-                    const myTeamsForPin = Array.isArray(this.currentRider.team_id) ? this.currentRider.team_id : (this.currentRider.team_id ? [this.currentRider.team_id] : []);
-                    if (chatP && myTeamsForPin.some(tId => {
-                        const t = this.teamsMap[tId]; 
-                        const pId = t && t.peloton_id ? (Array.isArray(t.peloton_id) ? t.peloton_id[0] : t.peloton_id) : null;
-                        return pId === chatP;
-                    })) isMyP = true;
-                    
-                    unpinBtn.style.display = (isSuper || (isAdmin && isMyP) || isCaptain || isCreator) ? 'block' : 'none';
-                    bar.onclick = (e) => { if (e.target.id === 'unpinBtn' || e.target.tagName.toLowerCase() === 'button') return; const el = document.getElementById(`msg-${msg.id}`); if(el) { el.scrollIntoView({behavior: 'smooth', block: 'center'}); el.style.backgroundColor = 'var(--primary-light)'; setTimeout(() => el.style.backgroundColor = 'transparent', 1500); } else { this.scrollToBottom(); alert("Сообщение слишком старое, проскролльте вверх."); } };
-                } catch(e) { bar.style.display = 'none'; }
-            } else { bar.style.display = 'none'; }
+        // ==========================================
+    // 📌 ОТРИСОВКА ЗАКРЕПЛЕННОГО СООБЩЕНИЯ
+    // ==========================================
+    async renderPinnedMessage() {
+        const bar = document.getElementById('pinnedMessageBar');
+        if (!bar) return;
+
+        const chat = this.chats.find(c => c.id === this.activeChatId);
+        
+        // 🔥 Если чат не найден или закрепа нет — принудительно гасим плашку
+        if (!chat || !chat.pinned_message) {
+            bar.style.display = 'none';
+            return;
         }
 
+        const textEl = document.getElementById('pinnedMessageText');
+        const unpinBtn = document.getElementById('unpinBtn');
+
+        try {
+            const msg = await pb.collection('messages').getOne(chat.pinned_message, { requestKey: null });
+            if (!msg) {
+                bar.style.display = 'none';
+                return;
+            }
+
+            let pinText = msg.text || (msg.file ? '📎 Вложение' : 'Закрепленное сообщение');
+            let btnHtml = '';
+
+            // Кнопка быстрой заявки в закрепе
+            const regMatch = pinText.match(/\[ACTION:REGISTER:([a-zA-Z0-9_]+)\]/);
+            if (regMatch) {
+                const raceId = regMatch[1];
+                pinText = pinText.replace(regMatch[0], '').trim();
+                btnHtml = `<button class="sync-btn-${raceId}" onclick="window.app.registerForRace('${raceId}', this, event)" style="margin-left:8px; background:var(--primary); color:#000; border:none; padding:4px 8px; border-radius:6px; font-family:'Unbounded'; font-size:9px; font-weight:800; cursor:pointer; flex-shrink:0;">ЗАЯВИТЬСЯ</button>`;
+            }
+
+            // Кнопка LIVE-табло в закрепе
+            const liveMatch = pinText.match(/\[ACTION:LIVE:([a-zA-Z0-9_]+)\]/);
+            if (liveMatch) {
+                const raceId = liveMatch[1];
+                pinText = pinText.replace(liveMatch[0], '').trim();
+                btnHtml = `<button onclick="window.app.openLiveBoard('${raceId}', event)" style="margin-left:8px; background:var(--danger); color:#fff; border:none; padding:4px 8px; border-radius:6px; font-family:'Unbounded'; font-size:9px; font-weight:800; cursor:pointer; flex-shrink:0;">LIVE</button>`;
+            }
+
+            if (textEl) {
+                textEl.style.display = 'flex';
+                textEl.style.alignItems = 'center';
+                textEl.innerHTML = `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${this.escapeHTML(pinText)}</span>${btnHtml}`;
+            }
+
+            bar.style.display = 'flex';
+
+            // Проверка прав на открепление (Admin, Судья, Капитан, Создатель)
+            const myRole = this.getUserMaxRole();
+            const isSuper = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['superadmin'];
+            const isAdmin = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['admin'];
+            const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
+            const isCaptain = this.ROLE_WEIGHTS[myRole] >= this.ROLE_WEIGHTS['captain'] && (chat.type === 'team' || chat.type === 'team_channel') && myTeams.includes(chat.team_id);
+            const isCreator = (chat.type === 'private' || chat.type === 'gruppetto') && chat.participants && chat.participants[0] === this.currentRider?.id;
+
+            let isMyP = false;
+            const chatP = chat.peloton_id ? (Array.isArray(chat.peloton_id) ? chat.peloton_id[0] : chat.peloton_id) : null;
+            if (chatP && myTeams.some(tId => {
+                const t = this.teamsMap[tId];
+                const pId = t && t.peloton_id ? (Array.isArray(t.peloton_id) ? t.peloton_id[0] : t.peloton_id) : null;
+                return pId === chatP;
+            })) isMyP = true;
+
+            if (unpinBtn) {
+                unpinBtn.style.display = (isSuper || (isAdmin && isMyP) || isCaptain || isCreator) ? 'block' : 'none';
+            }
+
+            // Клик по закрепу — плавный переход к исходному сообщению
+            bar.onclick = (e) => {
+                if (e.target.id === 'unpinBtn' || e.target.tagName.toLowerCase() === 'button') return;
+                const el = document.getElementById(`msg-${msg.id}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.style.backgroundColor = 'var(--primary-light)';
+                    setTimeout(() => el.style.backgroundColor = 'transparent', 1500);
+                } else {
+                    this.scrollToBottom();
+                    alert("Сообщение слишком старое, проскролльте историю вверх.");
+                }
+            };
+
+        } catch(e) {
+            bar.style.display = 'none';
+        }
+    }
         async unpinMessage(event) { event.stopPropagation(); if (!confirm("Открепить сообщение?")) return; await pb.collection('chats').update(this.activeChatId, { pinned_message: null }, { requestKey: null }); this.renderPinnedMessage(); }
         async pinMessage(msgId) { await pb.collection('chats').update(this.activeChatId, { pinned_message: msgId }, { requestKey: null }); this.renderPinnedMessage(); }
         async editCurrentChatName() { if (!this.activeChatId) return; const chat = this.chats.find(c => c.id === this.activeChatId); if (!chat) return; const newName = prompt("Новое название чата:", chat.name); if (newName && newName.trim() !== "" && newName !== chat.name) { try { await pb.collection('chats').update(chat.id, { name: newName.trim() }, { requestKey: null }); document.getElementById('activeChatName').innerText = newName.trim(); this.loadChats(); } catch(e) { alert("Ошибка сохранения"); } } }
@@ -15205,35 +16414,47 @@ async prepareReply(msgId) {
             } catch(e) { alert("Ошибка выхода."); } 
         }
 		
-		// 🔥 ФУНКЦИЯ ЗАКРЕПЛЕНИЯ ЧАТОВ
+		// 🔥 ФУНКЦИЯ КАЛЕНДАРЯ И ПОДПИСОК (БЫВШИЙ ЗАКРЕП)
         async togglePinChat(chatId, event) {
-            if (event) event.stopPropagation(); // Чтобы клик не открывал сам чат
+            if (event) event.stopPropagation();
             if (!this.currentRider) return;
 
-            // Достаем массив закрепов
             let pinned = this.currentRider.pinned_chats || [];
             if (typeof pinned === 'string') { try { pinned = JSON.parse(pinned); } catch(e) { pinned = []; } }
             if (!Array.isArray(pinned)) pinned = [];
 
-            // Проверяем: открепить или закрепить?
+            let isAdding = false;
             if (pinned.includes(chatId)) {
                 pinned = pinned.filter(id => id !== chatId);
             } else {
-                if (pinned.length >= 10) return alert("Можно закрепить максимум 10 чатов!");
                 pinned.push(chatId);
+                isAdding = true;
             }
 
-            // Оптимистично обновляем интерфейс (без ожидания ответа сервера для скорости)
             this.currentRider.pinned_chats = pinned;
             const searchInput = document.getElementById('chatSearch');
             this.renderChatList(searchInput ? searchInput.value : "");
 
-            // Отправляем в базу
             try {
                 await pb.collection('riders').update(this.currentRider.id, { pinned_chats: pinned }, { requestKey: null });
+
+                // 🔥 ПОДПИСКА ЧЕРЕЗ TOPICS/PROPERTIES БЕЗ ПРЕВЫШЕНИЯ ЛИМИТА TAGS
+                if (typeof window.OneSignal !== 'undefined') {
+                    try {
+                        const topicName = "chat_" + chatId;
+                        if (window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+                            if (isAdding) {
+                                if (typeof window.OneSignal.User.PushSubscription.optIn === 'function') {
+                                    window.OneSignal.User.PushSubscription.optIn();
+                                }
+                            }
+                        }
+                    } catch(osErr) {
+                        console.warn("OneSignal notification sync skipped:", osErr);
+                    }
+                }
             } catch(e) {
-                console.error("Ошибка закрепа:", e);
-                alert("Ошибка синхронизации закрепа с сервером.");
+                console.error("Ошибка синхронизации календаря:", e);
             }
         }
 		
@@ -15362,163 +16583,355 @@ async prepareReply(msgId) {
             } catch(e) { alert("Ошибка удаления."); } 
         }
 
-        generateProfileHtml(rider, targetUserId, isModal = false) {
-            const suffix = isModal ? 'modal' : 'tab'; 
-            const catCode = rider.base_cluster || 'B'; 
-            let roles = []; if (rider.email && rider.email.trim() !== '') { roles = this.usersMap[rider.email] || []; }
-            const rStr = JSON.stringify(roles);
-            
-            // 🔥 МУЛЬТИ-КОМАНДЫ: Получаем массивы команд
-            const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
-            const riderTeams = Array.isArray(rider.team_id) ? rider.team_id : (rider.team_id ? [rider.team_id] : []);
-            
-            // 🔥 МУЛЬТИ-КОМАНДЫ: Генерируем бейджики
-            let teamsHtml = '<span class="dash-team-badge">Без команды</span>';
-            if (riderTeams.length > 0) {
-                teamsHtml = riderTeams.map(id => {
-                    const tObj = this.teamsMap[id];
-                    return tObj ? `<span class="dash-team-badge" style="margin-bottom:4px; display:inline-block; margin-right:4px;">${this.getTeamLinkHtml(id, tObj.name, 'currentColor')}</span>` : '';
-                }).join('');
-            }
-            
-            let actionButtons = '';
-            if (rider.id !== this.currentRider?.id) {
-                actionButtons += `<button onclick="window.app.closeProfileModal(); window.app.startDirectChat('${rider.id}')" style="width:100%; background:var(--primary); color:#000; border:none; padding:12px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; transition:0.2s; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">💬 НАПИСАТЬ СООБЩЕНИЕ</button>`;
-            }
-            const myRoleWeight = Math.max(...(this.usersMap[this.currentRider?.email] || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
-            
-            // Кнопка Редактирования (Для Админов, Капитанов и самого гонщика)
-            const isSuperOrAdmin = myRoleWeight >= this.ROLE_WEIGHTS['admin'];
-            const isMyCaptain = myRoleWeight >= this.ROLE_WEIGHTS['captain'] && myTeams.some(id => riderTeams.includes(id));
-            
-            if (isSuperOrAdmin || isMyCaptain || rider.id === this.currentRider?.id) {
-                actionButtons += `<button onclick="window.app.editProfileInModal('${rider.id}')" style="width:100%; background:var(--bg-surface-hover); border: 1px dashed var(--text-muted); color:var(--text-main); padding:10px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='var(--text-muted)'; this.style.color='var(--text-main)';">✏️ РЕДАКТИРОВАТЬ ПРОФИЛЬ</button>`;
-            }
-
-            if (myRoleWeight >= this.ROLE_WEIGHTS['captain'] && myTeams.length > 0 && !myTeams.some(id => riderTeams.includes(id)) && rider.id !== this.currentRider?.id) {
-                // Запрос трансфера (пока используем первую команду капитана)
-                actionButtons += `<button onclick="window.app.initiateTransfer('${rider.id}', '${myTeams[0]}')" style="width:100%; background:rgba(255, 193, 7, 0.1); border: 1px dashed var(--warning); color:var(--warning); padding:10px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; transition:0.2s;">🔄 ЗАПРОСИТЬ ТРАНСФЕР</button>`;
-            }
-            actionButtons += `<button onclick="window.app.copyUserLink('${rider.id}')" style="width:100%; background:var(--bg-surface-hover); border: 1px solid var(--border); color:var(--text-main); padding:10px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; transition:0.2s;">🔗 ПОДЕЛИТЬСЯ ПРОФИЛЕМ</button>`;
-
-            // ДОСТАЕМ НОВЫЕ ДАННЫЕ (OFFROAD)
-            const rRoad = rider.rating_road || 0; const cRoad = rider.cluster_road || 'O';
-            const rTrack = rider.rating_track || 0; const cTrack = rider.cluster_track || 'O';
-            const rOffroad = rider.rating_offroad || 0; const cOffroad = rider.cluster_offroad || 'O';
-            const rIndoor = rider.rating_indoor || 0; const cIndoor = rider.cluster_indoor || 'O';
-            
-            // 🔥 ГЕНЕРИРУЕМ АВАТАР (Аккуратный, внутри карточки)
-            const fChar = rider.first_name ? rider.first_name.charAt(0).toUpperCase() : '';
-            const lChar = rider.last_name ? rider.last_name.charAt(0).toUpperCase() : '';
-            let profileAvatarHtml = this.renderAvatar(rider.id, 'width: 60px; height: 60px; font-size: 20px; background: var(--primary); color: #000; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1);', fChar + lChar);
-            
-            // Если это мой профиль - разрешаем менять фото по клику
-            if (rider.id === this.currentRider?.id) {
-                profileAvatarHtml = `<div onclick="window.app.triggerAvatarUpload()" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; transition:0.2s; position:relative; z-index:20;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="Изменить фото">
-                    <div style="pointer-events: none;">${profileAvatarHtml}</div>
-                    <span style="background:var(--bg-surface-hover); color:var(--text-main); border:1px solid var(--border); padding:2px 6px; border-radius:4px; font-size:8px; font-family:'Unbounded'; font-weight:800; margin-top:-10px; z-index:21;">📸 ИЗМЕН.</span>
-                </div>`;
-            }
-
-            // 🔥 ЧИСТИМ КОМАНДУ (Открываем ссылку в новой вкладке/окне)
-            let cleanTeamsHtml = 'БЕЗ КОМАНДЫ';
-            if (typeof riderTeams !== 'undefined' && riderTeams.length > 0) {
-                cleanTeamsHtml = riderTeams.map(id => {
-                    const tObj = this.teamsMap[id];
-                    // Добавили target="_blank" и убрали локальный onclick
-                    return tObj ? `<a href="?public_team=${id}" target="_blank" style="color: var(--text-main); font-weight: 700; text-decoration: none; transition: 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-main)'" title="Открыть профиль команды">${this.escapeHTML(tObj.name)}</a>` : '';
-                }).filter(Boolean).join(', ');
-            }
-
-            // 🔥 КАРТОЧКА ЛИЦЕНЗИИ: Идеальный минимализм и косая полоса фоном
-            let html = `
-                <div class="dash-license-card" style="margin-bottom: 25px; padding: 20px; min-height: 110px; box-sizing: border-box; position: relative; border-radius: 12px; overflow: hidden; background: linear-gradient(105deg, var(--bg-surface) 75%, var(--bg-surface-hover) 75.2%); border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                    
-                    <div class="dash-rider-info" style="padding-right: 70px; position: relative; z-index: 2; text-align: left;">
-                        <div class="dash-rider-name" style="font-size: 16px; margin-bottom: 8px; line-height: 1.2; word-wrap: break-word; font-weight: 800; color: var(--text-main);">
-                            ${rider.first_name} ${rider.last_name}
-                        </div>
-                        
-                        <div class="dash-rider-meta" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-size: 10px; color: var(--text-muted); font-family: 'Unbounded'; text-transform: uppercase;">
-                            
-                            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; line-height: 1;">
-                                <span>${cleanTeamsHtml}</span>
-                                <span style="width: 3px; height: 3px; background: var(--border); border-radius: 50%;"></span>
-                                <span>${rider.yob}</span>
-                                <span style="width: 3px; height: 3px; background: var(--border); border-radius: 50%;"></span>
-                                <span>${(rider.gender || 'M').toUpperCase()}</span>
-                            </div>
-                            
-                            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 2px;">
-                                ${this.getRoleBadge(rider.id)}
-                            </div>
-                            
-                        </div>
-                    </div>
-                    
-                    <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); z-index: 10;">
-                        ${profileAvatarHtml}
-                    </div>
-                </div>
-                
-                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">
-                    ${actionButtons}
-                </div>
-
-
-
-                <div>
-                    <h3 class="dash-section-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg> СПЕЦИАЛИЗАЦИЯ</h3>
-                    
-                    <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:20px;">
-                        <div style="flex:1; min-width:240px; background:var(--bg-surface); padding:15px; border-radius:15px; border:1px solid var(--border);">
-                            <div class="dash-chart-container" style="position: relative; height: 250px; width: 100%;">
-                                <canvas id="radar-${rider.id}-${suffix}"></canvas>
-                            </div>
-                        </div>
-                        
-                        <div style="flex:1; min-width:240px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                            <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; justify-content:space-between;">
-                                <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ШОССЕ</div>
-                                <div><span style="font-size:20px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${rRoad}</span><span style="font-size:10px; color:var(--text-muted);"> pts</span></div>
-                                <div style="margin-top:5px;"><span style="background:rgba(255,193,7,0.1); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid var(--primary);">Кластер ${cRoad}</span></div>
-                            </div>
-                            <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; justify-content:space-between;">
-                                <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ТРЕК</div>
-                                <div><span style="font-size:20px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${rTrack}</span><span style="font-size:10px; color:var(--text-muted);"> pts</span></div>
-                                <div style="margin-top:5px;"><span style="background:rgba(255,193,7,0.1); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid var(--primary);">Кластер ${cTrack}</span></div>
-                            </div>
-                            <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; justify-content:space-between;">
-                                <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ГРУНТ / МТБ</div>
-                                <div><span style="font-size:20px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${rOffroad}</span><span style="font-size:10px; color:var(--text-muted);"> pts</span></div>
-                                <div style="margin-top:5px;"><span style="background:rgba(255,193,7,0.1); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid var(--primary);">Кластер ${cOffroad}</span></div>
-                            </div>
-                            <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; justify-content:space-between;">
-                                <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ИНДОР</div>
-                                <div><span style="font-size:20px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${rIndoor}</span><span style="font-size:10px; color:var(--text-muted);"> pts</span></div>
-                                <div style="margin-top:5px;"><span style="background:rgba(255,193,7,0.1); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid var(--primary);">Кластер ${cIndoor}</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dash-stats-grid" id="profileStatsGrid-${rider.id}-${suffix}">
-                    <div class="dash-stat-card"><div class="dash-stat-lbl">ГЛОБАЛЬНЫЙ РЕЙТИНГ</div><div class="dash-stat-val" style="color: var(--primary);"><span class="spinner" style="width:20px; height:20px; border-width:2px; display:inline-block;"></span></div></div>
-                    <div class="dash-stat-card"><div class="dash-stat-lbl">ЗАВЕРШЕНО ГОНОК</div><div class="dash-stat-val">-</div></div>
-                    <div class="dash-stat-card"><div class="dash-stat-lbl">НАКАТ В ГОНКАХ</div><div class="dash-stat-val">- <span style="font-size:14px; color:var(--text-muted);">км</span></div></div>
-                    <div class="dash-stat-card"><div class="dash-stat-lbl">РЕКОРД СКОРОСТИ</div><div class="dash-stat-val">- <span style="font-size:14px; color:var(--text-muted);">км/ч</span></div></div>
-                </div>
-                
-                <div><h3 class="dash-section-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> ДИНАМИКА РЕЙТИНГА</h3><div class="dash-chart-container"><canvas id="chart-${rider.id}-${suffix}"></canvas></div></div>
-            `;
-            
-            if (rStr.includes('admin') && targetUserId) html += `<div id="orgLog-${rider.id}-${suffix}"></div>`;
-            if (rStr.includes('judge') && targetUserId) html += `<div id="judgeLog-${rider.id}-${suffix}"></div>`;
-            if (rStr.includes('captain') && riderTeams.length > 0) html += `<div id="capLog-${rider.id}-${suffix}"></div>`;
-            html += `<div><h3 class="dash-section-title" style="margin-top:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> ИСТОРИЯ РЕЗУЛЬТАТОВ</h3><div id="raceHistory-${rider.id}-${suffix}"></div></div>`;
-            return html;
+       generateProfileHtml(rider, targetUserId, isModal = false) {
+        const suffix = isModal ? 'modal' : 'tab'; 
+        const catCode = rider.base_cluster || 'B'; 
+        let roles = []; if (rider.email && rider.email.trim() !== '') { roles = this.usersMap[rider.email] || []; }
+        const rStr = JSON.stringify(roles);
+        
+        // 🔥 МУЛЬТИ-КОМАНДЫ: Получаем массивы команд
+        const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
+        const riderTeams = Array.isArray(rider.team_id) ? rider.team_id : (rider.team_id ? [rider.team_id] : []);
+        
+        // 🔥 МУЛЬТИ-КОМАНДЫ: Генерируем бейджики
+        let teamsHtml = '<span class="dash-team-badge">Без команды</span>';
+        if (riderTeams.length > 0) {
+            teamsHtml = riderTeams.map(id => {
+                const tObj = this.teamsMap[id];
+                return tObj ? `<span class="dash-team-badge" style="margin-bottom:4px; display:inline-block; margin-right:4px;">${this.getTeamLinkHtml(id, tObj.name, 'currentColor')}</span>` : '';
+            }).join('');
         }
 
+        // 🔥 1. РАСЧЕТ ПОДПИСОК И ПОДПИСЧИКОВ (ИНТЕРАКТИВНЫЙ БЛОК)
+        let subsObj = rider.subscriptions || { riders: [], teams: [] };
+        if (typeof subsObj === 'string') {
+            try { subsObj = JSON.parse(subsObj); } catch(e) { subsObj = { riders: [], teams: [] }; }
+        }
+        const followingRiderIds = Array.isArray(subsObj.riders) ? subsObj.riders : [];
+        const followingCount = followingRiderIds.length;
+
+        const followersList = Object.values(this.ridersMap || {}).filter(r => {
+            if (r.id === rider.id) return false;
+            let s = r.subscriptions || {};
+            if (typeof s === 'string') {
+                try { s = JSON.parse(s); } catch(e) { s = {}; }
+            }
+            return Array.isArray(s.riders) && s.riders.includes(rider.id);
+        });
+        const followersCount = followersList.length;
+
+        const socialStatsHtml = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 2px;">
+                <div onclick="window.app.openSubsModal('${rider.id}', 'following')" 
+                     style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer; transition: 0.2s; user-select: none;"
+                     onmouseover="this.style.borderColor='var(--text-main)'; this.style.transform='translateY(-2px)';"
+                     onmouseout="this.style.borderColor='var(--border)'; this.style.transform='none';">
+                    <div style="font-family: 'Roboto Mono', monospace; font-size: 24px; font-weight: 800; color: var(--text-main); line-height: 1;">${followingCount}</div>
+                    <div style="font-family: 'Unbounded', sans-serif; font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-top: 6px; letter-spacing: 0.5px;">ПОДПИСКИ</div>
+                </div>
+                <div onclick="window.app.openSubsModal('${rider.id}', 'followers')" 
+                     style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer; transition: 0.2s; user-select: none;"
+                     onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)';"
+                     onmouseout="this.style.borderColor='var(--border)'; this.style.transform='none';">
+                    <div style="font-family: 'Roboto Mono', monospace; font-size: 24px; font-weight: 800; color: var(--primary); line-height: 1;">${followersCount}</div>
+                    <div style="font-family: 'Unbounded', sans-serif; font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-top: 6px; letter-spacing: 0.5px;">ПОДПИСЧИКИ</div>
+                </div>
+            </div>
+        `;
+        
+        let actionButtons = '';
+        if (rider.id !== this.currentRider?.id) {
+            actionButtons += `<button onclick="window.app.closeProfileModal(); window.app.startDirectChat('${rider.id}')" style="width:100%; background:var(--primary); color:#000; border:none; padding:12px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; transition:0.2s; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">💬 НАПИСАТЬ СООБЩЕНИЕ</button>`;
+
+            // 🔥 Кнопка подписки на чужой календарь
+            if (!this.isGuest) {
+                let mySubs = this.currentRider?.subscriptions || { riders: [] };
+                if (typeof mySubs === 'string') { 
+                    try { mySubs = JSON.parse(mySubs); } catch(e) { mySubs = { riders: [] }; } 
+                }
+                const isSubbed = Array.isArray(mySubs.riders) && mySubs.riders.includes(rider.id);
+
+                actionButtons += `
+                    <button onclick="window.app.handleProfileCalendarSub('${rider.id}', this)" 
+                            style="width:100%; background:${isSubbed ? 'rgba(255,193,7,0.1)' : 'var(--bg-body)'}; border:1px solid ${isSubbed ? 'var(--primary)' : 'var(--border)'}; color:${isSubbed ? 'var(--primary)' : 'var(--text-main)'}; padding:12px; border-radius:8px; font-family:'Unbounded', sans-serif; font-size:10px; font-weight:800; cursor:pointer; transition:0.2s;">
+                        ${isSubbed ? '🔔 В МОЕМ КАЛЕНДАРЕ' : '➕ ПОДПИСАТЬСЯ НА КАЛЕНДАРЬ'}
+                    </button>
+                `;
+            }
+        }
+
+        const myRoleWeight = Math.max(...(this.usersMap[this.currentRider?.email] || []).map(r => this.ROLE_WEIGHTS[r] || 20), 20);
+        
+        // Кнопка Редактирования (Для Админов, Капитанов и самого гонщика)
+        const isSuperOrAdmin = myRoleWeight >= this.ROLE_WEIGHTS['admin'];
+        const isMyCaptain = myRoleWeight >= this.ROLE_WEIGHTS['captain'] && myTeams.some(id => riderTeams.includes(id));
+        
+        if (isSuperOrAdmin || isMyCaptain || rider.id === this.currentRider?.id) {
+            actionButtons += `<button onclick="window.app.editProfileInModal('${rider.id}')" style="width:100%; background:var(--bg-surface-hover); border: 1px dashed var(--text-muted); color:var(--text-main); padding:10px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='var(--text-muted)'; this.style.color='var(--text-main)';">✏️ РЕДАКТИРОВАТЬ ПРОФИЛЬ</button>`;
+        }
+
+        if (myRoleWeight >= this.ROLE_WEIGHTS['captain'] && myTeams.length > 0 && !myTeams.some(id => riderTeams.includes(id)) && rider.id !== this.currentRider?.id) {
+            actionButtons += `<button onclick="window.app.initiateTransfer('${rider.id}', '${myTeams[0]}')" style="width:100%; background:rgba(255, 193, 7, 0.1); border: 1px dashed var(--warning); color:var(--warning); padding:10px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; transition:0.2s;">🔄 ЗАПРОСИТЬ ТРАНСФЕР</button>`;
+        }
+        actionButtons += `<button onclick="window.app.copyUserLink('${rider.id}')" style="width:100%; background:var(--bg-surface-hover); border: 1px solid var(--border); color:var(--text-main); padding:10px; border-radius:8px; font-family:'Unbounded'; font-size:11px; font-weight:800; cursor:pointer; transition:0.2s;">🔗 ПОДЕЛИТЬСЯ ПРОФИЛЕМ</button>`;
+
+        // ДОСТАЕМ НОВЫЕ ДАННЫЕ (OFFROAD)
+        const rRoad = rider.rating_road || 0; const cRoad = rider.cluster_road || 'O';
+        const rTrack = rider.rating_track || 0; const cTrack = rider.cluster_track || 'O';
+        const rOffroad = rider.rating_offroad || 0; const cOffroad = rider.cluster_offroad || 'O';
+        const rIndoor = rider.rating_indoor || 0; const cIndoor = rider.cluster_indoor || 'O';
+        
+        // 🔥 ГЕНЕРИРУЕМ АВАТАР (Аккуратный, внутри карточки)
+        const fChar = rider.first_name ? rider.first_name.charAt(0).toUpperCase() : '';
+        const lChar = rider.last_name ? rider.last_name.charAt(0).toUpperCase() : '';
+        let profileAvatarHtml = this.renderAvatar(rider.id, 'width: 60px; height: 60px; font-size: 20px; background: var(--primary); color: #000; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1);', fChar + lChar);
+        
+        // Если это мой профиль - разрешаем менять фото по клику
+        if (rider.id === this.currentRider?.id) {
+            profileAvatarHtml = `<div onclick="window.app.triggerAvatarUpload()" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; transition:0.2s; position:relative; z-index:20;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="Изменить фото">
+                <div style="pointer-events: none;">${profileAvatarHtml}</div>
+                <span style="background:var(--bg-surface-hover); color:var(--text-main); border:1px solid var(--border); padding:2px 6px; border-radius:4px; font-size:8px; font-family:'Unbounded'; font-weight:800; margin-top:-10px; z-index:21;">📸 ИЗМЕН.</span>
+            </div>`;
+        }
+
+        // 🔥 ЧИСТИМ КОМАНДУ (Открываем ссылку в новой вкладке/окне)
+        let cleanTeamsHtml = 'БЕЗ КОМАНДЫ';
+        if (typeof riderTeams !== 'undefined' && riderTeams.length > 0) {
+            cleanTeamsHtml = riderTeams.map(id => {
+                const tObj = this.teamsMap[id];
+                return tObj ? `<a href="?public_team=${id}" target="_blank" style="color: var(--text-main); font-weight: 700; text-decoration: none; transition: 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-main)'" title="Открыть профиль команды">${this.escapeHTML(tObj.name)}</a>` : '';
+            }).filter(Boolean).join(', ');
+        }
+
+        // 🔥 КАРТОЧКА ЛИЦЕНЗИИ
+        let html = `
+            <div class="dash-license-card" style="margin-bottom: 15px; padding: 20px; min-height: 110px; box-sizing: border-box; position: relative; border-radius: 12px; overflow: hidden; background: linear-gradient(105deg, var(--bg-surface) 75%, var(--bg-surface-hover) 75.2%); border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                
+                <div class="dash-rider-info" style="padding-right: 70px; position: relative; z-index: 2; text-align: left;">
+                    <div class="dash-rider-name" style="font-size: 16px; margin-bottom: 8px; line-height: 1.2; word-wrap: break-word; font-weight: 800; color: var(--text-main);">
+                        ${rider.first_name} ${rider.last_name}
+                    </div>
+                    
+                    <div class="dash-rider-meta" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-size: 10px; color: var(--text-muted); font-family: 'Unbounded'; text-transform: uppercase;">
+                        
+                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; line-height: 1;">
+                            <span>${cleanTeamsHtml}</span>
+                            <span style="width: 3px; height: 3px; background: var(--border); border-radius: 50%;"></span>
+                            <span>${rider.yob}</span>
+                            <span style="width: 3px; height: 3px; background: var(--border); border-radius: 50%;"></span>
+                            <span>${(rider.gender || 'M').toUpperCase()}</span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 2px;">
+                            ${this.getRoleBadge(rider.id)}
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); z-index: 10;">
+                    ${profileAvatarHtml}
+                </div>
+            </div>
+            
+            <!-- 🔥 БЛОК СОЦИАЛЬНЫХ СЧЕТЧИКОВ И КНОПОК ДЕЙСТВИЙ -->
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">
+                ${socialStatsHtml}
+                ${actionButtons}
+            </div>
+
+            <div>
+                <h3 class="dash-section-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg> СПЕЦИАЛИЗАЦИЯ</h3>
+                
+                <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:20px;">
+                    <div style="flex:1; min-width:240px; background:var(--bg-surface); padding:15px; border-radius:15px; border:1px solid var(--border);">
+                        <div class="dash-chart-container" style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="radar-${rider.id}-${suffix}"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div style="flex:1; min-width:240px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ШОССЕ</div>
+                            <div><span style="font-size:20px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${rRoad}</span><span style="font-size:10px; color:var(--text-muted);"> pts</span></div>
+                            <div style="margin-top:5px;"><span style="background:rgba(255,193,7,0.1); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid var(--primary);">Кластер ${cRoad}</span></div>
+                        </div>
+                        <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ТРЕК</div>
+                            <div><span style="font-size:20px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${rTrack}</span><span style="font-size:10px; color:var(--text-muted);"> pts</span></div>
+                            <div style="margin-top:5px;"><span style="background:rgba(255,193,7,0.1); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid var(--primary);">Кластер ${cTrack}</span></div>
+                        </div>
+                        <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ГРУНТ / МТБ</div>
+                            <div><span style="font-size:20px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${rOffroad}</span><span style="font-size:10px; color:var(--text-muted);"> pts</span></div>
+                            <div style="margin-top:5px;"><span style="background:rgba(255,193,7,0.1); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid var(--primary);">Кластер ${cOffroad}</span></div>
+                        </div>
+                        <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:12px; padding:15px; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div style="font-size:10px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:5px;">ИНДОР</div>
+                            <div><span style="font-size:20px; font-weight:800; color:var(--text-main); font-family:'Roboto Mono';">${rIndoor}</span><span style="font-size:10px; color:var(--text-muted);"> pts</span></div>
+                            <div style="margin-top:5px;"><span style="background:rgba(255,193,7,0.1); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid var(--primary);">Кластер ${cIndoor}</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-stats-grid" id="profileStatsGrid-${rider.id}-${suffix}">
+                <div class="dash-stat-card"><div class="dash-stat-lbl">ГЛОБАЛЬНЫЙ РЕЙТИНГ</div><div class="dash-stat-val" style="color: var(--primary);"><span class="spinner" style="width:20px; height:20px; border-width:2px; display:inline-block;"></span></div></div>
+                <div class="dash-stat-card"><div class="dash-stat-lbl">ЗАВЕРШЕНО ГОНОК</div><div class="dash-stat-val">-</div></div>
+                <div class="dash-stat-card"><div class="dash-stat-lbl">НАКАТ В ГОНКАХ</div><div class="dash-stat-val">- <span style="font-size:14px; color:var(--text-muted);">км</span></div></div>
+                <div class="dash-stat-card"><div class="dash-stat-lbl">РЕКОРД СКОРОСТИ</div><div class="dash-stat-val">- <span style="font-size:14px; color:var(--text-muted);">км/ч</span></div></div>
+            </div>
+            
+            <div><h3 class="dash-section-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> ДИНАМИКА РЕЙТИНГА</h3><div class="dash-chart-container"><canvas id="chart-${rider.id}-${suffix}"></canvas></div></div>
+        `;
+        
+        if (rStr.includes('admin') && targetUserId) html += `<div id="orgLog-${rider.id}-${suffix}"></div>`;
+        if (rStr.includes('judge') && targetUserId) html += `<div id="judgeLog-${rider.id}-${suffix}"></div>`;
+        if (rStr.includes('captain') && riderTeams.length > 0) html += `<div id="capLog-${rider.id}-${suffix}"></div>`;
+        html += `<div><h3 class="dash-section-title" style="margin-top:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> ИСТОРИЯ РЕЗУЛЬТАТОВ</h3><div id="raceHistory-${rider.id}-${suffix}"></div></div>`;
+        return html;
+    }
+
+// 🔥 МОДАЛЬНОЕ ОКНО ПОДПИСОК И ПОДПИСЧИКОВ СО ВКЛАДКАМИ
+        openSubsModal(riderId, defaultTab = 'followers') {
+            this.activeSubsRiderId = riderId;
+            const targetRider = this.ridersMap[riderId] || this.currentRider;
+            if (!targetRider) return;
+
+            const oldModal = document.getElementById('subsDualModal');
+            if (oldModal) oldModal.remove();
+
+            const modalHtml = `
+                <div class="modal-overlay" id="subsDualModal" style="display:flex; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:2147483647 !important; justify-content:center; align-items:center; backdrop-filter:blur(8px); padding:15px; box-sizing:border-box;">
+                    <div style="background:var(--bg-surface); width:100%; max-width:460px; max-height:85vh; border-radius:20px; border:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+                        
+                        <!-- Шапка со вкладками -->
+                        <div style="padding:15px 20px 0 20px; border-bottom:1px solid var(--border); background:var(--bg-surface-hover); flex-shrink:0;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="font-family:'Unbounded'; font-weight:800; font-size:12px; color:var(--text-main); text-transform:uppercase;">
+                                    ${this.escapeHTML(targetRider.first_name)} ${this.escapeHTML(targetRider.last_name)}
+                                </div>
+                                <button onclick="window.app.closeSubsModal()" style="background:transparent; border:none; color:var(--text-muted); font-size:22px; font-weight:bold; cursor:pointer; line-height:1;">&times;</button>
+                            </div>
+                            
+                            <div style="display:flex; gap:8px;">
+                                <button id="subsTabBtn-following" onclick="window.app.renderSubsTab('following')" 
+                                        style="flex:1; padding:10px 0; background:transparent; border:none; border-bottom:2px solid transparent; font-family:'Unbounded'; font-size:10px; font-weight:800; color:var(--text-muted); cursor:pointer; transition:0.2s;">
+                                    ПОДПИСКИ
+                                </button>
+                                <button id="subsTabBtn-followers" onclick="window.app.renderSubsTab('followers')" 
+                                        style="flex:1; padding:10px 0; background:transparent; border:none; border-bottom:2px solid transparent; font-family:'Unbounded'; font-size:10px; font-weight:800; color:var(--text-muted); cursor:pointer; transition:0.2s;">
+                                    ПОДПИСЧИКИ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Список спортсменов -->
+                        <div id="subsModalContentList" style="padding:15px; overflow-y:auto; flex:1;"></div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            this.renderSubsTab(defaultTab);
+        }
+
+        renderSubsTab(tab) {
+            const riderId = this.activeSubsRiderId;
+            const targetRider = this.ridersMap[riderId] || this.currentRider;
+            if (!targetRider) return;
+
+            const btnFollowing = document.getElementById('subsTabBtn-following');
+            const btnFollowers = document.getElementById('subsTabBtn-followers');
+            
+            if (btnFollowing && btnFollowers) {
+                if (tab === 'following') {
+                    btnFollowing.style.borderBottomColor = 'var(--primary)';
+                    btnFollowing.style.color = 'var(--text-main)';
+                    btnFollowers.style.borderBottomColor = 'transparent';
+                    btnFollowers.style.color = 'var(--text-muted)';
+                } else {
+                    btnFollowers.style.borderBottomColor = 'var(--primary)';
+                    btnFollowers.style.color = 'var(--text-main)';
+                    btnFollowing.style.borderBottomColor = 'transparent';
+                    btnFollowing.style.color = 'var(--text-muted)';
+                }
+            }
+
+            let ridersToShow = [];
+
+            if (tab === 'following') {
+                let subs = targetRider.subscriptions || { riders: [] };
+                if (typeof subs === 'string') {
+                    try { subs = JSON.parse(subs); } catch(e) { subs = { riders: [] }; }
+                }
+                const ids = Array.isArray(subs.riders) ? subs.riders : [];
+                ridersToShow = ids.map(id => this.ridersMap[id]).filter(Boolean);
+            } else {
+                ridersToShow = Object.values(this.ridersMap || {}).filter(r => {
+                    if (r.id === targetRider.id) return false;
+                    let s = r.subscriptions || {};
+                    if (typeof s === 'string') {
+                        try { s = JSON.parse(s); } catch(e) { s = {}; }
+                    }
+                    return Array.isArray(s.riders) && s.riders.includes(targetRider.id);
+                });
+            }
+
+            const container = document.getElementById('subsModalContentList');
+            if (!container) return;
+
+            if (ridersToShow.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding:40px 10px; color:var(--text-muted); font-family:'Unbounded'; font-size:11px;">
+                        ${tab === 'following' ? 'Нет активных подписок' : 'Пока нет подписчиков'}
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = ridersToShow.map(r => {
+                const rName = this.escapeHTML(`${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Атлет');
+                const tName = this.escapeHTML(this.getRiderTeamName(r));
+                const fChar = (r.first_name ? r.first_name.charAt(0) : '?').toUpperCase();
+                const lChar = (r.last_name ? r.last_name.charAt(0) : '').toUpperCase();
+                const isMe = r.id === this.currentRider?.id;
+
+                return `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:12px; background:var(--bg-body); border:1px solid var(--border); margin-bottom:8px; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:10px; min-width:0; cursor:pointer;" onclick="window.app.closeSubsModal(); window.app.openProfile('${r.id}');">
+                            <div style="width:38px; height:38px; border-radius:50%; background:var(--primary); color:#000; display:flex; align-items:center; justify-content:center; font-family:'Unbounded'; font-weight:800; font-size:13px; flex-shrink:0;">
+                                ${fChar}${lChar}
+                            </div>
+                            <div style="min-width:0;">
+                                <div style="font-family:'Unbounded'; font-size:11px; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    ${rName}
+                                </div>
+                                <div style="font-size:10px; color:var(--text-muted); font-family:'Roboto Mono'; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    ${tName} ${r.yob ? `• ${r.yob}` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                            ${!isMe ? `
+                                <button onclick="window.app.closeSubsModal(); window.app.startDirectChat('${r.id}');" 
+                                        style="background:var(--bg-surface-hover); color:var(--text-main); border:1px solid var(--border); padding:8px 10px; border-radius:8px; font-family:'Unbounded'; font-size:9px; font-weight:800; cursor:pointer;"
+                                        title="Написать сообщение">
+                                    💬
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        closeSubsModal() {
+            const modal = document.getElementById('subsDualModal');
+            if (modal) modal.remove();
+        }
+	
         async fillProfileData(rider, targetUserId, isModal = false) {
             const suffix = isModal ? 'modal' : 'tab';
             try {
@@ -15684,6 +17097,130 @@ async prepareReply(msgId) {
         this.fillProfileData(rider, this.userIdMap[rider.email], true); 
     }
 	
+	// 🔥 УПРАВЛЕНИЕ ПОДПИСКОЙ НА КАЛЕНДАРЬ
+        async toggleCalendarSubscription(type, targetId) {
+            if (this.isGuest || !this.currentRider || this.currentRider.id === 'anonymous_guest') {
+                if (confirm("Для подписки на календарь необходимо войти в аккаунт SOTKA. Перейти ко входу?")) {
+                    this.openLoginScreen();
+                }
+                return false;
+            }
+
+            if (!targetId || targetId === this.currentRider.id) return false;
+
+            let subs = this.currentRider.subscriptions || { riders: [], teams: [], pelotons: [] };
+            if (typeof subs === 'string') {
+                try { subs = JSON.parse(subs); } catch(e) { subs = { riders: [], teams: [], pelotons: [] }; }
+            }
+            if (!subs[type]) subs[type] = [];
+
+            const index = subs[type].indexOf(targetId);
+            const isSubscribing = index === -1;
+
+            if (isSubscribing) {
+                subs[type].push(targetId);
+            } else {
+                subs[type].splice(index, 1);
+            }
+
+            this.currentRider.subscriptions = subs;
+
+            try {
+                await pb.collection('riders').update(this.currentRider.id, {
+                    subscriptions: subs
+                }, { requestKey: null });
+
+                // 1. Обновляем календарь в CRM
+                if (this.crm && typeof this.crm.loadData === 'function') {
+                    this.crm.loadData();
+                }
+
+                // 2. Мгновенно перерисовываем левую панель событий
+                const searchInput = document.getElementById('chatSearch');
+                if (typeof this.renderChatList === 'function') {
+                    this.renderChatList(searchInput ? searchInput.value : "");
+                }
+
+                return isSubscribing;
+            } catch(err) {
+                console.error("Ошибка сохранения подписки:", err);
+                alert("Ошибка сохранения подписки: " + err.message);
+                return !isSubscribing;
+            }
+        }
+
+        // 🔥 КЛИК ПО КНОПКЕ ПОДПИСКИ В ПРОФИЛЕ
+        async handleProfileCalendarSub(riderId, btnEl) {
+            const isSubbed = await this.toggleCalendarSubscription('riders', riderId);
+            if (btnEl) {
+                btnEl.innerText = isSubbed ? '🔔 В МОЕМ КАЛЕНДАРЕ' : '➕ ПОДПИСАТЬСЯ НА КАЛЕНДАРЬ';
+                btnEl.style.color = isSubbed ? 'var(--primary)' : 'var(--text-main)';
+                btnEl.style.borderColor = isSubbed ? 'var(--primary)' : 'var(--border)';
+                btnEl.style.background = isSubbed ? 'rgba(255,193,7,0.1)' : 'var(--bg-body)';
+            }
+        }
+		
+		// 🔥 ПРОВЕРКА ВИДИМОСТИ СОБЫТИЯ (ГОНКА / ТРЕНИРОВКА / ПОДПИСКА)
+        // ==========================================
+    // 🔥 ПРОВЕРКА ВИДИМОСТИ СОБЫТИЯ (ГОНКА / ТРЕНИРОВКА / ГОСТЬ / ПОДПИСКА)
+    // ==========================================
+    canUserSeeEvent(raceObj, chatObj = null) {
+        // Если вообще нет объекта заезда и чата
+        if (!raceObj && !chatObj) return false;
+
+        const myRiderId = this.currentRider?.id;
+        const myUserId = pb.authStore.model?.id || this.currentRider?.user_id;
+
+        // 1. Создатель и зарегистрированные участники видят ВСЕГДА
+        const creatorId = raceObj?.creator_id || chatObj?.participants?.[0] || chatObj?.created_by;
+        const isCreator = (myRiderId && creatorId === myRiderId) || (myUserId && creatorId === myUserId);
+        const isRegistered = raceObj?.isRegistered || (this.crm && this.crm.myRosterMap && raceObj && this.crm.myRosterMap[raceObj.id]);
+        if (isCreator || isRegistered) return true;
+
+        // 2. Официальные гонки и старты на модерации видны ВСЕМ
+        if (raceObj && raceObj.level === 'peloton' && raceObj.verification_status !== 'training') {
+            return true;
+        }
+
+        // 3. Любые события с флагом публичности видны ВСЕМ
+        if (raceObj?.is_public) return true;
+
+        // 4. 🔥 СПЕЦИАЛЬНО ДЛЯ ГОСТЕЙ (isGuest): показываем все открытые заезды и тренировки
+        const isGuestUser = this.isGuest || !this.currentRider || this.currentRider.id === 'anonymous_guest';
+        if (isGuestUser) {
+            // Скрываем только закрытые командные тренировки чужих клубов
+            if (raceObj?.level === 'team' && !raceObj?.is_public) return false;
+            // Все открытые тренировки (в т.ч. на Ниссане) гость видит в полном объеме
+            return true;
+        }
+
+        // 5. ДЛЯ АВТОРИЗОВАННЫХ: Проверяем подписки на спортсменов и команды
+        let subs = this.currentRider?.subscriptions || { riders: [], teams: [] };
+        if (typeof subs === 'string') {
+            try { subs = JSON.parse(subs); } catch(e) { subs = { riders: [], teams: [] }; }
+        }
+        const subRiders = Array.isArray(subs.riders) ? subs.riders : [];
+        const subTeams = Array.isArray(subs.teams) ? subs.teams : [];
+
+        const creatorRider = Object.values(this.ridersMap || {}).find(r => r.id === creatorId || r.user_id === creatorId || (chatObj && chatObj.participants && chatObj.participants.includes(r.id)));
+        const targetRiderId = creatorRider ? creatorRider.id : creatorId;
+
+        if (targetRiderId && subRiders.includes(targetRiderId)) return true;
+        
+        const teamId = raceObj?.team_id || chatObj?.team_id;
+        if (teamId && subTeams.includes(teamId)) return true;
+
+        // 6. Командные заезды своего клуба или публичные клубные выезды
+        const myTeams = Array.isArray(this.currentRider?.team_id) ? this.currentRider.team_id : (this.currentRider?.team_id ? [this.currentRider.team_id] : []);
+        if (raceObj?.level === 'team' && (myTeams.includes(teamId) || raceObj?.is_public)) return true;
+
+        // 7. Открытые тренировки и покатушки
+        if (raceObj?.level === 'personal' || raceObj?.verification_status === 'training') {
+            return true;
+        }
+
+        return false;
+    }		
         closeProfileModal() { document.getElementById('profileModal').style.display = 'none'; if (this.modalChartInstance) { this.modalChartInstance.destroy(); this.modalChartInstance = null; } }
 
         // ==========================================
@@ -16064,6 +17601,43 @@ async registerForRace(raceId, btn, event, wave = null) {
                     document.getElementById('modalRacePrice').innerText = price;
                     document.getElementById('raceActionModal').style.display = 'flex';
                 }
+
+                // 🔥 МАГИЯ UX: АВТО-ЗАКРЕП ДЛЯ УЖЕ ЗАРЕГИСТРИРОВАННЫХ (При клике на оплату)
+                try {
+                    const raceChat = this.chats.find(c => (c.raceObj && c.raceObj.id === raceId) || c.race_id === raceId);
+                    if (raceChat && this.currentRider) {
+                        let pinned = this.currentRider.pinned_chats || [];
+                        if (typeof pinned === 'string') { try { pinned = JSON.parse(pinned); } catch(e) { pinned = []; } }
+                        if (!Array.isArray(pinned)) pinned = [];
+
+                        // Если гонки еще нет в календаре — добавляем!
+                        if (!pinned.includes(raceChat.id)) {
+                            pinned.push(raceChat.id);
+                            this.currentRider.pinned_chats = pinned;
+
+                            // Сохраняем в базу данных PocketBase
+                            await pb.collection('riders').update(this.currentRider.id, { pinned_chats: pinned }, { requestKey: null });
+
+                            // Автоматически подписываем на PUSH-уведомления (OneSignal)
+                            if (typeof window.OneSignal !== 'undefined') {
+                                try {
+                                    if (window.OneSignal.User && window.OneSignal.User.PushSubscription && typeof window.OneSignal.User.PushSubscription.optIn === 'function') {
+                                        window.OneSignal.User.PushSubscription.optIn();
+                                    }
+                                } catch(osErr) { console.warn("OS OptIn skipped", osErr); }
+                            }
+
+                            // Мгновенно перерисовываем левую панель, чтобы гонка эффектно прыгнула в "МОЙ 2026"
+                            const searchInput = document.getElementById('chatSearch');
+                            if (typeof this.renderChatList === 'function') {
+                                this.renderChatList(searchInput ? searchInput.value : "");
+                            }
+                        }
+                    }
+                } catch (pinErr) {
+                    console.error("Ошибка авто-добавления в календарь:", pinErr);
+                }
+
                 await this.syncRaceButtonsState();
                 return; 
             }
@@ -16197,6 +17771,42 @@ async registerForRace(raceId, btn, event, wave = null) {
                 alert(`✅ Заявлено ${registeredCount} чел. Не забудьте оплатить взнос.`);
             } else {
                 alert("🚀 Вы добавлены в старт-лист! Нажмите кнопку еще раз, чтобы оплатить взнос и подтвердить участие.");
+            }
+            
+            // 🔥 МАГИЯ UX: АВТОМАТИЧЕСКОЕ ДОБАВЛЕНИЕ В "МОЙ КАЛЕНДАРЬ" ПРИ УСПЕШНОЙ ЗАЯВКЕ
+            try {
+                const raceChat = this.chats.find(c => (c.raceObj && c.raceObj.id === raceId) || c.race_id === raceId);
+                if (raceChat && this.currentRider) {
+                    let pinned = this.currentRider.pinned_chats || [];
+                    if (typeof pinned === 'string') { try { pinned = JSON.parse(pinned); } catch(e) { pinned = []; } }
+                    if (!Array.isArray(pinned)) pinned = [];
+
+                    // Если гонки еще нет в календаре — добавляем!
+                    if (!pinned.includes(raceChat.id)) {
+                        pinned.push(raceChat.id);
+                        this.currentRider.pinned_chats = pinned;
+
+                        // Сохраняем в базу данных PocketBase
+                        await pb.collection('riders').update(this.currentRider.id, { pinned_chats: pinned }, { requestKey: null });
+
+                        // Автоматически подписываем на PUSH-уведомления (OneSignal) безопасным методом
+                        if (typeof window.OneSignal !== 'undefined') {
+                            try {
+                                if (window.OneSignal.User && window.OneSignal.User.PushSubscription && typeof window.OneSignal.User.PushSubscription.optIn === 'function') {
+                                    window.OneSignal.User.PushSubscription.optIn();
+                                }
+                            } catch(osErr) { console.warn("OS OptIn skipped", osErr); }
+                        }
+
+                        // Мгновенно перерисовываем левую панель, чтобы гонка эффектно прыгнула в "МОЙ 2026"
+                        const searchInput = document.getElementById('chatSearch');
+                        if (typeof this.renderChatList === 'function') {
+                            this.renderChatList(searchInput ? searchInput.value : "");
+                        }
+                    }
+                }
+            } catch (pinErr) {
+                console.error("Ошибка авто-добавления в календарь:", pinErr);
             }
             
             await this.syncRaceButtonsState();
