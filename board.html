@@ -3914,5 +3914,1588 @@ class SotkaPinterestHub {
 window.sotkaHub = new SotkaPinterestHub();
 document.addEventListener('DOMContentLoaded', () => window.sotkaHub.start());
 </script>
+
+<!-- =====================================================================
+     TURBO PINTEREST BOARD + INSTANT CACHE + БЕЗОШИБОЧНЫЙ МОСТ С VILKA.JS
+     Замени предыдущий блок перед закрывающим тегом </body> на этот
+     ===================================================================== -->
+<link rel="stylesheet" href="/vilka.css?v=63" media="print" onload="this.media='all'">
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+
+<!-- Штатные контейнеры модальных окон для Протокола и Карты из vilka.js -->
+<div class="modal-overlay" id="liveBoardModal" style="display:none; position:fixed; inset:0; width:100vw; height:100dvh; background:rgba(15,17,23,0.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); z-index:999999; justify-content:center; align-items:center; overflow:hidden; padding:16px; box-sizing:border-box;" onclick="if(event.target===this && window.app?.crm) window.app.crm.closeLiveBoard()">
+  <div class="modal-box live-modal-dialog-box" style="position:relative; z-index:10; background:var(--bg-surface); width:95vw; max-width:1200px; height:94vh; max-height:94vh; border-radius:20px; border:1px solid var(--border); box-shadow:0 25px 70px rgba(0,0,0,0.6); display:flex; flex-direction:column; padding:0; overflow:hidden;">
+    <div class="live-modal-top-bar">
+      <div id="liveBoardTitle" style="flex:1; min-width:0;">ЗАГРУЗКА...</div>
+      <button type="button" class="live-modal-close-btn" onclick="window.app.crm.closeLiveBoard()" title="Закрыть">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="live-nav-header-row">
+      <div class="live-nav-capsule">
+        <button type="button" id="liveTabStart" class="live-nav-btn active" onclick="window.app.crm.switchLiveTab('start')">
+          <svg class="live-nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line></svg>
+          <span class="live-btn-txt-full">СТАРТ-ЛИСТ</span>
+          <span class="live-btn-txt-short">СТАРТ</span>
+        </button>
+        <button type="button" id="liveTabResult" class="live-nav-btn" onclick="window.app.crm.switchLiveTab('result')">
+          <svg class="live-nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span class="live-btn-txt-full">РЕЗУЛЬТАТЫ</span>
+          <span class="live-btn-txt-short">ФИНИШ</span>
+        </button>
+      </div>
+      <div class="live-nav-capsule">
+        <button type="button" id="liveSortAbs" class="live-nav-btn active" onclick="window.app.crm.switchLiveSort('absolute')">
+          <svg class="live-nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"></circle><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path></svg>
+          <span class="live-btn-txt-full">АБСОЛЮТ</span>
+          <span class="live-btn-txt-short">АБС</span>
+        </button>
+        <button type="button" id="liveSortGrp" class="live-nav-btn" onclick="window.app.crm.switchLiveSort('category')">
+          <svg class="live-nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span class="live-btn-txt-full">ПО ГРУППАМ</span>
+          <span class="live-btn-txt-short">ГРУППЫ</span>
+        </button>
+      </div>
+    </div>
+    <div style="flex:1; overflow-y:auto; padding:16px 20px; background:var(--bg-surface); -webkit-overflow-scrolling:touch;">
+      <div id="liveBoardTable" style="width:100%;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="waveStartModal" style="display:none; z-index:10000020;">
+  <div class="modal-box" style="max-height:90vh; width:480px;">
+    <h3 style="color:var(--text-main); font-family:'Unbounded'; text-transform:uppercase; margin-bottom:5px;">ВОЛНЫ СТАРТА</h3>
+    <p style="font-size:12px; color:var(--text-muted); margin-top:0; margin-bottom:20px;">Назначьте время старта нужным группам.</p>
+    <div id="waveStartGroups" style="overflow-y:auto; display:flex; flex-direction:column; gap:10px; margin-bottom:20px; padding-right:5px;"></div>
+    <div style="display:flex; gap:12px; margin-top:10px;">
+      <button onclick="document.getElementById('waveStartModal').style.display='none'" style="flex:1; background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); border-radius:12px; padding:16px; font-family:'Unbounded'; font-weight:800; font-size:12px; cursor:pointer;">ОТМЕНА</button>
+      <button onclick="window.app.crm.applyWaveStarts()" style="flex:1; background:var(--primary); border:none; color:#000; border-radius:12px; padding:16px; font-family:'Unbounded'; font-weight:800; font-size:12px; cursor:pointer;" id="btn-save-waves">НАЗНАЧИТЬ</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mapEmbedModal" style="z-index:1000000; display:none;" onclick="if(event.target===this){this.style.display='none'; document.getElementById('mapEmbedContainer').innerHTML='';}">
+  <div class="modal-box" style="width:95vw; max-width:1200px; height:85vh; padding:0; display:flex; flex-direction:column; overflow:hidden; background:var(--bg-body);">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--border); background:var(--bg-surface);">
+      <h3 style="color:var(--text-main); font-family:'Unbounded'; font-weight:800; font-size:15px; margin:0;">КАРТА ДИСТАНЦИИ</h3>
+      <button onclick="document.getElementById('mapEmbedModal').style.display='none'; document.getElementById('mapEmbedContainer').innerHTML='';" style="background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div id="mapEmbedContainer" style="flex:1; width:100%; height:100%; background:#000;"></div>
+  </div>
+</div>
+
+<style>
+  /* 1. ФИКС СКРОЛЛА СТРАНИЦЫ */
+  html {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  body {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    overscroll-behavior-y: auto !important;
+    position: static !important;
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    padding: 12px 20px 90px calc(var(--rail-width) + 20px) !important;
+    --bg-body: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-surface-hover: #f1f1f4;
+    --text-main: #111111;
+    --text-muted: #71717a;
+    --border: #e4e4e7;
+    --primary: #ffc107;
+  }
+
+  body.rail-right {
+    padding: 12px calc(var(--rail-width) + 20px) 90px 20px !important;
+  }
+
+  body.pin-view-open .hub-filter-bar,
+  body.pin-view-open .hub-mobile-deck {
+    display: none !important;
+  }
+
+  #inlinePinStageWrap {
+    max-width: 1720px;
+    width: 100%;
+    margin: 0 auto 32px;
+    display: none;
+    flex-direction: column;
+    gap: 24px;
+  }
+  #inlinePinStageWrap.open {
+    display: flex;
+  }
+
+  /* 2. СЕТКА PINTEREST: КАРТОЧКА ПИНА + КОЛОНКА ПИНОВ СПРАВА */
+  .pin-pinterest-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 250px;
+    gap: 20px;
+    align-items: start;
+    width: 100%;
+  }
+
+  .pin-inline-card {
+    width: 100%;
+    background: #ffffff;
+    border-radius: 32px;
+    border: 1px solid rgba(0, 0, 0, 0.09);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    display: grid;
+    grid-template-columns: minmax(340px, 50%) 1fr;
+    align-items: start;
+    overflow: hidden;
+  }
+
+  /* ЛЕВАЯ КОЛОНКА: 0 ПОЛЕЙ, ОКНО ПОДСТРАИВАЕТСЯ СТРОГО ПОД АФИШУ */
+  .pin-inline-media {
+    position: relative;
+    width: 100%;
+    height: auto;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    display: block;
+    overflow: hidden;
+    line-height: 0;
+  }
+
+  .pin-poster-full-img {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    object-fit: cover !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .pin-media-top-bar {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: normal;
+    pointer-events: none;
+  }
+  .pin-media-top-bar > * { pointer-events: auto; }
+
+  .pin-back-btn-inline {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: #111111 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.15s ease !important;
+  }
+  .pin-back-btn-inline:hover { transform: scale(1.06) !important; }
+
+  .pin-media-bottom-bar {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    line-height: normal;
+    pointer-events: none;
+  }
+  .pin-media-bottom-bar > * { pointer-events: auto; }
+
+  .pin-glass-pill {
+    height: 36px !important;
+    padding: 0 13px !important;
+    border-radius: 20px !important;
+    background: rgba(17, 17, 17, 0.86) !important;
+    backdrop-filter: blur(10px) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 8.5px !important;
+    font-weight: 800 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    transition: transform 0.15s ease, background 0.15s ease !important;
+  }
+  .pin-glass-pill:hover {
+    background: #111111 !important;
+    color: var(--sotka-gold) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  /* ПРАВАЯ КОЛОНКА */
+  .pin-inline-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: #ffffff;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .pin-inline-topbar {
+    padding: 16px 24px 12px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    background: #ffffff;
+  }
+
+  .pin-body-scroll-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pin-tool-cluster {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pin-tool-circle {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 50% !important;
+    border: none !important;
+    background: transparent !important;
+    color: #111111 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease !important;
+  }
+  .pin-tool-circle:hover { background: var(--bg-subtle) !important; }
+  .pin-tool-circle.is-pinned {
+    background: var(--sotka-gold) !important;
+    color: #111111 !important;
+  }
+
+  .pin-sister-select {
+    height: 38px;
+    border-radius: 20px;
+    border: none;
+    background: var(--bg-subtle);
+    padding: 0 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111111;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .pin-org-avatar {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
+    border-radius: 50% !important;
+    background: #111111 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+  }
+  .pin-org-avatar img {
+    width: 15px !important;
+    height: 15px !important;
+    max-width: 15px !important;
+    max-height: 15px !important;
+    object-fit: contain !important;
+    display: block !important;
+  }
+
+  .pin-org-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #111111;
+    text-transform: uppercase;
+  }
+
+  .pin-inline-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.18;
+    color: #111111;
+    margin: 4px 0 0;
+    text-transform: uppercase;
+    overflow-wrap: break-word;
+  }
+
+  .pin-bridge-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .pin-web-pill-btn {
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 14px;
+    border-radius: 22px;
+    background: #efefef;
+    border: none;
+    color: #111111;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .pin-web-pill-btn:hover { background: #e2e2e6; }
+  .pin-web-pill-btn.is-gold {
+    background: var(--sotka-gold);
+    color: #111111;
+  }
+  .pin-web-pill-btn.is-gold:hover { background: #f2b600; }
+
+  .pin-briefing-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .pin-expand-link {
+    background: none;
+    border: none;
+    padding: 4px 0 0;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 8.5px;
+    font-weight: 800;
+    color: #111111;
+    cursor: pointer;
+  }
+
+  .pin-radio-teaser {
+    border-top: 1px solid var(--border-light);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pin-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--sotka-green);
+    display: inline-block;
+  }
+
+  .pin-msg-bubble {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    padding: 7px 11px;
+    border-radius: 12px;
+    background: var(--bg-subtle);
+  }
+
+  .pin-msg-av {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    border-radius: 50% !important;
+    background: #111111 !important;
+    color: var(--sotka-gold) !important;
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 8.5px !important;
+    font-weight: 900 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+  }
+  .pin-msg-av img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .pin-bottom-dock {
+    padding: 10px 24px 14px;
+    border-top: 1px solid var(--border-light);
+    background: #ffffff;
+    flex-shrink: 0;
+  }
+
+  .pin-comment-pill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #ffffff;
+    border: 1.5px solid #d4d4d8;
+    border-radius: 28px;
+    padding: 3px 5px 3px 16px;
+  }
+  .pin-comment-pill:focus-within {
+    border-color: #111111;
+  }
+
+  .pin-comment-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #111111;
+    outline: none;
+    height: 36px;
+  }
+
+  .pin-dock-icon-btn {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    border: none !important;
+    background: transparent !important;
+    color: #111111 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+  .pin-dock-icon-btn:hover { background: var(--bg-subtle) !important; }
+
+  .pin-dock-send-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 50% !important;
+    border: none !important;
+    background: #111111 !important;
+    color: var(--sotka-gold) !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .pin-side-related-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  @media (max-width: 1200px) {
+    .pin-pinterest-layout { grid-template-columns: 1fr; }
+    .pin-side-related-col { display: none; }
+  }
+
+  @media (max-width: 860px) {
+    body, body.rail-right { padding: 8px 10px 80px 10px !important; }
+    .pin-inline-card {
+      grid-template-columns: 1fr;
+      border-radius: 24px;
+    }
+    .pin-inline-body {
+      height: auto !important;
+      max-height: none !important;
+    }
+    .pin-inline-topbar { padding: 14px 16px 10px; }
+    .pin-body-scroll-area { padding: 12px 16px; overflow: visible; }
+    .pin-bottom-dock { padding: 10px 16px 14px; }
+    .pin-inline-title { font-size: 17px; }
+    .pin-bridge-actions { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+(function applyPinterestPinAndTurboBoot() {
+  if (typeof SotkaPinterestHub === 'undefined') return;
+
+  // 1. Мгновенно прячем /board.html из адресной строки браузера
+  function stripBoardHtmlFromUrl() {
+    if (window.location.pathname.indexOf('board.html') !== -1) {
+      var cleanPath = window.location.pathname.replace(/\/?board\.html$/i, '') || '/';
+      try {
+        history.replaceState(history.state, '', cleanPath + window.location.search + window.location.hash);
+      } catch (e) {}
+    }
+  }
+  stripBoardHtmlFromUrl();
+
+  var BOARD_CACHE_KEY = 'sotka_board_fast_cache_v2';
+  var DEFAULT_DOC_TITLE = document.title || 'СОТКА — Витрина и Пульт Управления';
+
+  var MIN_SVG = {
+    arrowLeft: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>',
+    arrowUpRight: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>',
+    sharePin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>',
+    bookmarkOutline: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>',
+    bookmarkFilled: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>',
+    shield: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>',
+    camera: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>',
+    mapRoute: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>',
+    download: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
+    protocolList: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line></svg>',
+    radioWave: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>',
+    radar: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>',
+    send: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>'
+  };
+
+  function syncPinHeightToPoster() {
+    var mediaCol = document.querySelector('#inlinePinStageWrap .pin-inline-media');
+    var bodyCol = document.querySelector('#inlinePinStageWrap .pin-inline-body');
+    if (!mediaCol || !bodyCol) return;
+
+    if (window.innerWidth <= 860) {
+      bodyCol.style.height = 'auto';
+      bodyCol.style.maxHeight = 'none';
+      return;
+    }
+
+    var h = mediaCol.offsetHeight;
+    if (h > 320) {
+      var targetH = Math.max(h, 520);
+      bodyCol.style.height = targetH + 'px';
+      bodyCol.style.maxHeight = targetH + 'px';
+    }
+  }
+
+  window.addEventListener('resize', syncPinHeightToPoster);
+
+  var _vilkaLoadingPromise = null;
+  async function ensureVilkaEngineReady(hub) {
+    if (window.app && window.app.crm && window.app.crm.liveService) {
+      syncHubToVilkaApp(hub);
+      return window.app;
+    }
+    if (_vilkaLoadingPromise) {
+      await _vilkaLoadingPromise;
+      syncHubToVilkaApp(hub);
+      return window.app;
+    }
+
+    _vilkaLoadingPromise = (async function() {
+      try {
+        var res = await fetch('/vilka.js?v=81');
+        if (!res.ok) res = await fetch('https://vilka.sotka.one/vilka.js');
+        var code = await res.text();
+
+        // Убираем редирект на /board.html внутри vilka.js и отключаем только MessengerApp.init()
+        var safeCode = code
+          .replace(/if\s*\(\s*window\.location\.hostname\.toLowerCase\(\)\s*===\s*['"]ru\.sotka\.one['"][\s\S]*?\}\s*/, '')
+          .replace(/document\.documentElement\.setAttribute\(\s*['"]data-theme['"]\s*,\s*savedTheme\s*\)/g, 'document.documentElement.setAttribute("data-theme", "light")')
+          .replace(/(class\s+MessengerApp\s*\{[\s\S]*?)async\s+init\s*\(\s*\)\s*\{/, '$1init() { return Promise.resolve(); } async _disabledBoardInit() {');
+
+        var scriptEl = document.createElement('script');
+        scriptEl.textContent = safeCode;
+        document.body.appendChild(scriptEl);
+
+        if (!window.app && typeof MessengerApp !== 'undefined') {
+          window.app = new MessengerApp();
+        }
+      } catch (err) {
+        console.error('Ошибка подключения vilka.js:', err);
+      }
+    })();
+
+    await _vilkaLoadingPromise;
+    document.documentElement.setAttribute('data-theme', 'light');
+    syncHubToVilkaApp(hub);
+    return window.app;
+  }
+
+  function syncHubToVilkaApp(hub) {
+    if (!window.app || !hub) return;
+    window.app.currentRider = hub.currentRider;
+    window.app.isGuest = hub.isGuest;
+    window.app.racesMap = hub.racesById || {};
+    window.app.dataCalendar = hub.races || [];
+    if (window.app.crm) {
+      window.app.crm.dataCalendar = hub.races || [];
+    }
+    window.app.ridersMap = hub.ridersMap || {};
+    window.app.teamsMap = hub.teamsMap || {};
+    window.app.myRosters = hub.myRostersMap || {};
+    window.app.chats = hub.chatsList || [];
+    window.app.pelotonsMap = {};
+    (hub.pelotonsList || []).forEach(function(p) {
+      window.app.pelotonsMap[p.id] = p;
+    });
+    window.app.getUserMaxRole = function() {
+      var roles = hub.userRoles || [];
+      if (roles.includes('superadmin')) return 'superadmin';
+      if (roles.includes('admin')) return 'admin';
+      if (roles.includes('judge')) return 'judge';
+      if (roles.includes('captain')) return 'captain';
+      return 'rider';
+    };
+    if (typeof window.app.getSisterRaces !== 'function') {
+      window.app.getSisterRaces = function(raceOrId) {
+        var r = (typeof raceOrId === 'object' && raceOrId) ? raceOrId : hub.racesById[raceOrId];
+        if (!r) return [];
+        var base = (r.name && r.name.includes('[')) ? r.name.split('[')[0].trim().toLowerCase() : (r.name || '').trim().toLowerCase();
+        var day = r.date ? String(r.date).slice(0, 10) : '';
+        return (hub.races || []).filter(function(sr) {
+          var srBase = (sr.name && sr.name.includes('[')) ? sr.name.split('[')[0].trim().toLowerCase() : (sr.name || '').trim().toLowerCase();
+          var srDay = sr.date ? String(sr.date).slice(0, 10) : '';
+          return srBase === base && srDay === day;
+        });
+      };
+    }
+  }
+
+  function ensureInlineContainer() {
+    var existing = document.getElementById('inlinePinStageWrap');
+    if (existing) return existing;
+    var grid = document.getElementById('hubMasonryGrid');
+    if (!grid || !grid.parentNode) return null;
+    var wrap = document.createElement('section');
+    wrap.id = 'inlinePinStageWrap';
+    grid.parentNode.insertBefore(wrap, grid);
+    return wrap;
+  }
+
+  var origGoHome = SotkaPinterestHub.prototype.goHome;
+  var origSetTag = SotkaPinterestHub.prototype.setTag;
+  var origToggleDrawer = SotkaPinterestHub.prototype.toggleDrawer;
+
+  Object.assign(SotkaPinterestHub.prototype, {
+
+    getRacePinAlias: function(raceId) {
+      var r = this.racesById[raceId];
+      if (!r) return raceId;
+      var chat = this.chatsByRaceId[raceId];
+      if (!chat) {
+        var baseName = (r.name && r.name.includes('[')) ? r.name.split('[')[0].trim().toLowerCase() : (r.name || '').trim().toLowerCase();
+        var dayStr = r.date ? String(r.date).slice(0, 10) : '';
+        for (var i = 0; i < this.races.length; i++) {
+          var sr = this.races[i];
+          var srBase = (sr.name && sr.name.includes('[')) ? sr.name.split('[')[0].trim().toLowerCase() : (sr.name || '').trim().toLowerCase();
+          var srDay = sr.date ? String(sr.date).slice(0, 10) : '';
+          if (srBase === baseName && srDay === dayStr && this.chatsByRaceId[sr.id]) {
+            chat = this.chatsByRaceId[sr.id];
+            break;
+          }
+        }
+      }
+      if (chat && chat.slug && String(chat.slug).trim()) {
+        return String(chat.slug).trim();
+      }
+      return raceId;
+    },
+
+    resolveRaceIdFromHash: function(rawHash) {
+      var clean = decodeURIComponent(String(rawHash || '')).replace(/^#\/?/, '').trim();
+      if (!clean) return null;
+      var low = clean.toLowerCase();
+
+      if (this.racesById[clean]) return clean;
+
+      for (var i = 0; i < this.chatsList.length; i++) {
+        var c = this.chatsList[i];
+        if (!c || !c.race_id) continue;
+        var cSlug = String(c.slug || '').trim().toLowerCase();
+        if ((cSlug && cSlug === low) || String(c.id).toLowerCase() === low || String(c.race_id).toLowerCase() === low) {
+          var rId = Array.isArray(c.race_id) ? c.race_id[0] : c.race_id;
+          if (this.racesById[rId]) return rId;
+        }
+      }
+
+      for (var j = 0; j < this.races.length; j++) {
+        var r = this.races[j];
+        if (String(r.id).toLowerCase() === low) return r.id;
+      }
+
+      return null;
+    },
+
+    handleUrlHashRouting: async function() {
+      stripBoardHtmlFromUrl();
+      var hash = window.location.hash;
+      if (!hash || hash === '#') {
+        if (this._modalRaceContext) {
+          this.closeInlinePin(true);
+        }
+        return false;
+      }
+      var targetRaceId = this.resolveRaceIdFromHash(hash);
+      if (targetRaceId) {
+        if (!this._modalRaceContext || this._modalRaceContext.activeRace.id !== targetRaceId) {
+          await this.openRaceHubModal(targetRaceId, 'briefing', true);
+        }
+        return true;
+      }
+      return false;
+    },
+
+    bindHistoryRouter: function() {
+      if (this._historyRouterBound) return;
+      this._historyRouterBound = true;
+      var self = this;
+
+      window.addEventListener('popstate', function() {
+        stripBoardHtmlFromUrl();
+
+        var liveModal = document.getElementById('liveBoardModal');
+        if (liveModal && liveModal.style.display === 'flex') {
+          if (window.app && window.app.crm) window.app.crm.closeLiveBoard();
+          else liveModal.style.display = 'none';
+          return;
+        }
+        var track3DModal = document.getElementById('race3DTrackModal');
+        if (track3DModal && track3DModal.style.display === 'flex') {
+          if (window.app && typeof window.app.close3DTrackModal === 'function') window.app.close3DTrackModal();
+          else track3DModal.style.display = 'none';
+          return;
+        }
+        var mapModal = document.getElementById('mapEmbedModal');
+        if (mapModal && mapModal.style.display === 'flex') {
+          mapModal.style.display = 'none';
+          return;
+        }
+        var qrModal = document.getElementById('hubQrModal');
+        if (qrModal && qrModal.style.display === 'flex') {
+          qrModal.style.display = 'none';
+          return;
+        }
+
+        self.handleUrlHashRouting();
+      });
+    },
+
+    start: async function() {
+      var self = this;
+      stripBoardHtmlFromUrl();
+      this.bindHistoryRouter();
+
+      try {
+        var authCookieMatch = document.cookie.match(/(?:^|;\s*)pb_auth=([^;]+)/);
+        var hasAuthCookie = Boolean(authCookieMatch && authCookieMatch[1] && authCookieMatch[1].trim() !== '');
+        if (hasAuthCookie) {
+          this.pb.authStore.loadFromCookie(document.cookie, 'pb_auth');
+          var cachedRiderStr = localStorage.getItem('vilka_cached_rider');
+          if (cachedRiderStr && this.pb.authStore.isValid) {
+            this.currentRider = JSON.parse(cachedRiderStr);
+            this.isGuest = false;
+            var authModel = this.pb.authStore.model || this.pb.authStore.record;
+            if (authModel && authModel.role) {
+              this.userRoles = Array.isArray(authModel.role) ? authModel.role : [authModel.role];
+            }
+            this.renderHeaderIdentity();
+          }
+        }
+      } catch (e) {}
+
+      var openedFromCacheHash = false;
+      try {
+        var snapStr = localStorage.getItem(BOARD_CACHE_KEY);
+        if (snapStr) {
+          var snap = JSON.parse(snapStr);
+          if (snap && Array.isArray(snap.races) && snap.races.length > 0) {
+            this.walletBalance = snap.walletBalance || 0;
+            this.applyEcosystemPayload(snap);
+            if (window.location.hash && window.location.hash.length > 1) {
+              openedFromCacheHash = await this.handleUrlHashRouting();
+            }
+          }
+        }
+      } catch (e) {}
+
+      await Promise.all([
+        this.initAuth(),
+        this.loadEcosystem()
+      ]);
+
+      if (!openedFromCacheHash && window.location.hash && window.location.hash.length > 1) {
+        await this.handleUrlHashRouting();
+      } else if (this._modalRaceContext) {
+        var freshRace = this.racesById[this._modalRaceContext.activeRace.id];
+        if (freshRace) {
+          this._modalRaceContext.activeRace = freshRace;
+          await this.renderRaceHubModalContent();
+        }
+      }
+
+      setTimeout(function() {
+        ensureVilkaEngineReady(self);
+      }, 1200);
+    },
+
+    applyEcosystemPayload: function(data) {
+      var self = this;
+      this.races = data.races || [];
+      this.racesById = {};
+      this.races.forEach(function(r) { self.racesById[r.id] = r; });
+
+      this.rosters = data.rosters || [];
+      this.pelotonsList = data.pelotons || [];
+      this.chatsList = data.chats || [];
+      this.announcements = data.announcements || [];
+
+      this.updateNotifBadge();
+
+      this.teamsMap = {};
+      (data.teams || []).forEach(function(t) { self.teamsMap[t.id] = t; });
+
+      this.rosterCounts = {};
+      this.myRostersMap = {};
+      this.rosters.forEach(function(r) {
+        if (r.race_id) {
+          self.rosterCounts[r.race_id] = (self.rosterCounts[r.race_id] || 0) + 1;
+          if (self.currentRider && r.rider_id === self.currentRider.id) {
+            self.myRostersMap[r.race_id] = r;
+          }
+        }
+      });
+
+      this.chatsById = {};
+      this.chatsByRaceId = {};
+      (data.chats || []).forEach(function(c) {
+        self.chatsById[c.id] = c;
+        if (c.race_id) self.chatsByRaceId[c.race_id] = c;
+      });
+
+      this.postersMap = {};
+      (data.announcements || []).forEach(function(m) {
+        if (m.file && m.chat_id && !self.postersMap[m.chat_id]) {
+          self.postersMap[m.chat_id] = m;
+        }
+      });
+
+      this.buildPinsStream();
+      this.renderGrid();
+    },
+
+// Считаем только реально новые (непрочитанные) анонсы
+    updateNotifBadge: function() {
+      var notifBadge = document.getElementById('railNotifBadge');
+      if (!notifBadge) return;
+
+      var seenTs = Number(localStorage.getItem('sotka_notif_seen_ts') || 0);
+      var unreadCount = (this.announcements || []).filter(function(m) {
+        var mTs = new Date(m.created || 0).getTime();
+        return mTs > seenTs;
+      }).length;
+
+      if (unreadCount > 0) {
+        notifBadge.innerText = unreadCount > 9 ? '9+' : String(unreadCount);
+        notifBadge.style.display = 'flex';
+      } else {
+        notifBadge.style.display = 'none';
+      }
+    },
+
+    // При открытии колокольчика фиксируем время последнего анонса как прочитанное
+    toggleDrawer: function(drawerKey) {
+      if (drawerKey === 'notif' && Array.isArray(this.announcements) && this.announcements.length > 0) {
+        var latestTs = 0;
+        this.announcements.forEach(function(m) {
+          var t = new Date(m.created || 0).getTime() || 0;
+          if (t > latestTs) latestTs = t;
+        });
+        if (latestTs > 0) {
+          try {
+            localStorage.setItem('sotka_notif_seen_ts', String(latestTs));
+          } catch (e) {}
+        }
+      }
+      if (origToggleDrawer) origToggleDrawer.call(this, drawerKey);
+      if (drawerKey === 'notif') {
+        this.updateNotifBadge();
+      }
+    },
+
+    loadEcosystem: async function() {
+      try {
+        var uid = (!this.isGuest && this.pb.authStore.model) ? this.pb.authStore.model.id : null;
+
+        var results = await Promise.all([
+          this.pb.collection('races').getFullList({
+            sort: 'date',
+            fields: 'id,name,date,surface,format,distance,laps,status,price,peloton_id,creator_id,is_public,level,cat_logic',
+            requestKey: null
+          }).catch(function() { return []; }),
+          this.pb.collection('race_rosters').getFullList({
+            filter: 'status != "canceled"',
+            fields: 'id,race_id,rider_id,bib,planned_start,is_paid,status,final_cluster',
+            requestKey: null
+          }).catch(function() { return []; }),
+          this.pb.collection('teams').getFullList({
+            sort: '-points',
+            fields: 'id,name,points,peloton_id,avatar',
+            requestKey: null
+          }).catch(function() { return []; }),
+          this.pb.collection('messages').getList(1, 35, {
+            filter: 'is_announcement = true',
+            sort: '-created',
+            expand: 'chat_id',
+            requestKey: null
+          }).catch(function() { return { items: [] }; }),
+          this.pb.collection('chats').getFullList({
+            filter: 'type = "global" || type = "team_channel"',
+            fields: 'id,collectionId,name,type,race_id,team_id,panel_image,slug,panel_data',
+            sort: '-updated',
+            requestKey: null
+          }).catch(function() { return []; }),
+          this.pb.collection('pelotons').getFullList({
+            filter: 'is_private = false',
+            fields: 'id,name,slug,is_private',
+            sort: 'name',
+            requestKey: null
+          }).catch(function() { return []; }),
+          uid
+            ? this.pb.collection('draft_wallets').getFirstListItem('user_id="' + uid + '"', { requestKey: null }).catch(function() { return null; })
+            : Promise.resolve(null)
+        ]);
+
+        var wallet = results[6];
+        if (wallet && wallet.balances) {
+          this.walletBalance = Object.values(wallet.balances).reduce(function(a, b) { return a + Number(b || 0); }, 0);
+        }
+
+        var payload = {
+          races: results[0] || [],
+          rosters: results[1] || [],
+          teams: results[2] || [],
+          announcements: (results[3] && results[3].items) ? results[3].items : [],
+          chats: results[4] || [],
+          pelotons: results[5] || [],
+          walletBalance: this.walletBalance
+        };
+
+        this.applyEcosystemPayload(payload);
+
+        try {
+          localStorage.setItem(BOARD_CACHE_KEY, JSON.stringify(payload));
+        } catch (e) {}
+      } catch (err) {
+        console.error('Ошибка синхронизации с PocketBase:', err);
+      }
+    },
+
+    goHome: function() {
+      this.closeInlinePin();
+      if (origGoHome) origGoHome.call(this);
+    },
+
+    setTag: function(tag, btn) {
+      this.closeInlinePin();
+      if (origSetTag) origSetTag.call(this, tag, btn);
+    },
+
+    closeInlinePin: function(fromHistory) {
+      document.body.classList.remove('pin-view-open');
+      document.title = DEFAULT_DOC_TITLE;
+      var wrap = document.getElementById('inlinePinStageWrap');
+      if (wrap) {
+        wrap.classList.remove('open');
+        wrap.innerHTML = '';
+      }
+      this._modalRaceContext = null;
+
+      if (!fromHistory) {
+        try {
+          history.pushState(null, '', '/' + window.location.search);
+        } catch (e) {}
+      }
+    },
+
+    // Формирует чистую короткую ссылку https://ru.sotka.one/#slug без board.html
+    shareRace: function(raceId) {
+      var alias = this.getRacePinAlias(raceId);
+      var url = window.location.origin + '/#' + alias;
+      var self = this;
+      navigator.clipboard.writeText(url).then(function() {
+        self.showToast('Ссылка скопирована: ' + url.replace(/^https?:\/\//, ''));
+      });
+    },
+
+    openVilkaProtocol: async function(raceId, event) {
+      if (event) event.stopPropagation();
+      var app = await ensureVilkaEngineReady(this);
+      if (app && typeof app.openLiveBoard === 'function') {
+        app.openLiveBoard(raceId, event);
+      }
+    },
+
+    openVilkaRouteMap: async function(raceId, event) {
+      if (event) event.stopPropagation();
+      var app = await ensureVilkaEngineReady(this);
+      var r = this.racesById[raceId];
+      if (!r || !app) return;
+
+      var hasGpx = false;
+      try {
+        var cl = typeof r.cat_logic === 'string' ? JSON.parse(r.cat_logic) : r.cat_logic;
+        hasGpx = Boolean(cl && cl.track_data && cl.track_data.points && cl.track_data.points.length);
+      } catch (e) {}
+
+      if (hasGpx && typeof app.open3DTrackModal === 'function') {
+        app.open3DTrackModal(raceId);
+        return;
+      }
+
+      var chat = this.chatsByRaceId[raceId] || (this._modalRaceContext && this._modalRaceContext.eventChat);
+      var embedCode = null;
+      if (chat && chat.panel_data) {
+        try {
+          var pData = typeof chat.panel_data === 'string' ? JSON.parse(chat.panel_data) : chat.panel_data;
+          embedCode = pData.embed_code || pData.map_iframe;
+        } catch (e) {}
+      }
+      if (embedCode && typeof app.openMapModal === 'function') {
+        app.currentMapEmbed = embedCode;
+        app.openMapModal();
+        return;
+      }
+
+      if (this._modalRaceContext && this._modalRaceContext.trackData && typeof app.open3DTrackModal === 'function') {
+        var sisterWithTrack = (this._modalRaceContext.sisters || []).find(function(sr) {
+          try {
+            var scl = typeof sr.cat_logic === 'string' ? JSON.parse(sr.cat_logic) : sr.cat_logic;
+            return Boolean(scl && scl.track_data && scl.track_data.points && scl.track_data.points.length);
+          } catch (e) { return false; }
+        });
+        if (sisterWithTrack) {
+          app.open3DTrackModal(sisterWithTrack.id);
+          return;
+        }
+      }
+
+      this.showToast('Маршрут для этой дистанции ещё не загружен');
+    },
+
+    resolveRaceMediaAndTrack: function(sisters) {
+      var isImgFile = function(name) {
+        return typeof name === 'string' && /\.(jpe?g|png|webp|gif|svg)$/i.test(name.trim());
+      };
+      var posterUrl = null;
+      var trackData = null;
+      var eventChat = null;
+
+      for (var i = 0; i < sisters.length; i++) {
+        var sr = sisters[i];
+        var chat = this.chatsByRaceId[sr.id];
+        if (chat && !eventChat) eventChat = chat;
+
+        if (chat && chat.panel_image && isImgFile(chat.panel_image) && !posterUrl) {
+          var col = chat.collectionId || 'chats';
+          posterUrl = 'https://vilka.sotka.one/api/files/' + col + '/' + chat.id + '/' + chat.panel_image;
+        }
+        var postMsg = (chat && this.postersMap[chat.id]) || this.postersMap[sr.id];
+        if (postMsg && postMsg.file && !posterUrl) {
+          var f = Array.isArray(postMsg.file) ? postMsg.file[0] : postMsg.file;
+          if (isImgFile(f)) {
+            var mCol = postMsg.collectionId || 'messages';
+            posterUrl = 'https://vilka.sotka.one/api/files/' + mCol + '/' + postMsg.id + '/' + f;
+          }
+        }
+
+        if (!trackData && sr.cat_logic) {
+          try {
+            var cl = typeof sr.cat_logic === 'string' ? JSON.parse(sr.cat_logic) : sr.cat_logic;
+            if (cl && cl.track_data && cl.track_data.points && cl.track_data.points.length) {
+              trackData = cl.track_data;
+            }
+          } catch (e) {}
+        }
+      }
+      return { posterUrl: posterUrl, trackData: trackData, eventChat: eventChat };
+    },
+
+    openRaceHubModal: async function(raceId, initialTab, fromHistory) {
+      var modal = document.getElementById('hubQrModal');
+      if (modal) modal.style.display = 'none';
+
+      var r = this.racesById[raceId] || this.races[0];
+      if (!r) return;
+
+      var baseName = (r.name && r.name.includes('[')) ? r.name.split('[')[0].trim() : r.name;
+      var dayStr = r.date ? String(r.date).slice(0, 10) : '';
+      var sisters = this.races.filter(function(sr) {
+        var srBase = (sr.name && sr.name.includes('[')) ? sr.name.split('[')[0].trim() : sr.name;
+        var srDay = sr.date ? String(sr.date).slice(0, 10) : '';
+        return srBase.toLowerCase() === baseName.toLowerCase() && srDay === dayStr;
+      });
+      if (sisters.length === 0) sisters.push(r);
+      sisters.sort(function(a, b) { return (parseFloat(b.distance) || 0) - (parseFloat(a.distance) || 0); });
+
+      var mediaInfo = this.resolveRaceMediaAndTrack(sisters);
+
+      this._modalRaceContext = {
+        activeRace: r,
+        sisters: sisters,
+        baseName: baseName,
+        briefingExpanded: false,
+        posterUrl: mediaInfo.posterUrl,
+        trackData: mediaInfo.trackData,
+        eventChat: mediaInfo.eventChat
+      };
+
+      // Ставим в адресную строку чистый адрес /#slug без board.html
+      var pinAlias = this.getRacePinAlias(r.id);
+      document.title = baseName + ' — СОТКА';
+      if (!fromHistory) {
+        var curHash = decodeURIComponent(window.location.hash || '').replace(/^#/, '');
+        if (curHash !== pinAlias || window.location.pathname.indexOf('board.html') !== -1) {
+          try {
+            history.pushState({ pinRaceId: r.id }, '', '/' + window.location.search + '#' + pinAlias);
+          } catch (e) {}
+        }
+      } else {
+        stripBoardHtmlFromUrl();
+      }
+
+      document.body.classList.add('pin-view-open');
+      await this.renderRaceHubModalContent();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (initialTab === 'force_start' || initialTab === 'start' || initialTab === 'results') {
+        this.openVilkaProtocol(r.id);
+      }
+    },
+
+    switchModalSisterRace: function(raceId) {
+      var target = this.racesById[raceId];
+      if (target && this._modalRaceContext) {
+        this._modalRaceContext.activeRace = target;
+        var alias = this.getRacePinAlias(target.id);
+        try {
+          history.replaceState({ pinRaceId: target.id }, '', '/' + window.location.search + '#' + alias);
+        } catch (e) {}
+        this.renderRaceHubModalContent();
+      }
+    },
+
+    toggleBriefingExpand: function() {
+      if (!this._modalRaceContext) return;
+      this._modalRaceContext.briefingExpanded = !this._modalRaceContext.briefingExpanded;
+      var bodyEl = document.getElementById('pinBriefingTextBody');
+      var btnEl = document.getElementById('pinBriefingExpandBtn');
+      if (bodyEl) bodyEl.classList.toggle('pin-briefing-clamp', !this._modalRaceContext.briefingExpanded);
+      if (btnEl) btnEl.innerText = this._modalRaceContext.briefingExpanded ? 'Свернуть положение' : 'Развернуть полностью';
+    },
+
+    openStoryPosterForRace: function(raceId) {
+      this.openStoryPosterModal();
+      setTimeout(function() {
+        var sel = document.getElementById('spRaceSelect');
+        if (sel && raceId) sel.value = raceId;
+      }, 40);
+    },
+
+    renderRaceHubModalContent: async function() {
+      var self = this;
+      var ctx = this._modalRaceContext;
+      if (!ctx) return;
+      var wrap = ensureInlineContainer();
+      if (!wrap) return;
+      wrap.classList.add('open');
+
+      var r = ctx.activeRace;
+      var activeTrack = ctx.trackData;
+      try {
+        var cl = typeof r.cat_logic === 'string' ? JSON.parse(r.cat_logic) : r.cat_logic;
+        if (cl && cl.track_data && cl.track_data.points && cl.track_data.points.length) {
+          activeTrack = cl.track_data;
+        }
+      } catch (e) {}
+
+      var myReg = this.myRostersMap[r.id];
+      var isFinished = r.status === 'Finished';
+      var isLive = r.status === 'LIVE';
+      var isSoon = r.status === 'Скоро';
+      var isPinned = this.isRacePinned(r.id);
+
+      var chat = this.chatsByRaceId[r.id] || ctx.eventChat;
+      var radioDirectUrl = 'https://vilka.sotka.one/#' + r.id;
+      if (chat) {
+        radioDirectUrl = chat.slug
+          ? ('https://vilka.sotka.one/#' + chat.slug)
+          : ('https://vilka.sotka.one/?chat=' + chat.id);
+      }
+
+      var pData = { text: '', buttons: [] };
+      if (chat && chat.panel_data) {
+        try {
+          pData = typeof chat.panel_data === 'string' ? JSON.parse(chat.panel_data) : chat.panel_data;
+        } catch (e) {}
+      }
+
+      var hasEmbedMap = Boolean(pData.embed_code || pData.map_iframe);
+      var hasGpx = Boolean(activeTrack && activeTrack.points && activeTrack.points.length);
+      var hasAnyMap = hasGpx || hasEmbedMap;
+      var sm = (activeTrack && activeTrack.summary) ? activeTrack.summary : {};
+
+      var dObj = new Date(r.date);
+      var validDate = !isNaN(dObj.getTime());
+      var timeStr = validDate ? dObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+      var dateShort = validDate ? dObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).toUpperCase() : 'СКОРО';
+      var fullDateStr = validDate ? dObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+      var surfaceMap = { road: 'ШОССЕ', offroad: 'ГРУНТ', track: 'ТРЕК', indoor: 'ИНДОР' };
+      var surfaceLabel = surfaceMap[r.surface] || 'ВЕЛОГОНКА';
+
+      var formatMap = { mass: 'ГРУППА', itt: 'РАЗДЕЛКА ITT', ttt: 'КОМАНДНАЯ TTT', crit: 'КРИТЕРИУМ' };
+      var formatLabel = formatMap[r.format] || String(r.format || 'МАСС-СТАРТ').toUpperCase();
+
+      var totalReg = this.rosterCounts[r.id] || 0;
+      var priceStr = Number(r.price) > 0 ? (r.price + ' W') : '0 W';
+
+      var pId = Array.isArray(r.peloton_id) ? r.peloton_id[0] : r.peloton_id;
+      var pelotonObj = this.pelotonsList.find(function(p) { return p.id === pId; });
+      var pelotonName = pelotonObj ? pelotonObj.name : 'SOTKA.ONE';
+
+      var ctaBtnHtml = '';
+      if (isFinished) {
+        ctaBtnHtml = '<button type="button" class="pin-cta-btn is-dark" style="height:40px; padding:0 18px; font-size:12.5px;" onclick="window.sotkaHub.openVilkaProtocol(\'' + r.id + '\', event)">' + ICONS.trophy + ' <span>Протокол</span></button>';
+      } else if (myReg) {
+        ctaBtnHtml = '<button type="button" class="pin-cta-btn is-green" style="height:40px; padding:0 18px; font-size:12.5px;" onclick="window.sotkaHub.openManageMyRegModal(window.sotkaHub.racesById[\'' + r.id + '\'], window.sotkaHub.myRostersMap[\'' + r.id + '\'])">' + ICONS.check + ' <span>Вы в старте</span></button>';
+      } else if (isSoon) {
+        ctaBtnHtml = '<button type="button" class="pin-cta-btn is-soon" style="height:40px; padding:0 18px; font-size:12.5px;" onclick="window.sotkaHub.togglePinRace(\'' + r.id + '\', event)">' + ICONS.clock + ' <span>Скоро</span></button>';
+      } else {
+        ctaBtnHtml = '<button type="button" class="pin-cta-btn" style="height:40px; padding:0 20px; font-size:13px;" onclick="window.sotkaHub.handleRaceRegistration(\'' + r.id + '\')">' + ICONS.bolt + ' <span>Заявиться</span></button>';
+      }
+
+      var sisterSelectHtml = '';
+      if (ctx.sisters.length > 1) {
+        var opts = ctx.sisters.map(function(sr) {
+          var tag = (sr.name && sr.name.includes('[')) ? sr.name.split('[')[1].replace(']', '').trim() : ((sr.distance || 0) + ' км');
+          var cnt = self.rosterCounts[sr.id] || 0;
+          var sel = (sr.id === r.id) ? ' selected' : '';
+          return '<option value="' + sr.id + '"' + sel + '>' + self.escapeHTML(tag) + ' (' + cnt + ')</option>';
+        }).join('');
+        sisterSelectHtml = '<select class="pin-sister-select" onchange="window.sotkaHub.switchModalSisterRace(this.value)">' + opts + '</select>';
+      }
+
+      var mediaContentHtml = '';
+      if (ctx.posterUrl) {
+        mediaContentHtml = '<img class="pin-poster-full-img" id="pinMainPosterImg" src="' + ctx.posterUrl + '" alt="' + this.escapeHTML(ctx.baseName) + '">';
+      } else {
+        var yGpx = hasGpx
+          ? ('<div class="yp-gpx-box" style="margin-top:10px;"><div class="yp-gpx-stats"><span>3D GPX +' + (sm.gain || 0) + 'М</span><span>MAX ' + (sm.maxSlope || 0) + '%</span></div>' + this.buildCardElevationSvg(activeTrack.points, false) + '</div>')
+          : '';
+        mediaContentHtml =
+          '<div style="width:100%; min-height:540px; background:var(--sotka-gold); color:#111; padding:72px 32px; display:flex; flex-direction:column; justify-content:center; gap:12px; line-height:normal;">' +
+            '<div class="yp-under-title-pills" style="margin:0;">' +
+              '<span class="yp-meta-pill">' + ICONS.flag + ' <span>' + surfaceLabel + '</span></span>' +
+              '<span class="yp-meta-pill is-date">' + dateShort + '</span>' +
+              '<span class="yp-meta-pill">' + (r.distance || 0) + ' КМ</span>' +
+            '</div>' +
+            '<h2 class="yp-event-title" style="font-size:28px; line-height:1.12;">' + this.escapeHTML(ctx.baseName) + '</h2>' +
+            '<div style="font-family:\'Roboto Mono\',monospace; font-size:12px; font-weight:800;">' + fullDateStr + ' • Старт в ' + timeStr + '</div>' +
+            yGpx +
+          '</div>';
+      }
+
+      var mapOverlayBtns = '';
+      if (hasAnyMap) {
+        mapOverlayBtns =
+          '<div style="display:flex; gap:6px;">' +
+            (hasGpx ? ('<button type="button" class="pin-glass-pill" onclick="window.sotkaHub.downloadGpxFromTrack(\'' + r.id + '\')" title="Скачать GPX">' + MIN_SVG.download + ' <span>GPX</span></button>') : '') +
+            '<button type="button" class="pin-glass-pill" onclick="window.sotkaHub.openVilkaRouteMap(\'' + r.id + '\', event)">' + MIN_SVG.mapRoute + ' <span>Карта дистанции</span></button>' +
+          '</div>';
+      }
+
+      var extButtonsHtml = '';
+      if (Array.isArray(pData.buttons) && pData.buttons.length > 0) {
+        extButtonsHtml = pData.buttons.map(function(btn) {
+          return '<a href="' + self.escapeHTML(btn.url) + '" target="' + (btn.blank ? '_blank' : '_self') + '" class="pin-web-pill-btn">' +
+            '<span>' + self.escapeHTML(btn.label || 'Открыть веб-сайт') + '</span>' +
+            MIN_SVG.arrowUpRight +
+          '</a>';
+        }).join('');
+      }
+
+      var rawBriefing = pData.text || '';
+      var isLong = rawBriefing.length > 200 || (rawBriefing.split('\n').length > 3);
+      var briefingTextHtml = rawBriefing
+        ? this.formatBriefingHtml(rawBriefing)
+        : '<span style="color:var(--text-muted);">Регламент и описание обновляются организатором.</span>';
+      var clampCls = (!ctx.briefingExpanded && isLong) ? ' pin-briefing-clamp' : '';
+      var expandBtnHtml = isLong
+        ? ('<button type="button" id="pinBriefingExpandBtn" class="pin-expand-link" onclick="window.sotkaHub.toggleBriefingExpand()">' + (ctx.briefingExpanded ? 'Свернуть положение' : 'Развернуть полностью') + '</button>')
+        : '';
+
+      var relatedPins = this.allPins.filter(function(p) {
+        return (p.kind === 'media_race' || p.kind === 'yellow_poster_race') && p.race && p.race.id !== r.id;
+      }).slice(0, 2);
+      var relatedHtml = relatedPins.map(function(p) { return self.renderPinHTML(p); }).join('');
+
+      var chatIdStr = chat ? chat.id : '';
+
+      wrap.innerHTML =
+        '<div class="pin-pinterest-layout">' +
+          '<div class="pin-inline-card">' +
+            '<div class="pin-inline-media">' +
+              '<div class="pin-media-top-bar">' +
+                '<button type="button" class="pin-back-btn-inline" onclick="window.sotkaHub.closeInlinePin()" title="Назад к доске">' + MIN_SVG.arrowLeft + '</button>' +
+                '<span class="pin-date-pill" style="padding:6px 10px; font-size:10px;">' + surfaceLabel + ' • ' + dateShort + '</span>' +
+              '</div>' +
+              mediaContentHtml +
+              '<div class="pin-media-bottom-bar">' +
+                '<button type="button" class="pin-glass-pill" onclick="window.sotkaHub.openStoryPosterForRace(\'' + r.id + '\')">' + MIN_SVG.camera + ' <span>Сторис</span></button>' +
+                mapOverlayBtns +
+              '</div>' +
+            '</div>' +
+
+            '<div class="pin-inline-body">' +
+              '<div class="pin-inline-topbar">' +
+                '<div class="pin-tool-cluster">' +
+                  '<button type="button" class="pin-tool-circle ' + (isPinned ? 'is-pinned' : '') + '" onclick="window.sotkaHub.togglePinRace(\'' + r.id + '\', event); setTimeout(function(){window.sotkaHub.renderRaceHubModalContent();}, 60);" title="Сохранить в мои пины">' +
+                    (isPinned ? MIN_SVG.bookmarkFilled : MIN_SVG.bookmarkOutline) +
+                  '</button>' +
+                  '<button type="button" class="pin-tool-circle" onclick="window.sotkaHub.shareRace(\'' + r.id + '\')" title="Поделиться ссылкой">' + MIN_SVG.sharePin + '</button>' +
+                  '<button type="button" class="pin-tool-circle" onclick="window.sotkaHub.openStoryPosterForRace(\'' + r.id + '\')" title="Создать сторис">' + MIN_SVG.camera + '</button>' +
+                  '<button type="button" class="pin-tool-circle" onclick="window.sotkaHub.openJudgeQrModal(\'' + r.id + '\', \'' + this.escapeHTML(ctx.baseName) + '\')" title="Пульт судьи Pero">' + MIN_SVG.shield + '</button>' +
+                '</div>' +
+                '<div style="display:flex; align-items:center; gap:8px;">' +
+                  sisterSelectHtml +
+                  ctaBtnHtml +
+                '</div>' +
+              '</div>' +
+
+              '<div class="pin-body-scroll-area">' +
+                '<div>' +
+                  '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">' +
+                    '<div style="display:inline-flex; align-items:center; gap:8px;">' +
+                      '<div class="pin-org-avatar"><img src="' + DUCK_SVG_URL + '" width="15" height="15" alt="S"></div>' +
+                      '<span class="pin-org-name">' + this.escapeHTML(pelotonName) + '</span>' +
+                    '</div>' +
+                    '<span style="font-family:\'Roboto Mono\',monospace; font-size:11px; font-weight:800; color:var(--text-muted);">' +
+                      (isLive ? 'LIVE' : fullDateStr) +
+                    '</span>' +
+                  '</div>' +
+                  '<h1 class="pin-inline-title">' + this.escapeHTML(ctx.baseName) + '</h1>' +
+                '</div>' +
+
+                '<div class="vilka-bento-telemetry" style="margin-bottom:0;">' +
+                  '<div class="vilka-tile-mini">' +
+                    '<span class="vilka-mini-lbl">СТАРТ</span>' +
+                    '<div class="vilka-mini-val">' + timeStr + '</div>' +
+                    '<div class="vilka-mini-sub">' + dateShort + '</div>' +
+                  '</div>' +
+                  '<div class="vilka-tile-mini ' + (hasAnyMap ? 'clickable' : '') + '" ' + (hasAnyMap ? ('onclick="window.sotkaHub.openVilkaRouteMap(\'' + r.id + '\', event)"') : '') + '>' +
+                    '<span class="vilka-mini-lbl">ДИСТАНЦИЯ</span>' +
+                    '<div class="vilka-mini-val accent">' + (r.distance || 0) + ' КМ</div>' +
+                    '<div class="vilka-mini-sub" style="' + (hasAnyMap ? 'color:#111; font-weight:800;' : '') + '">' + (hasAnyMap ? 'КАРТА ДИСТАНЦИИ' : this.escapeHTML(formatLabel)) + '</div>' +
+                  '</div>' +
+                  '<div class="vilka-tile-mini clickable" onclick="window.sotkaHub.openVilkaProtocol(\'' + r.id + '\', event)">' +
+                    '<span class="vilka-mini-lbl">ПЕЛОТОН</span>' +
+                    '<div class="vilka-mini-val">' + totalReg + ' ЧЕЛ.</div>' +
+                    '<div class="vilka-mini-sub" style="color:#111; font-weight:800;">ПРОТОКОЛ</div>' +
+                  '</div>' +
+                  '<div class="vilka-tile-mini clickable" onclick="window.sotkaHub.openWalletModal()">' +
+                    '<span class="vilka-mini-lbl">ВЗНОС</span>' +
+                    '<div class="vilka-mini-val">' + priceStr + '</div>' +
+                    '<div class="vilka-mini-sub">КОШЕЛЁК</div>' +
+                  '</div>' +
+                '</div>' +
+
+                '<div class="pin-bridge-actions">' +
+                  '<button type="button" class="pin-web-pill-btn" onclick="window.sotkaHub.openVilkaProtocol(\'' + r.id + '\', event)">' +
+                    MIN_SVG.protocolList +
+                    '<span>Протокол (' + totalReg + ')</span>' +
+                  '</button>' +
+                  '<a href="' + radioDirectUrl + '" class="pin-web-pill-btn is-gold">' +
+                    MIN_SVG.radioWave +
+                    '<span>Радио гонки</span>' +
+                  '</a>' +
+                '</div>' +
+
+                extButtonsHtml +
+
+                '<div class="vilka-briefing-card" style="padding:12px 14px;">' +
+                  '<div class="vilka-briefing-head" style="margin-bottom:6px; padding-bottom:6px;">ПОЛОЖЕНИЕ И ПРОГРАММА</div>' +
+                  '<div id="pinBriefingTextBody" class="vilka-briefing-body' + clampCls + '" style="font-size:13px;">' + briefingTextHtml + '</div>' +
+                  expandBtnHtml +
+                '</div>' +
+
+                '<div class="pin-radio-teaser">' +
+                  '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">' +
+                    '<div style="font-family:\'Unbounded\',sans-serif; font-size:10px; font-weight:900; display:inline-flex; align-items:center; gap:6px;">' +
+                      '<span class="pin-live-dot"></span>' +
+                      '<span>РАДИО ГОНКИ</span>' +
+                      '<span id="pinRadioCountBadge" style="font-family:\'Roboto Mono\',monospace; font-size:9.5px; color:var(--text-muted);"></span>' +
+                    '</div>' +
+                    '<a href="' + radioDirectUrl + '" class="pin-caption-radio-chip" style="text-decoration:none; padding:4px 10px;">' +
+                      MIN_SVG.radioWave + ' <span>Радио гонки</span>' +
+                    '</a>' +
+                  '</div>' +
+
+                  '<div id="hubModalChatStream" style="display:flex; flex-direction:column; gap:6px;">' +
+                    '<div style="padding:6px; text-align:center; color:var(--text-muted); font-size:12px;">Загрузка эфира...</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="pin-bottom-dock">' +
+                '<div class="pin-comment-pill">' +
+                  '<input type="text" id="hubModalChatInput" class="pin-comment-input" ' +
+                    'placeholder="Выйти в эфир гонки..." ' +
+                    'onkeydown="if(event.key===\'Enter\') window.sotkaHub.sendModalChatMessage(\'' + chatIdStr + '\', \'' + radioDirectUrl + '\')">' +
+                  '<button type="button" class="pin-dock-icon-btn" onclick="window.sotkaHub.openCreateRadarModal()" title="Сигнал Радара GPS">' + MIN_SVG.radar + '</button>' +
+                  '<button type="button" class="pin-dock-send-btn" onclick="window.sotkaHub.sendModalChatMessage(\'' + chatIdStr + '\', \'' + radioDirectUrl + '\')" title="Отправить">' +
+                    MIN_SVG.send +
+                  '</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<aside class="pin-side-related-col">' +
+            relatedHtml +
+          '</aside>' +
+        '</div>';
+
+      var posterImg = document.getElementById('pinMainPosterImg');
+      if (posterImg) {
+        if (posterImg.complete) syncPinHeightToPoster();
+        else posterImg.addEventListener('load', syncPinHeightToPoster);
+      } else {
+        syncPinHeightToPoster();
+      }
+
+      await this.refreshPinRadioStream(chatIdStr, radioDirectUrl);
+    },
+
+    refreshPinRadioStream: async function(chatId, radioDirectUrl) {
+      var self = this;
+      var streamEl = document.getElementById('hubModalChatStream');
+      var countBadge = document.getElementById('pinRadioCountBadge');
+      if (!streamEl) return;
+
+      if (!chatId) {
+        streamEl.innerHTML = '<div style="padding:6px; text-align:center; color:var(--text-muted); font-size:12px;">Обсуждение доступно в Радио гонки</div>';
+        return;
+      }
+
+      var msgsRes = await this.pb.collection('messages').getList(1, 3, {
+        filter: 'chat_id="' + chatId + '"',
+        sort: '-created',
+        expand: 'sender_id',
+        requestKey: null
+      }).catch(function() { return { items: [], totalItems: 0 }; });
+
+      var msgs = (msgsRes.items || []).reverse();
+      if (countBadge) countBadge.innerText = msgsRes.totalItems ? ('(' + msgsRes.totalItems + ')') : '';
+
+      if (msgs.length === 0) {
+        streamEl.innerHTML = '<div style="padding:8px; text-align:center; color:var(--text-muted); font-size:12px;">В эфире пока тихо — напишите первым</div>';
+        return;
+      }
+
+      var listHtml = msgs.map(function(m) {
+        var s = (m.expand && m.expand.sender_id) ? m.expand.sender_id : {};
+        var sName = ((s.first_name || '') + ' ' + (s.last_name || '')).trim() || 'VILKA MOTO';
+        var fChar = s.first_name ? s.first_name[0] : 'V';
+        var lChar = s.last_name ? s.last_name[0] : 'M';
+        var avInner = (fChar + lChar).toUpperCase();
+        if (s.avatar && s.id) {
+          var avFile = Array.isArray(s.avatar) ? s.avatar[0] : s.avatar;
+          avInner = '<img src="https://vilka.sotka.one/api/files/riders/' + s.id + '/' + avFile + '" alt="AV">';
+        }
+        var cleanTxt = (m.text || '').replace(/\[ACTION:[^\]]+\]/g, '').trim();
+        var msgTime = new Date(m.created).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+        return '<div class="pin-msg-bubble">' +
+          '<div class="pin-msg-av">' + avInner + '</div>' +
+          '<div style="flex:1; min-width:0;">' +
+            '<div style="display:flex; justify-content:space-between; gap:6px; margin-bottom:2px;">' +
+              '<span style="font-family:\'Unbounded\',sans-serif; font-size:9px; font-weight:800;">' + self.escapeHTML(sName) + '</span>' +
+              '<span style="font-family:\'Roboto Mono\',monospace; font-size:8.5px; color:var(--text-muted);">' + msgTime + '</span>' +
+            '</div>' +
+            '<div style="font-size:12.5px; line-height:1.35; overflow-wrap:break-word;">' + self.formatBriefingHtml(cleanTxt) + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      if (msgsRes.totalItems > 3 && radioDirectUrl) {
+        listHtml += '<a href="' + radioDirectUrl + '" style="font-family:\'Unbounded\',sans-serif; font-size:9px; font-weight:800; color:#111111; text-decoration:none; text-align:center; padding:4px;">Открыть все сообщения (' + msgsRes.totalItems + ') в Радио гонки</a>';
+      }
+
+      streamEl.innerHTML = listHtml;
+    },
+
+    sendModalChatMessage: async function(chatId, radioDirectUrl) {
+      if (!chatId && radioDirectUrl) {
+        window.location.href = radioDirectUrl;
+        return;
+      }
+      if (this.isGuest || !this.currentRider) return this.openLoginModal();
+      var inp = document.getElementById('hubModalChatInput');
+      var txt = (inp && inp.value ? inp.value : '').trim();
+      if (!txt) {
+        if (radioDirectUrl) window.location.href = radioDirectUrl;
+        return;
+      }
+      inp.value = '';
+      try {
+        await this.pb.collection('messages').create({
+          chat_id: chatId,
+          sender_id: this.currentRider.id,
+          text: txt
+        }, { requestKey: null });
+        await this.refreshPinRadioStream(chatId, radioDirectUrl);
+      } catch (e) {
+        alert('Ошибка отправки: ' + e.message);
+      }
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
