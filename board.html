@@ -1,0 +1,3918 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>СОТКА — Витрина и Пульт Управления</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&family=Roboto+Mono:wght@700;800;900&family=Unbounded:wght@800;900&display=swap" rel="stylesheet">
+  
+  <script src="https://unpkg.com/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --bg-canvas: #ffffff;
+      --bg-subtle: #f1f1f4;
+      --bg-hover: #e4e4e9;
+      --text-main: #111111;
+      --text-muted: #71717a;
+      --pin-red: #e60023;
+      --pin-red-hover: #ad081b;
+      --pin-blue: #0066cc;
+      --sotka-gold: #ffc107;
+      --sotka-green: #10b981;
+      --border-light: rgba(0, 0, 0, 0.08);
+      --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.04);
+      --shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.12);
+      --shadow-popover: 0 12px 48px rgba(0, 0, 0, 0.18);
+      --rail-width: 72px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      padding: 12px 20px 90px calc(var(--rail-width) + 20px);
+      background: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: padding 0.2s ease;
+    }
+
+    body.rail-right {
+      padding: 12px calc(var(--rail-width) + 20px) 90px 20px;
+    }
+
+    svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+
+    /* 1. БОКОВОЕ МЕНЮ PINTEREST (ПО УМОЛЧАНИЮ СЛЕВА) */
+    .pin-rail {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: var(--rail-width);
+      background: var(--bg-canvas);
+      border-right: 1px solid var(--border-light);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0 24px;
+      user-select: none;
+    }
+
+    body.rail-right .pin-rail {
+      left: auto;
+      right: 0;
+      border-right: none;
+      border-left: 1px solid var(--border-light);
+    }
+
+    .pin-rail-top, .pin-rail-bottom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .rail-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      border: none;
+      background: transparent;
+      color: #111111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .rail-btn:hover { background: var(--bg-subtle); }
+    .rail-btn:active { transform: scale(0.94); }
+    .rail-btn.active { background: #111111; color: #ffffff; }
+
+    .rail-duck-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #111111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      transition: transform 0.15s ease;
+      margin-bottom: 6px;
+    }
+    .rail-duck-logo:hover { transform: scale(1.06); }
+    .rail-duck-logo img { width: 26px; height: 26px; object-fit: contain; }
+
+    .rail-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      min-width: 17px;
+      height: 17px;
+      padding: 0 4px;
+      border-radius: 10px;
+      background: var(--pin-red);
+      color: #ffffff;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #ffffff;
+    }
+
+    /* 2. ВЕРХНЯЯ ПАНЕЛЬ ПОИСКА И ПРОФИЛЯ */
+    .hub-header {
+      max-width: 1720px;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 150;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 8px 0;
+    }
+
+    .hub-logo-mobile {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #111111;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .hub-logo-mobile img { width: 24px; height: 24px; object-fit: contain; }
+
+    .hub-search-wrap {
+      flex: 1;
+      min-width: 0;
+      height: 48px;
+      background: var(--bg-subtle);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 10px;
+      border: 1px solid transparent;
+      transition: 0.2s ease;
+    }
+    .hub-search-wrap:focus-within {
+      background: #ffffff;
+      border-color: rgba(0,0,0,0.15);
+      box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.25);
+    }
+
+    .hub-search-input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      background: transparent;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-main);
+      outline: none;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .pin-account-trigger {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 6px 4px 4px;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      position: relative;
+      user-select: none;
+    }
+    .pin-account-trigger:hover { background: var(--bg-subtle); }
+
+    .pin-account-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #111111;
+      color: var(--sotka-gold);
+      font-family: 'Unbounded', sans-serif;
+      font-size: 11.5px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .pin-account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .pin-account-chevron {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+    }
+
+    .pin-account-popover {
+      position: fixed;
+      top: 66px;
+      right: 20px;
+      width: 310px;
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: var(--shadow-popover);
+      border: 1px solid var(--border-light);
+      padding: 14px;
+      z-index: 300;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      animation: popScale 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.rail-right .pin-account-popover { right: calc(var(--rail-width) + 20px); }
+    .pin-account-popover.open { display: flex; }
+
+    @keyframes popScale {
+      from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .pop-section-label {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-weight: 500;
+      padding: 4px 8px 2px;
+    }
+
+    .pop-active-user-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border-radius: 14px;
+      border: 2px solid var(--pin-blue);
+      background: #f8fbff;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 4px;
+    }
+    .pop-active-user-card:hover { background: #eef6ff; }
+
+    .pop-user-av-lg {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #111111;
+      color: var(--sotka-gold);
+      font-family: 'Unbounded', sans-serif;
+      font-size: 14px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .pop-user-av-lg img { width: 100%; height: 100%; object-fit: cover; }
+
+    .pop-user-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .pop-user-name { font-size: 14.5px; font-weight: 700; color: #111111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pop-user-role { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-top: 1px; }
+    .pop-user-email { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+
+    .pop-menu-item {
+      width: 100%;
+      border: none;
+      background: transparent;
+      padding: 10px 10px;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #111111;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s;
+    }
+    .pop-menu-item:hover { background: var(--bg-subtle); }
+    .pop-menu-item.danger { color: var(--pin-red); }
+
+    /* 3. ВЫДВИЖНЫЕ ШТОРКИ БОКОВОГО МЕНЮ */
+    .rail-drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.25);
+      z-index: 190;
+      display: none;
+    }
+    .rail-drawer-backdrop.open { display: block; }
+
+    .rail-drawer {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: var(--rail-width);
+      width: 380px;
+      max-width: calc(100vw - var(--rail-width));
+      background: #ffffff;
+      border-right: 1px solid var(--border-light);
+      box-shadow: 12px 0 40px rgba(0, 0, 0, 0.12);
+      z-index: 195;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    body.rail-right .rail-drawer {
+      left: auto;
+      right: var(--rail-width);
+      border-right: none;
+      border-left: 1px solid var(--border-light);
+      box-shadow: -12px 0 40px rgba(0, 0, 0, 0.12);
+    }
+    .rail-drawer.open { display: flex; }
+
+    .drawer-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .drawer-title {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 13px;
+      font-weight: 900;
+      margin: 0;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .drawer-body {
+      padding: 14px 16px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .drawer-card {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--bg-subtle);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border: 1px solid transparent;
+    }
+    .drawer-card:hover {
+      background: var(--bg-hover);
+      transform: translateY(-1px);
+      border-color: rgba(0,0,0,0.08);
+    }
+
+    .notif-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      padding-bottom: 5px;
+    }
+    .notif-source-badge {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      color: #111111;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+      flex: 1;
+    }
+    .notif-source-badge span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notif-date { font-family: 'Roboto Mono', monospace; font-size: 9.5px; font-weight: 800; color: #d97706; white-space: nowrap; flex-shrink: 0; }
+    .notif-thumb { width: 100%; height: 110px; object-fit: cover; border-radius: 9px; margin-top: 2px; border: 1px solid rgba(0,0,0,0.06); }
+
+    /* 4. ПАНЕЛЬ ТЕГОВ И MASONRY-СЕТКА */
+    .hub-filter-bar {
+      max-width: 1720px;
+      margin: 0 auto 18px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .hub-filter-bar::-webkit-scrollbar { display: none; }
+
+    .hub-tags-group { display: flex; align-items: center; gap: 6px; }
+
+    .hub-tag {
+      padding: 8px 14px;
+      border-radius: 22px;
+      border: none;
+      background: var(--bg-subtle);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: 0.15s ease;
+    }
+    .hub-tag:hover { background: var(--bg-hover); }
+    .hub-tag.active { background: #111111; color: #ffffff; }
+
+    .hub-mobile-deck {
+      max-width: 1720px;
+      margin: 0 auto 14px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .hub-masonry {
+      max-width: 1720px;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .hub-masonry-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .pin-unit { width: 100%; position: relative; border-radius: 16px; display: flex; flex-direction: column; }
+
+    .pin-visual-card {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--bg-subtle);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-light);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+    .pin-unit:hover .pin-visual-card { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+
+    .pin-visual-card img.pin-main-img { width: 100%; display: block; object-fit: cover; transition: transform 0.35s ease; }
+    .pin-unit:hover .pin-visual-card img.pin-main-img { transform: scale(1.03); }
+
+    /* На карточках с картинкой плашки покрытия и даты показываем только при наведении */
+    .pin-unified-topbar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      z-index: 7;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .pin-visual-card.is-media .pin-unified-topbar {
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .pin-visual-card.is-media:hover .pin-unified-topbar {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .pin-surface-pill {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: #111111;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 900;
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    .pin-date-pill {
+      background: #111111;
+      color: #ffffff;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .pin-gpx-overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 3;
+      padding: 26px 12px 10px;
+      background: linear-gradient(to top, rgba(12, 13, 18, 0.92) 0%, rgba(12, 13, 18, 0.65) 55%, transparent 100%);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      pointer-events: none;
+    }
+
+    .pin-gpx-overlay-stats {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 800;
+      color: var(--sotka-gold);
+      letter-spacing: 0.3px;
+    }
+
+    .yp-gpx-box {
+      position: relative;
+      z-index: 2;
+      margin: 4px 0 8px;
+      padding: 8px 10px 6px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.07);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    .yp-gpx-stats {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9px;
+      font-weight: 900;
+      color: #111111;
+      margin-bottom: 2px;
+    }
+
+    .pin-hover-layer {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.28);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 10px;
+      z-index: 6;
+    }
+    .pin-visual-card:hover .pin-hover-layer { opacity: 1; }
+
+    .pin-hover-bottom-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .pin-cta-btn {
+      background: var(--pin-red);
+      color: #ffffff;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 13px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: transform 0.1s, background 0.15s;
+    }
+    .pin-cta-btn:hover { background: var(--pin-red-hover); transform: scale(1.03); }
+    .pin-cta-btn.is-green { background: var(--sotka-green); color: #fff; }
+    .pin-cta-btn.is-soon { background: rgba(17, 17, 17, 0.92); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+    .pin-cta-btn.is-dark { background: #111111; color: #fff; }
+
+    .pin-radio-pill-btn {
+      height: 34px;
+      padding: 0 11px;
+      border-radius: 18px;
+      background: var(--sotka-gold);
+      color: #111111;
+      border: 1.5px solid #111111;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 8.5px;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      transition: transform 0.15s, background 0.15s;
+    }
+    .pin-radio-pill-btn:hover {
+      background: #111111;
+      color: var(--sotka-gold);
+      transform: scale(1.05);
+    }
+
+    .pin-caption-radio-chip {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 8px;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(255, 193, 7, 0.25);
+      color: #111111;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: 0.15s;
+    }
+    .pin-caption-radio-chip:hover {
+      background: #111111;
+      color: var(--sotka-gold);
+    }
+
+    .pin-icon-round {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.94);
+      border: none;
+      color: #111111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+      transition: transform 0.15s, background 0.15s;
+    }
+    .pin-icon-round:hover { background: #ffffff; transform: scale(1.08); }
+    .pin-icon-round.is-pinned { background: var(--sotka-gold) !important; color: #000000 !important; }
+
+    .pin-sister-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .pin-sister-chip {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: var(--bg-subtle);
+      color: var(--text-main);
+      border: 1px solid var(--border-light);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: 0.15s;
+    }
+    .pin-sister-chip:hover { background: #111111; border-color: #111111; color: var(--sotka-gold); }
+
+    .pin-caption { padding: 7px 4px 0; display: flex; flex-direction: column; gap: 2px; }
+    .pin-caption-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+    .pin-caption-title { font-size: 13px; font-weight: 700; color: var(--text-main); line-height: 1.25; margin: 0; flex: 1; min-width: 0; overflow-wrap: break-word; }
+    .pin-caption-pin-btn { background: transparent; border: none; padding: 2px; color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; transition: 0.15s; flex-shrink: 0; }
+    .pin-caption-pin-btn:hover { color: var(--text-main); background: var(--bg-subtle); }
+    .pin-caption-pin-btn.is-pinned { color: #d97706; }
+    .pin-caption-meta { font-size: 11px; color: var(--text-muted); font-weight: 500; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+
+    /* 5. ФИРМЕННЫЙ ЖЁЛТЫЙ ПОСТЕР СОТКИ (МЕТА-БЕЙДЖИ ПОД НАЗВАНИЕМ) */
+    .pin-yellow-poster {
+      background: var(--sotka-gold);
+      color: #111111;
+      padding: 18px 16px 14px;
+      min-height: 195px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      border: none !important;
+    }
+
+    .pin-yellow-poster::after {
+      content: "";
+      position: absolute;
+      right: -16px;
+      bottom: 22px;
+      width: 100px;
+      height: 100px;
+      background-image: url("https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg");
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.1;
+      transform: rotate(-14deg);
+      pointer-events: none;
+    }
+
+    .yp-center-body { margin: 0 0 10px; position: relative; z-index: 2; }
+    .yp-event-title { font-family: 'Unbounded', sans-serif; font-weight: 900; text-transform: uppercase; color: #111111; line-height: 1.15; letter-spacing: -0.4px; margin: 0; overflow-wrap: break-word; }
+
+    .yp-under-title-pills {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      margin-top: 9px;
+    }
+    .yp-meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3.5px 8px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.09);
+      color: #111111;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .yp-meta-pill.is-date {
+      background: #111111;
+      color: #ffffff;
+    }
+
+    .yp-bottom-bar { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-top: 9px; border-top: 1.5px solid rgba(0, 0, 0, 0.12); font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 800; position: relative; z-index: 2; white-space: nowrap; }
+
+    /* 6. DATA-ПЛИТКИ */
+    .pin-data-box { padding: 18px 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 210px; position: relative; }
+    .surface-white { background: #ffffff; color: #111111; }
+    .surface-gold-soft { background: #fffdf4; border-color: rgba(255, 193, 7, 0.45) !important; color: #111111; }
+    .surface-dark  { background: #121318; color: #ffffff; }
+    .surface-soft  { background: #f8f9fb; color: #111111; }
+
+    .data-kicker { font-family: 'Roboto Mono', monospace; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; opacity: 0.75; display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
+    .data-big-metric { font-family: 'Roboto Mono', monospace; font-size: 34px; font-weight: 900; line-height: 0.95; letter-spacing: -1.5px; margin: 4px 0 6px; }
+    .data-title { font-family: 'Unbounded', sans-serif; font-size: 13.5px; font-weight: 900; text-transform: uppercase; line-height: 1.22; margin: 0; }
+    .data-grid-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .data-cell { background: rgba(128, 128, 128, 0.08); border-radius: 8px; padding: 6px 8px; }
+    .data-cell-lbl { font-family: 'Unbounded', sans-serif; font-size: 7px; font-weight: 800; opacity: 0.65; text-transform: uppercase; }
+    .data-cell-val { font-family: 'Roboto Mono', monospace; font-size: 11.5px; font-weight: 800; margin-top: 2px; }
+    .data-footer { font-family: 'Roboto Mono', monospace; font-size: 10px; font-weight: 700; margin-top: 12px; padding-top: 9px; border-top: 1px solid rgba(128, 128, 128, 0.18); display: flex; justify-content: space-between; align-items: center; white-space: nowrap; }
+
+    .ctrl-btn-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; position: relative; z-index: 6; }
+    .ctrl-btn { flex: 1; height: 32px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.25); background: transparent; color: inherit; font-family: 'Unbounded', sans-serif; font-size: 8px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 8px; transition: 0.15s; white-space: nowrap; }
+    .ctrl-btn:hover { background: rgba(128,128,128,0.12); }
+    .ctrl-btn.primary { background: var(--sotka-gold); color: #000; border: none; }
+    .ctrl-btn.dark { background: #111; color: #fff; border: none; }
+
+    /* =====================================================
+       7. МОДАЛЬНЫЕ ОКНА ПРЯМОГО ДЕЙСТВИЯ НА БОРДЕ
+       ===================================================== */
+    .hub-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 99999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .hub-modal-card {
+      background: #ffffff;
+      color: #111111;
+      border-radius: 24px;
+      padding: 24px 20px;
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .hub-modal-card.wide {
+      max-width: 780px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .hub-input {
+      width: 100%;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.15);
+      background: #f8f9fb;
+      padding: 0 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #111;
+      outline: none;
+    }
+    .hub-input:focus { border-color: #111; background: #fff; }
+
+    .hub-lbl {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 8.5px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .race-hub-tab {
+      flex: 1;
+      height: 36px;
+      border: none;
+      background: transparent;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 9px;
+      font-weight: 800;
+      color: var(--text-muted);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.15s;
+      white-space: nowrap;
+      padding: 0 10px;
+    }
+    .race-hub-tab.active {
+      background: #111111;
+      color: #ffffff;
+    }
+
+    .roster-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--bg-subtle);
+      gap: 10px;
+    }
+
+    @media (max-width: 640px) {
+      body, body.rail-right { padding: 8px 10px 80px 10px !important; }
+      .hub-logo-mobile { display: flex; }
+
+      .pin-rail {
+        top: auto;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0;
+        width: 100%;
+        height: 60px;
+        flex-direction: row;
+        border-left: none !important;
+        border-right: none !important;
+        border-top: 1px solid var(--border-light);
+        padding: 0 12px;
+        justify-content: space-around;
+      }
+      .pin-rail-top { flex-direction: row; justify-content: space-around; gap: 0; }
+      .rail-duck-logo, .pin-rail-bottom { display: none; }
+
+      .pin-account-popover { right: 10px !important; top: 58px; width: calc(100vw - 20px); max-width: 320px; }
+      .rail-drawer { left: 0 !important; right: 0 !important; bottom: 60px; width: 100vw; max-width: 100vw; }
+
+      .hub-mobile-deck { display: flex; }
+      .hub-masonry { gap: 10px; }
+      .hub-masonry-col { gap: 14px; }
+
+      .pin-unified-topbar { top: 8px; left: 8px; right: 8px; }
+      .pin-surface-pill { font-size: 8px; padding: 3px 6px; }
+      .pin-date-pill { font-size: 8px; padding: 3px 6px; }
+
+      .pin-yellow-poster { padding: 14px 11px 11px; min-height: 165px; }
+      .yp-center-body { margin: 0 0 8px; }
+      .yp-event-title { font-size: 13px !important; line-height: 1.18; letter-spacing: -0.3px; }
+      .yp-meta-pill { font-size: 8.5px; padding: 2.5px 6px; }
+      .yp-bottom-bar { font-size: 9px; padding-top: 7px; }
+
+      .pin-data-box { padding: 14px 12px; min-height: 175px; }
+      .data-big-metric { font-size: 26px; }
+      .data-title { font-size: 12px; }
+      .pin-caption-title { font-size: 12px; }
+      .pin-caption-meta { font-size: 10px; }
+
+      .hub-modal-overlay { padding: 0; }
+      .hub-modal-card.wide { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+    }
+
+    #hubToast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #111111;
+      color: #ffffff;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 10px 18px;
+      border-radius: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      z-index: 100005;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #hubToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* === ФИКС СЖАТИЯ КНОПОК В ВЕРТИКАЛЬНЫХ МОДАЛКАХ === */
+    .hub-modal-card > .ctrl-btn,
+    .hub-modal-card button,
+    .ctrl-btn,
+    .pin-cta-btn,
+    .race-hub-tab {
+      flex-shrink: 0 !important;
+    }
+    .hub-modal-card > .ctrl-btn {
+      flex: 0 0 auto !important;
+      min-height: 44px !important;
+    }
+
+    /* === СТИЛИ КАРТОЧКИ ГОНКИ И БРИФИНГА В СТИЛЕ VILKA.JS === */
+    .vilka-bento-telemetry {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .vilka-tile-mini {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .vilka-tile-mini.clickable {
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .vilka-tile-mini.clickable:hover {
+      transform: translateY(-2px);
+      border-color: #111111;
+    }
+    .vilka-mini-lbl {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 8px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .vilka-mini-val {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text-main);
+      line-height: 1.1;
+    }
+    .vilka-mini-val.accent { color: #d97706; }
+    .vilka-mini-sub {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .vilka-briefing-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .vilka-briefing-head {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      color: var(--text-main);
+      text-transform: uppercase;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .vilka-briefing-body {
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+
+    .vilka-links-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .vilka-link-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-family: 'Unbounded', sans-serif;
+      font-size: 10px;
+      font-weight: 800;
+      transition: 0.15s;
+    }
+    .vilka-link-btn:hover {
+      background: #111111;
+      color: var(--sotka-gold);
+    }
+
+    .vilka-rider-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: background 0.15s;
+    }
+    .vilka-rider-card:hover { background: var(--bg-hover); }
+    .vilka-bib-badge {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 11px;
+      font-weight: 900;
+      background: #ffffff;
+      color: #111111;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-light);
+      min-width: 44px;
+      text-align: center;
+    }
+    .vilka-rank-badge {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 12px;
+      font-weight: 900;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid var(--border-light);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .vilka-rank-badge.top-1 { background: #ffc107; border-color: #ffc107; color: #000; }
+    .vilka-rank-badge.top-2 { background: #e4e4e7; border-color: #d4d4d8; color: #000; }
+    .vilka-rank-badge.top-3 { background: #fed7aa; border-color: #fdba74; color: #000; }
+
+    @media (max-width: 640px) {
+      .vilka-bento-telemetry { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. БОКОВАЯ ПАНЕЛЬ НАВИГАЦИИ (СЛЕВА ПО УМОЛЧАНИЮ) -->
+  <aside class="pin-rail" id="pinRail">
+    <div class="pin-rail-top">
+      <div class="rail-duck-logo" onclick="window.sotkaHub.goHome()" title="СОТКА — Домой">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" alt="Sotka Duck">
+      </div>
+
+      <button type="button" class="rail-btn active" id="railBtn-home" onclick="window.sotkaHub.goHome()" title="Домой (Все пины)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </button>
+
+      <button type="button" class="rail-btn" id="railBtn-create" onclick="window.sotkaHub.toggleDrawer('create')" title="Создать событие / Постер / Радар">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+          <line x1="12" y1="8" x2="12" y2="16"></line>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+      </button>
+
+      <button type="button" class="rail-btn" id="railBtn-notif" onclick="window.sotkaHub.toggleDrawer('notif')" title="Уведомления и Анонсы">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span class="rail-badge" id="railNotifBadge" style="display:none;">0</span>
+      </button>
+
+      <button type="button" class="rail-btn" id="railBtn-messages" onclick="window.sotkaHub.toggleDrawer('messages')" title="Сообщения и Рация пелотона">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          <circle cx="9.5" cy="12" r="1" fill="currentColor"></circle>
+          <circle cx="14.5" cy="12" r="1" fill="currentColor"></circle>
+        </svg>
+      </button>
+
+      <button type="button" class="rail-btn" id="railBtn-settings" onclick="window.sotkaHub.toggleDrawer('settings')" title="Настройки и фильтры пелотона">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="21" x2="4" y2="14"></line>
+          <line x1="4" y1="10" x2="4" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12" y2="3"></line>
+          <line x1="20" y1="21" x2="20" y2="16"></line>
+          <line x1="20" y1="12" x2="20" y2="3"></line>
+          <line x1="1" y1="14" x2="7" y2="14"></line>
+          <line x1="9" y1="8" x2="15" y2="8"></line>
+          <line x1="17" y1="16" x2="23" y2="16"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="pin-rail-bottom">
+      <button type="button" class="rail-btn" onclick="window.sotkaHub.toggleDrawer('settings')" title="Параметры системы">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Выдвижная шторка бокового меню -->
+  <div class="rail-drawer-backdrop" id="railDrawerBackdrop" onclick="window.sotkaHub.closeDrawers()"></div>
+  <aside class="rail-drawer" id="railDrawer">
+    <div class="drawer-header">
+      <h3 class="drawer-title" id="railDrawerTitle">МЕНЮ</h3>
+      <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="window.sotkaHub.closeDrawers()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="drawer-body" id="railDrawerBody"></div>
+  </aside>
+
+  <!-- 2. ВЕРХНЯЯ ШАПКА: ПОИСК + АККАУНТ PINTEREST -->
+  <header class="hub-header">
+    <div class="hub-logo-mobile" onclick="window.sotkaHub.goHome()">
+      <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" alt="Duck">
+    </div>
+
+    <div class="hub-search-wrap">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.45"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="hubSearchInput" class="hub-search-input" placeholder="Поиск стартов, #серий, клубов..." oninput="window.sotkaHub.onSearch(this.value)">
+      <button type="button" onclick="window.sotkaHub.openMyIduckModal()" style="background:none; border:none; cursor:pointer; color:var(--text-muted); padding:4px; display:flex;" title="Мой QR-паспорт IDuck">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      </button>
+    </div>
+
+    <div class="pin-account-trigger" id="pinAccountTrigger" onclick="window.sotkaHub.toggleAccountPopover(event)">
+      <div class="pin-account-avatar" id="hubUserAv">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" style="width:20px; height:20px; object-fit:contain;" alt="Guest">
+      </div>
+      <div class="pin-account-chevron">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+    </div>
+
+    <div class="pin-account-popover" id="pinAccountPopover" onclick="event.stopPropagation()"></div>
+  </header>
+
+  <!-- 3. УМНЫЕ ТЕГИ PINTEREST -->
+  <nav class="hub-filter-bar">
+    <div class="hub-tags-group" id="hubTagButtons">
+      <button class="hub-tag active" onclick="window.sotkaHub.setTag('all', this)">Все</button>
+      <button class="hub-tag" onclick="window.sotkaHub.setTag('upcoming', this)">Ближайшие старты</button>
+      <button class="hub-tag" onclick="window.sotkaHub.setTag('my', this)">Мои пины</button>
+      <button class="hub-tag" onclick="window.sotkaHub.setTag('road', this)">Шоссе</button>
+      <button class="hub-tag" onclick="window.sotkaHub.setTag('offroad', this)">Грунт</button>
+      <button class="hub-tag" onclick="window.sotkaHub.setTag('gpx', this)">3D GPX</button>
+      <button class="hub-tag" onclick="window.sotkaHub.setTag('clubs', this)">Клубы</button>
+      <button class="hub-tag" onclick="window.sotkaHub.setTag('archive', this)">Архив</button>
+    </div>
+  </nav>
+
+  <section class="hub-mobile-deck" id="hubMobileDeck"></section>
+
+  <!-- 4. ГЛАВНАЯ ГОРИЗОНТАЛЬНАЯ MASONRY ДОСКА -->
+  <main class="hub-masonry" id="hubMasonryGrid"></main>
+
+  <!-- 5. УНИВЕРСАЛЬНОЕ МОДАЛЬНОЕ ОКНО ФУНКЦИЙ ЭКОСИСТЕМЫ -->
+  <div class="hub-modal-overlay" id="hubQrModal" onclick="if(event.target===this) this.style.display='none'">
+    <div class="hub-modal-card" id="hubQrModalContent"></div>
+  </div>
+
+  <div id="hubToast"></div>
+
+<script>
+const DUCK_SVG_URL = "https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg";
+
+const ICONS = {
+  bolt: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+  clock: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
+  qr: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`,
+  users: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
+  check: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+  flag: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`,
+  trophy: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>`,
+  map: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>`,
+  share: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>`,
+  pinOutline: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>`,
+  pinFilled: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>`,
+  arrowRight: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`,
+  shield: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
+  radio: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>`,
+  plus: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`
+};
+
+class SotkaPinterestHub {
+  constructor() {
+    this.pb = new PocketBase('https://vilka.sotka.one');
+    this.pb.beforeSend = (url, options) => {
+      url += (url.includes('?') ? '&' : '?') + 'nocache=' + Date.now();
+      return { url, options };
+    };
+
+    this.currentRider = null;
+    this.isGuest = true;
+    this.userRoles = [];
+    this.walletBalance = 0;
+
+    this.races = [];
+    this.racesById = {};
+    this.rosters = [];
+    this.ridersMap = {};
+    this.myRostersMap = {};
+    this.rosterCounts = {};
+    this.teamsMap = {};
+    this.pelotonsList = [];
+    this.postersMap = {};
+    this.announcements = [];
+    this.chatsList = [];
+    this.chatsById = {};
+    this.chatsByRaceId = {};
+
+    this.activeTag = 'all';
+    this.selectedPelotonId = 'all';
+    this.selectedSeasonYear = 'all';
+    this.searchQuery = '';
+    this.allPins = [];
+    this.activeDrawer = null;
+    this.pendingGpxTrack = null;
+
+    if (localStorage.getItem('sotka_rail_pos') === 'right') {
+      document.body.classList.add('rail-right');
+    }
+
+    window.addEventListener('resize', () => {
+      clearTimeout(this._resizeTimer);
+      this._resizeTimer = setTimeout(() => this.renderGrid(), 120);
+    });
+
+    document.addEventListener('click', () => {
+      const pop = document.getElementById('pinAccountPopover');
+      if (pop) pop.classList.remove('open');
+    });
+  }
+
+  escapeHTML(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  showToast(msg) {
+    const t = document.getElementById('hubToast');
+    if (!t) return;
+    t.innerHTML = `${ICONS.check} <span>${this.escapeHTML(msg)}</span>`;
+    t.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  getColumnsCount() {
+    const w = window.innerWidth;
+    if (w > 1480) return 5;
+    if (w > 1100) return 4;
+    if (w > 740) return 3;
+    return 2;
+  }
+
+  // Прямой переход в Радио события (если у гонки есть чат)
+  openEventRadio(raceId, event) {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    let chat = this.chatsByRaceId[raceId];
+    const r = this.racesById[raceId];
+    if (!chat && r) {
+      const baseName = r.name && r.name.includes('[') ? r.name.split('[')[0].trim() : r.name;
+      const dayStr = r.date ? String(r.date).slice(0, 10) : '';
+      const sister = this.races.find(sr => {
+        const srBase = sr.name && sr.name.includes('[') ? sr.name.split('[')[0].trim() : sr.name;
+        const srDay = sr.date ? String(sr.date).slice(0, 10) : '';
+        return srBase.toLowerCase() === baseName.toLowerCase() && srDay === dayStr && this.chatsByRaceId[sr.id];
+      });
+      if (sister) chat = this.chatsByRaceId[sister.id];
+    }
+    if (chat) {
+      const url = chat.slug ? `https://vilka.sotka.one/#${chat.slug}` : `https://vilka.sotka.one/?chat=${chat.id}`;
+      window.location.href = url;
+    } else {
+      window.location.href = `https://vilka.sotka.one/#${raceId}`;
+    }
+  }
+
+  resolveAnnouncementSource(msg) {
+    if (!msg) return 'СОБЫТИЕ СОТКИ';
+    const chatId = Array.isArray(msg.chat_id) ? msg.chat_id[0] : msg.chat_id;
+    const chat = this.chatsById[chatId] || msg.expand?.chat_id;
+
+    if (chat) {
+      const rId = Array.isArray(chat.race_id) ? chat.race_id[0] : chat.race_id;
+      const race = rId ? this.racesById[rId] : null;
+      if (race && race.name) {
+        return race.name.includes('[') ? race.name.split('[')[0].trim() : race.name.trim();
+      }
+      const tId = Array.isArray(chat.team_id) ? chat.team_id[0] : chat.team_id;
+      const team = tId ? this.teamsMap[tId] : null;
+      if (team && team.name) return team.name.trim();
+      if (chat.name) {
+        return chat.name.replace(/\s+\d{1,2}\s+[а-яА-Я]+\s+\d{1,2}:\d{2}$/i, '').trim();
+      }
+    }
+
+    const actionMatch = (msg.text || '').match(/\[ACTION:(?:REGISTER|LIVE):([a-zA-Z0-9_]+)\]/);
+    if (actionMatch && actionMatch[1] && this.racesById[actionMatch[1]]) {
+      const rName = this.racesById[actionMatch[1]].name;
+      return rName.includes('[') ? rName.split('[')[0].trim() : rName;
+    }
+
+    return 'СОБЫТИЕ ПЕЛОТОНА';
+  }
+
+  goHome() {
+    this.closeDrawers();
+    this.activeTag = 'all';
+    this.selectedPelotonId = 'all';
+    this.selectedSeasonYear = 'all';
+    this.searchQuery = '';
+    const inp = document.getElementById('hubSearchInput');
+    if (inp) inp.value = '';
+    document.querySelectorAll('.hub-tag').forEach((b, i) => b.classList.toggle('active', i === 0));
+    this.buildPinsStream();
+    this.renderGrid();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // =====================================================================
+  // 🔑 1. НАТИВНЫЙ ВХОД И ВЫХОД ПРЯМО НА БОРДЕ
+  // =====================================================================
+  openLoginModal() {
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+
+    const savedEmail = localStorage.getItem('vilka_saved_email') || '';
+
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">ВХОД В ЭКОСИСТЕМУ СОТКА</span>
+        <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+      </div>
+      <div style="font-size:12px; color:var(--text-muted);">Введите ваш Email и 4-значный ПИН-код</div>
+      <div>
+        <label class="hub-lbl">Email спортсмена</label>
+        <input type="email" id="hubLoginEmail" class="hub-input" placeholder="rider@sotka.one" value="${this.escapeHTML(savedEmail)}">
+      </div>
+      <div>
+        <label class="hub-lbl">4 цифры ПИН-кода</label>
+        <input type="password" id="hubLoginPin" class="hub-input" maxlength="4" inputmode="numeric" placeholder="••••" style="text-align:center; font-family:'Roboto Mono',monospace; font-size:20px; letter-spacing:8px;" onkeydown="if(event.key==='Enter') window.sotkaHub.submitPinLogin()">
+      </div>
+      <button type="button" class="ctrl-btn dark" id="hubBtnSubmitLogin" style="height:44px; font-size:10px; width:100%;" onclick="window.sotkaHub.submitPinLogin()">
+        <span>ВОЙТИ В АККАУНТ</span>
+        ${ICONS.arrowRight}
+      </button>
+    `;
+    modal.style.display = 'flex';
+    setTimeout(() => document.getElementById(savedEmail ? 'hubLoginPin' : 'hubLoginEmail')?.focus(), 50);
+  }
+
+  async submitPinLogin() {
+    const email = (document.getElementById('hubLoginEmail')?.value || '').trim().toLowerCase();
+    const pin = (document.getElementById('hubLoginPin')?.value || '').trim();
+    if (!email || !email.includes('@')) return alert('Введите корректный Email');
+    if (pin.length !== 4) return alert('ПИН-код состоит из 4 цифр');
+
+    const btn = document.getElementById('hubBtnSubmitLogin');
+    if (btn) { btn.innerText = 'АВТОРИЗАЦИЯ...'; btn.disabled = true; }
+
+    const securePassword = `VILKA_PIN_${pin}_SECURE`;
+    try {
+      await this.pb.collection('users').authWithPassword(email, securePassword);
+      localStorage.setItem('vilka_saved_email', email);
+
+      const isSotka = window.location.hostname.toLowerCase().endsWith('sotka.one');
+      document.cookie = this.pb.authStore.exportToCookie({
+        httpOnly: false,
+        secure: window.location.protocol === 'https:',
+        sameSite: 'Lax',
+        domain: isSotka ? 'sotka.one' : undefined,
+        path: '/'
+      }, 'pb_auth');
+
+      const uid = this.pb.authStore.model?.id;
+      const rider = await this.pb.collection('riders').getFirstListItem(`user_id="${uid}" || email="${email}"`, { requestKey: null });
+      if (rider) {
+        this.currentRider = rider;
+        this.isGuest = false;
+        localStorage.setItem('vilka_cached_rider', JSON.stringify(rider));
+        if (isSotka) {
+          document.cookie = `pb_rider=${encodeURIComponent(JSON.stringify(rider))}; path=/; domain=sotka.one; max-age=31536000; SameSite=Lax; Secure`;
+        }
+      }
+
+      document.getElementById('hubQrModal').style.display = 'none';
+      this.showToast(`Добро пожаловать, ${rider?.first_name || 'Атлет'}!`);
+      this.renderHeaderIdentity();
+      await this.loadEcosystem();
+    } catch (err) {
+      alert('Неверный Email или ПИН-код');
+      if (btn) { btn.innerText = 'ВОЙТИ В АККАУНТ'; btn.disabled = false; }
+    }
+  }
+
+  logoutEverywhere() {
+    this.pb.authStore.clear();
+    const host = window.location.hostname.toLowerCase();
+    ['sotka.one', '.sotka.one', host, ''].forEach(d => {
+      const domPart = d ? `; domain=${d}` : '';
+      ['pb_auth', 'pb_rider'].forEach(cName => {
+        document.cookie = `${cName}=; path=/${domPart}; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+        document.cookie = `${cName}=; path=/${domPart}; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      });
+    });
+
+    localStorage.removeItem('pocketbase_auth');
+    localStorage.removeItem('vilka_cached_rider');
+    localStorage.removeItem('vilka_core_data');
+    localStorage.removeItem('vilka_nav_state');
+    sessionStorage.clear();
+
+    this.currentRider = null;
+    this.isGuest = true;
+    this.walletBalance = 0;
+
+    const pop = document.getElementById('pinAccountPopover');
+    if (pop) pop.classList.remove('open');
+
+    this.renderHeaderIdentity();
+    this.buildPinsStream();
+    this.renderGrid();
+    this.showToast('Вы вышли из аккаунта');
+  }
+
+  toggleAccountPopover(event) {
+    if (event) event.stopPropagation();
+    const pop = document.getElementById('pinAccountPopover');
+    if (!pop) return;
+
+    if (pop.classList.contains('open')) {
+      pop.classList.remove('open');
+      return;
+    }
+
+    if (!this.isGuest && this.currentRider) {
+      const r = this.currentRider;
+      const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Атлет Сотки';
+      const email = r.email || this.pb.authStore.model?.email || 'sotka.one';
+      let avHtml = ((r.first_name?.[0] || 'A') + (r.last_name?.[0] || '')).toUpperCase();
+      if (r.avatar) {
+        const avFile = Array.isArray(r.avatar) ? r.avatar[0] : r.avatar;
+        avHtml = `<img src="https://vilka.sotka.one/api/files/riders/${r.id}/${avFile}" alt="AV">`;
+      }
+
+      pop.innerHTML = `
+        <div class="pop-section-label">Сейчас:</div>
+        <div class="pop-active-user-card" onclick="document.getElementById('pinAccountPopover').classList.remove('open'); window.sotkaHub.openMyIduckModal();" title="Открыть паспорт IDuck">
+          <div class="pop-user-av-lg">${avHtml}</div>
+          <div class="pop-user-info">
+            <div class="pop-user-name">${this.escapeHTML(fullName)}</div>
+            <div class="pop-user-role">Личный • Кластер ${r.base_cluster || 'B'} • ${this.walletBalance} W</div>
+            <div class="pop-user-email">${this.escapeHTML(email)}</div>
+          </div>
+        </div>
+
+        <button type="button" class="pop-menu-item" onclick="document.getElementById('pinAccountPopover').classList.remove('open'); window.sotkaHub.openMyIduckModal();">
+          <span>Мой QR-паспорт IDuck</span>
+          ${ICONS.qr}
+        </button>
+
+        <button type="button" class="pop-menu-item" onclick="document.getElementById('pinAccountPopover').classList.remove('open'); window.sotkaHub.openCreateEventModal();">
+          <span>+ Добавить своё событие</span>
+          ${ICONS.plus}
+        </button>
+
+        <button type="button" class="pop-menu-item" onclick="document.getElementById('pinAccountPopover').classList.remove('open'); window.sotkaHub.openWalletModal();">
+          <span>Кошелёк Драфт (${this.walletBalance} W)</span>
+          ${ICONS.bolt}
+        </button>
+
+        <button type="button" class="pop-menu-item" onclick="document.getElementById('pinAccountPopover').classList.remove('open'); window.sotkaHub.openJudgeRaceSelectorModal();">
+          <span>Судейский пульт Pero</span>
+          ${ICONS.shield}
+        </button>
+
+        <div class="pop-section-label" style="margin-top:6px;">Ваши аккаунты</div>
+        <button type="button" class="pop-menu-item" onclick="document.getElementById('pinAccountPopover').classList.remove('open'); window.sotkaHub.openLoginModal();">
+          <span>Сменить аккаунт</span>
+          ${ICONS.arrowRight}
+        </button>
+        <button type="button" class="pop-menu-item danger" onclick="window.sotkaHub.logoutEverywhere()">
+          <span>Выход</span>
+        </button>
+      `;
+    } else {
+      pop.innerHTML = `
+        <div class="pop-section-label">Сейчас:</div>
+        <div class="pop-active-user-card" onclick="document.getElementById('pinAccountPopover').classList.remove('open'); window.sotkaHub.openLoginModal();">
+          <div class="pop-user-av-lg">
+            <img src="${DUCK_SVG_URL}" style="width:26px; height:26px; object-fit:contain;" alt="Duck">
+          </div>
+          <div class="pop-user-info">
+            <div class="pop-user-name">Гость Сотки</div>
+            <div class="pop-user-role">Режим просмотра</div>
+            <div class="pop-user-email">Нажмите для входа по ПИН-коду</div>
+          </div>
+        </div>
+
+        <button type="button" class="pop-menu-item" onclick="document.getElementById('pinAccountPopover').classList.remove('open'); window.sotkaHub.openLoginModal();">
+          <span>Войти по ПИН-коду</span>
+          ${ICONS.arrowRight}
+        </button>
+      `;
+    }
+
+    pop.classList.add('open');
+  }
+
+  // =====================================================================
+  // 🏁 2. ПОЛНОЦЕННОЕ ОКНО ГОНКИ (1. БРИФИНГ -> 2. РАДИО -> 3. СТАРТ-ЛИСТ -> 4. РЕЗУЛЬТАТЫ)
+  // =====================================================================
+  formatBriefingHtml(rawText) {
+    if (!rawText) return '';
+    let safe = this.escapeHTML(rawText);
+    safe = safe
+      .replace(/&lt;b&gt;/gi, '<b>').replace(/&lt;\/b&gt;/gi, '</b>')
+      .replace(/&lt;strong&gt;/gi, '<b>').replace(/&lt;\/strong&gt;/gi, '</b>')
+      .replace(/&lt;i&gt;/gi, '<i>').replace(/&lt;\/i&gt;/gi, '</i>')
+      .replace(/&lt;u&gt;/gi, '<u>').replace(/&lt;\/u&gt;/gi, '</u>')
+      .replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+    safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    safe = safe.replace(/(https?:\/\/[^\s<]+)/gi, '<a href="$1" target="_blank" style="color:#d97706;text-decoration:underline;font-weight:700;">$1</a>');
+    return safe;
+  }
+
+  async openRaceHubModal(raceId, initialTab = 'briefing') {
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card wide';
+
+    const r = this.racesById[raceId] || this.races[0];
+    if (!r) return;
+
+    const baseName = r.name && r.name.includes('[') ? r.name.split('[')[0].trim() : r.name;
+    const dayStr = r.date ? String(r.date).slice(0, 10) : '';
+    const sisters = this.races.filter(sr => {
+      const srBase = sr.name && sr.name.includes('[') ? sr.name.split('[')[0].trim() : sr.name;
+      const srDay = sr.date ? String(sr.date).slice(0, 10) : '';
+      return srBase.toLowerCase() === baseName.toLowerCase() && srDay === dayStr;
+    });
+    if (sisters.length === 0) sisters.push(r);
+
+    const startTab = (initialTab === 'force_start') ? 'start' : 'briefing';
+
+    this._modalRaceContext = {
+      activeRace: r,
+      sisters,
+      baseName,
+      tab: startTab
+    };
+
+    modal.style.display = 'flex';
+    await this.renderRaceHubModalContent();
+  }
+
+  async renderRaceHubModalContent() {
+    const ctx = this._modalRaceContext;
+    if (!ctx) return;
+    const r = ctx.activeRace;
+    const box = document.getElementById('hubQrModalContent');
+
+    const myReg = this.myRostersMap[r.id];
+    const isFinished = r.status === 'Finished';
+    const isSoon = r.status === 'Скоро';
+
+    const chat = this.chatsByRaceId[r.id] || this.chatsByRaceId[ctx.sisters[0]?.id];
+    const radioDirectUrl = chat ? (chat.slug ? `https://vilka.sotka.one/#${chat.slug}` : `https://vilka.sotka.one/?chat=${chat.id}`) : `https://vilka.sotka.one/#${r.id}`;
+
+    let ctaBtnHtml = '';
+    if (!isFinished && !isSoon) {
+      if (myReg) {
+        ctaBtnHtml = `<button class="pin-cta-btn is-green" onclick="window.sotkaHub.handleRaceRegistration('${r.id}')">${ICONS.check} <span>ВЫ В СТАРТЕ</span></button>`;
+      } else {
+        ctaBtnHtml = `<button class="pin-cta-btn" onclick="window.sotkaHub.handleRaceRegistration('${r.id}')">${ICONS.bolt} <span>ЗАЯВИТЬСЯ</span></button>`;
+      }
+    }
+
+    const radioHeaderBtnHtml = chat ? `
+      <button type="button" class="pin-radio-pill-btn" onclick="window.sotkaHub.openEventRadio('${r.id}', event)" title="Перейти в Радио события">
+        ${ICONS.radio}
+        <span>РАДИО</span>
+      </button>
+    ` : '';
+
+    const sisterPillsHtml = ctx.sisters.length > 1 ? `
+      <div style="display:flex; gap:6px; flex-wrap:wrap; padding:10px 20px 0;">
+        ${ctx.sisters.map(sr => {
+          const tag = sr.name.includes('[') ? sr.name.split('[')[1].replace(']', '').trim() : `${sr.distance || 0} км`;
+          const isAct = sr.id === r.id;
+          const cnt = this.rosterCounts[sr.id] || 0;
+          return `<button type="button" class="ctrl-btn ${isAct ? 'dark' : ''}" style="flex:0 0 auto; height:30px; padding:0 12px;" onclick="window.sotkaHub.switchModalSisterRace('${sr.id}')">${this.escapeHTML(tag)} (${cnt})</button>`;
+        }).join('')}
+      </div>
+    ` : '';
+
+    let bodyHtml = `<div style="padding:30px; text-align:center; color:var(--text-muted);">Загрузка данных...</div>`;
+
+    // ВКЛАДКА 1: БРИФИНГ & GPX
+    if (ctx.tab === 'briefing') {
+      let pData = { text: '', buttons: [] };
+      if (chat?.panel_data) {
+        try { pData = typeof chat.panel_data === 'string' ? JSON.parse(chat.panel_data) : chat.panel_data; } catch(e) {}
+      }
+      let trackData = null;
+      try {
+        const cl = typeof r.cat_logic === 'string' ? JSON.parse(r.cat_logic) : r.cat_logic;
+        trackData = cl?.track_data;
+      } catch(e) {}
+
+      const dObj = new Date(r.date);
+      const timeStr = !isNaN(dObj.getTime()) ? dObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+      const dateShort = !isNaN(dObj.getTime()) ? dObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).toUpperCase() : '';
+      const formatMap = { mass: 'ГРУППА', itt: 'РАЗДЕЛКА ITT', ttt: 'КОМАНДНАЯ TTT', crit: 'КРИТЕРИУМ' };
+      const formatLabel = formatMap[r.format] || String(r.format || 'МАСС-СТАРТ').toUpperCase();
+      const totalReg = this.rosterCounts[r.id] || 0;
+      const priceStr = Number(r.price) > 0 ? `${r.price} W` : '0 W';
+
+      const linksHtml = (Array.isArray(pData.buttons) && pData.buttons.length > 0) ? `
+        <div class="vilka-links-grid">
+          ${pData.buttons.map(btn => `
+            <a href="${this.escapeHTML(btn.url)}" target="${btn.blank ? '_blank' : '_self'}" class="vilka-link-btn">
+              <span>${this.escapeHTML(btn.label || 'МАТЕРИАЛЫ ГОНКИ')}</span>
+              <span>↗</span>
+            </a>
+          `).join('')}
+        </div>
+      ` : '';
+
+      const elevationWidgetHtml = (trackData && Array.isArray(trackData.points) && trackData.points.length > 1) ? `
+        <div style="background:var(--bg-subtle); border:1px solid var(--border-light); padding:14px 16px; border-radius:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+            <span style="font-family:'Unbounded',sans-serif; font-size:10px; font-weight:900;">ВЫСОТНЫЙ ПРОФИЛЬ (+${trackData.summary?.gain || 0}М • MAX ${trackData.summary?.maxSlope || 0}%)</span>
+            <button type="button" class="ctrl-btn dark" style="flex:0 0 auto; height:30px; padding:0 12px;" onclick="window.sotkaHub.downloadGpxFromTrack('${r.id}')">СКАЧАТЬ .GPX</button>
+          </div>
+          ${this.buildCardElevationSvg(trackData.points, false)}
+        </div>
+      ` : '';
+
+      const briefingBodyText = pData.text
+        ? this.formatBriefingHtml(pData.text)
+        : '<span style="color:var(--text-muted);">Регламент и описание обновляются организатором.</span>';
+
+      bodyHtml = `
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="vilka-bento-telemetry">
+            <div class="vilka-tile-mini">
+              <span class="vilka-mini-lbl">СТАРТ</span>
+              <div class="vilka-mini-val">${timeStr}</div>
+              <div class="vilka-mini-sub">${dateShort}</div>
+            </div>
+            <div class="vilka-tile-mini">
+              <span class="vilka-mini-lbl">ДИСТАНЦИЯ</span>
+              <div class="vilka-mini-val accent">${r.distance || 0} КМ</div>
+              <div class="vilka-mini-sub">${this.escapeHTML(formatLabel)}</div>
+            </div>
+            <div class="vilka-tile-mini clickable" onclick="window.sotkaHub.switchModalTab('start')">
+              <span class="vilka-mini-lbl">ПЕЛОТОН</span>
+              <div class="vilka-mini-val">${totalReg} ЧЕЛ.</div>
+              <div class="vilka-mini-sub" style="color:#111; font-weight:800;">СТАРТ-ЛИСТ ➔</div>
+            </div>
+            <div class="vilka-tile-mini">
+              <span class="vilka-mini-lbl">ВЗНОС</span>
+              <div class="vilka-mini-val">${priceStr}</div>
+              <div class="vilka-mini-sub">ДОПУСК НА СТАРТ</div>
+            </div>
+          </div>
+          ${elevationWidgetHtml}
+          ${linksHtml}
+          <div class="vilka-briefing-card">
+            <div class="vilka-briefing-head">ПОЛОЖЕНИЕ И ПРОГРАММА СОРЕВНОВАНИЙ</div>
+            <div class="vilka-briefing-body">${briefingBodyText}</div>
+          </div>
+        </div>
+      `;
+    }
+    // ВКЛАДКА 2: РАДИО ГОНКИ
+    else if (ctx.tab === 'chat') {
+      const topRadioBanner = `
+        <div style="background:#111111; color:#ffffff; padding:14px 16px; border-radius:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+          <div>
+            <div style="font-family:'Unbounded',sans-serif; font-size:11px; font-weight:900; color:var(--sotka-gold);">ОФИЦИАЛЬНОЕ РАДИО ГОНКИ</div>
+            <div style="font-size:11.5px; opacity:0.8; margin-top:2px;">Полный канал связи с судьями, фото с трассы и голосования в VILKA RADIO</div>
+          </div>
+          <a href="${radioDirectUrl}" class="ctrl-btn primary" style="flex:0 0 auto; height:36px; padding:0 14px; text-decoration:none; font-size:9px;">
+            <span>ПЕРЕЙТИ В РАДИО ГОНКИ ➔</span>
+          </a>
+        </div>
+      `;
+
+      if (!chat) {
+        bodyHtml = topRadioBanner + `<div style="padding:30px; text-align:center; color:var(--text-muted);">Чат события еще не создан</div>`;
+      } else {
+        const msgsRes = await this.pb.collection('messages').getList(1, 30, {
+          filter: `chat_id="${chat.id}"`,
+          sort: '-created',
+          expand: 'sender_id',
+          requestKey: null
+        }).catch(() => ({ items: [] }));
+
+        const msgs = (msgsRes.items || []).reverse();
+        const msgsListHtml = msgs.length > 0 ? msgs.map(m => {
+          const s = m.expand?.sender_id || {};
+          const sName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Атлет';
+          const cleanTxt = (m.text || '').replace(/\[ACTION:[^\]]+\]/g, '').trim();
+          const msgTime = new Date(m.created).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+          return `
+            <div style="background:var(--bg-subtle); padding:10px 12px; border-radius:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:800; margin-bottom:4px;">
+                <span style="font-family:'Unbounded',sans-serif;">${this.escapeHTML(sName)}</span>
+                <span style="font-family:'Roboto Mono',monospace; color:var(--text-muted);">${msgTime}</span>
+              </div>
+              <div style="font-size:13px; line-height:1.4; white-space:pre-wrap;">${this.formatBriefingHtml(cleanTxt)}</div>
+            </div>
+          `;
+        }).join('') : '<div style="text-align:center; padding:20px; color:var(--text-muted);">Сообщений пока нет. Напишите первым!</div>';
+
+        bodyHtml = `
+          ${topRadioBanner}
+          <div style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; padding-right:4px;" id="hubModalChatStream">
+            ${msgsListHtml}
+          </div>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <input type="text" id="hubModalChatInput" class="hub-input" placeholder="Написать в эфир гонки..." onkeydown="if(event.key==='Enter') window.sotkaHub.sendModalChatMessage('${chat.id}')">
+            <button type="button" class="ctrl-btn dark" style="flex:0 0 auto; height:40px; padding:0 16px;" onclick="window.sotkaHub.sendModalChatMessage('${chat.id}')">ОТПРАВИТЬ</button>
+          </div>
+        `;
+      }
+    }
+    // ВКЛАДКА 3: СТАРТ-ЛИСТ
+    else if (ctx.tab === 'start') {
+      const rosters = await this.pb.collection('race_rosters').getFullList({
+        filter: `race_id="${r.id}" && status!="canceled"`,
+        expand: 'rider_id',
+        requestKey: null
+      }).catch(() => []);
+
+      if (rosters.length === 0) {
+        bodyHtml = `<div style="padding:40px 20px; text-align:center; color:var(--text-muted); font-family:'Unbounded',sans-serif; font-size:11px;">В СТАРТ-ЛИСТЕ ПОКА НЕТ УЧАСТНИКОВ</div>`;
+      } else {
+        bodyHtml = `
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${rosters.map((ro, idx) => {
+              const rider = ro.expand?.rider_id || this.ridersMap[ro.rider_id] || {};
+              const fullName = `${rider.first_name || ''} ${rider.last_name || ''}`.trim() || 'Участник';
+              const tIds = Array.isArray(rider.team_id) ? rider.team_id : (rider.team_id ? [rider.team_id] : []);
+              const tName = (tIds[0] && this.teamsMap[tIds[0]]?.name) ? this.teamsMap[tIds[0]].name : 'ONE TEAM';
+              const isPaid = Boolean(ro.is_paid);
+              const bibText = ro.bib ? `№${ro.bib}` : (idx + 1);
+              return `
+                <div class="vilka-rider-card">
+                  <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+                    <span class="vilka-bib-badge">${bibText}</span>
+                    <div style="min-width:0;">
+                      <div style="font-family:'Unbounded',sans-serif; font-weight:800; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHTML(fullName)}</div>
+                      <div style="font-size:11px; color:var(--text-muted); font-family:'Roboto Mono',monospace; margin-top:2px;">
+                        <b style="color:#111;">${this.escapeHTML(ro.final_cluster || rider.base_cluster || 'АБСОЛЮТ')}</b> • ${this.escapeHTML(tName)}
+                      </div>
+                    </div>
+                  </div>
+                  <div style="text-align:right; font-family:'Roboto Mono',monospace; font-size:11px; font-weight:800; flex-shrink:0;">
+                    <div>${ro.planned_start || '--:--'}</div>
+                    <span style="font-size:9px; padding:2px 6px; border-radius:5px; background:${isPaid ? 'rgba(16,185,129,0.14)' : 'rgba(0,0,0,0.06)'}; color:${isPaid ? 'var(--sotka-green)' : 'var(--text-muted)'};">${isPaid ? 'ОПЛ ✓' : 'РЕГ'}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+    }
+    // ВКЛАДКА 4: РЕЗУЛЬТАТЫ
+    else if (ctx.tab === 'results') {
+      let lb = [];
+      try { lb = typeof r.live_board === 'string' ? JSON.parse(r.live_board) : (r.live_board || []); } catch(e) {}
+      if (!Array.isArray(lb) || lb.length === 0) {
+        bodyHtml = `<div style="padding:40px 20px; text-align:center; color:var(--text-muted); font-family:'Unbounded',sans-serif; font-size:11px;">ФИНИШНЫЙ ПРОТОКОЛ ФОРМИРУЕТСЯ</div>`;
+      } else {
+        bodyHtml = `
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${lb.map((item, idx) => {
+              const rank = idx + 1;
+              const topClass = rank <= 3 ? `top-${rank}` : '';
+              const speedHtml = item.speed ? `<div style="font-size:10px; color:#d97706; font-weight:800;">${parseFloat(item.speed).toFixed(1)} км/ч</div>` : '';
+              const teamSuffix = item.team ? ` • ${this.escapeHTML(item.team)}` : '';
+              return `
+                <div class="vilka-rider-card">
+                  <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                    <span class="vilka-rank-badge ${topClass}">${rank}</span>
+                    <span class="vilka-bib-badge">№${this.escapeHTML(item.bib || '—')}</span>
+                    <div style="min-width:0;">
+                      <div style="font-family:'Unbounded',sans-serif; font-weight:800; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHTML(item.name || 'BIB ' + item.bib)}</div>
+                      <div style="font-size:11px; color:var(--text-muted); font-family:'Roboto Mono',monospace; margin-top:2px;">
+                        <b style="color:#111;">${this.escapeHTML(item.category || '')}</b>${teamSuffix}
+                      </div>
+                    </div>
+                  </div>
+                  <div style="text-align:right; font-family:'Roboto Mono',monospace; flex-shrink:0;">
+                    <div style="font-size:13px; font-weight:900;">${this.escapeHTML(item.timeStr || '—')}</div>
+                    ${speedHtml}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+    }
+
+    const fullDateStr = new Date(r.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    box.innerHTML = `
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; gap:10px; background:#fff; flex-wrap:wrap;">
+        <div style="min-width:0; flex:1;">
+          <div style="font-family:'Unbounded',sans-serif; font-size:14px; font-weight:900; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHTML(ctx.baseName)}</div>
+          <div style="font-family:'Roboto Mono',monospace; font-size:10px; color:var(--text-muted); margin-top:2px;">${fullDateStr} • ${r.distance || 0} КМ</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+          ${radioHeaderBtnHtml}
+          ${ctaBtnHtml}
+          <button type="button" class="pin-icon-round" style="width:32px; height:32px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+        </div>
+      </div>
+
+      ${sisterPillsHtml}
+
+      <div style="display:flex; gap:4px; padding:10px 20px; background:var(--bg-subtle); border-bottom:1px solid var(--border-light); margin-top:8px; overflow-x:auto;">
+        <button type="button" class="race-hub-tab ${ctx.tab === 'briefing' ? 'active' : ''}" onclick="window.sotkaHub.switchModalTab('briefing')">БРИФИНГ & GPX</button>
+        <button type="button" class="race-hub-tab ${ctx.tab === 'chat' ? 'active' : ''}" onclick="window.sotkaHub.switchModalTab('chat')">РАДИО ГОНКИ</button>
+        <button type="button" class="race-hub-tab ${ctx.tab === 'start' ? 'active' : ''}" onclick="window.sotkaHub.switchModalTab('start')">СТАРТ-ЛИСТ (${this.rosterCounts[r.id] || 0})</button>
+        <button type="button" class="race-hub-tab ${ctx.tab === 'results' ? 'active' : ''}" onclick="window.sotkaHub.switchModalTab('results')">РЕЗУЛЬТАТЫ</button>
+      </div>
+
+      <div style="padding:16px 20px; overflow-y:auto; max-height:64vh;">
+        ${bodyHtml}
+      </div>
+    `;
+  }
+
+  switchModalSisterRace(raceId) {
+    const target = this.racesById[raceId];
+    if (target && this._modalRaceContext) {
+      this._modalRaceContext.activeRace = target;
+      this.renderRaceHubModalContent();
+    }
+  }
+
+  switchModalTab(tabName) {
+    if (this._modalRaceContext) {
+      this._modalRaceContext.tab = tabName;
+      this.renderRaceHubModalContent();
+    }
+  }
+
+  async sendModalChatMessage(chatId) {
+    if (this.isGuest || !this.currentRider) return this.openLoginModal();
+    const inp = document.getElementById('hubModalChatInput');
+    const txt = (inp?.value || '').trim();
+    if (!txt) return;
+    inp.value = '';
+    try {
+      await this.pb.collection('messages').create({
+        chat_id: chatId,
+        sender_id: this.currentRider.id,
+        text: txt
+      }, { requestKey: null });
+      await this.renderRaceHubModalContent();
+    } catch (e) {
+      alert('Ошибка отправки сообщения: ' + e.message);
+    }
+  }
+
+  downloadGpxFromTrack(raceId) {
+    const r = this.racesById[raceId];
+    if (!r) return;
+    let pts = [];
+    try {
+      const cl = typeof r.cat_logic === 'string' ? JSON.parse(r.cat_logic) : r.cat_logic;
+      pts = cl?.track_data?.points || [];
+    } catch(e) {}
+    if (!pts.length) return alert('GPX точки не найдены');
+
+    let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="SOTKA.ONE">\n  <trk><name>${this.escapeHTML(r.name)}</name><trkseg>\n`;
+    pts.forEach(p => { gpx += `    <trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele || 0}</ele></trkpt>\n`; });
+    gpx += `  </trkseg></trk>\n</gpx>`;
+
+    const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(r.name || 'track').replace(/\s+/g, '_')}.gpx`;
+    a.click();
+  }
+
+  // =====================================================================
+  // ⚡ 3. ПРЯМАЯ ЗАЯВКА НА ГОНКУ И ВЫБОР ВЕЛОСИПЕДА / ДИСТАНЦИИ НА БОРДЕ
+  // =====================================================================
+  async handleRaceRegistration(raceId, chosenGear = null, forceDirect = false) {
+    if (this.isGuest || !this.currentRider) {
+      this.openLoginModal();
+      return;
+    }
+
+    const r = this.racesById[raceId];
+    if (!r) return;
+
+    if (r.status === 'Finished') {
+      return this.openRaceHubModal(raceId, 'results');
+    }
+    if (r.status === 'Скоро') {
+      return this.openRaceHubModal(raceId, 'briefing');
+    }
+
+    const existingReg = this.myRostersMap[raceId];
+    if (existingReg) {
+      return this.openManageMyRegModal(r, existingReg);
+    }
+
+    const baseName = r.name && r.name.includes('[') ? r.name.split('[')[0].trim() : r.name;
+    const dayStr = r.date ? String(r.date).slice(0, 10) : '';
+    const sisters = this.races.filter(sr => {
+      const srBase = sr.name && sr.name.includes('[') ? sr.name.split('[')[0].trim() : sr.name;
+      const srDay = sr.date ? String(sr.date).slice(0, 10) : '';
+      return srBase.toLowerCase() === baseName.toLowerCase() && srDay === dayStr;
+    });
+
+    let cl = {};
+    try { cl = typeof r.cat_logic === 'string' ? JSON.parse(r.cat_logic) : (r.cat_logic || {}); } catch(e) {}
+    const gears = (cl.use_gear && Array.isArray(cl.active_gears)) ? cl.active_gears : [];
+
+    if (!forceDirect && (sisters.length > 1 || gears.length > 1)) {
+      return this.openDistanceGearSelectorModal(sisters.length ? sisters : [r]);
+    }
+
+    const rusG = (this.currentRider.gender === 'F' || this.currentRider.gender === 'Ж') ? 'Ж' : 'М';
+    const gearLabels = { ROAD: 'ШОССЕ', TT: 'TT', GRAVEL: 'ГРЭВЕЛ', GRVL: 'ГРЭВЕЛ', CX: 'ЦИКЛОКРОСС', MTB: 'МТБ', FIX: 'ФИКС' };
+    const gearKey = chosenGear || gears[0] || '';
+    const gearTitle = gearLabels[gearKey] || gearKey;
+    const finalCat = gearTitle ? `[${rusG}] ${gearTitle} • АБСОЛЮТ` : `[${rusG}] АБСОЛЮТ`;
+
+    const isTT = r.format === 'itt' || r.format === 'ttt' || r.format === 'relay';
+    let autoStart = '';
+    if (!isTT && r.date) {
+      const d = new Date(r.date);
+      if (!isNaN(d.getTime())) {
+        autoStart = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:00`;
+      }
+    }
+
+    try {
+      const created = await this.pb.collection('race_rosters').create({
+        race_id: r.id,
+        rider_id: this.currentRider.id,
+        status: 'registered',
+        is_paid: false,
+        planned_start: autoStart,
+        final_cluster: finalCat
+      }, { requestKey: null });
+
+      this.myRostersMap[r.id] = created;
+      this.rosterCounts[r.id] = (this.rosterCounts[r.id] || 0) + 1;
+      this.showToast(`Вы заявлены: ${r.name}`);
+      this.buildPinsStream();
+      this.renderGrid();
+      await this.openRaceHubModal(r.id, 'force_start');
+    } catch (err) {
+      alert('Ошибка заявки: ' + err.message);
+    }
+  }
+
+  openDistanceGearSelectorModal(sisters) {
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+
+    const gearLabels = { ROAD: 'ШОССЕ', TT: 'TT', GRAVEL: 'ГРЭВЕЛ', GRVL: 'ГРЭВЕЛ', CX: 'ЦИКЛОКРОСС', MTB: 'МТБ', FIX: 'ФИКС' };
+
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">ВЫБЕРИТЕ ДИСТАНЦИЮ И ЗАЧЁТ</span>
+        <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${sisters.map(sr => {
+          let cl = {};
+          try { cl = typeof sr.cat_logic === 'string' ? JSON.parse(sr.cat_logic) : (sr.cat_logic || {}); } catch(e) {}
+          const gears = (cl.use_gear && Array.isArray(cl.active_gears) && cl.active_gears.length > 0) ? cl.active_gears : [''];
+          const dTitle = sr.name.includes('[') ? sr.name.split('[')[1].replace(']', '').trim() : sr.name;
+
+          return `
+            <div style="background:var(--bg-subtle); padding:12px; border-radius:14px; display:flex; flex-direction:column; gap:8px;">
+              <div style="display:flex; justify-content:space-between; font-family:'Unbounded',sans-serif; font-size:11.5px; font-weight:900;">
+                <span>${this.escapeHTML(dTitle)}</span>
+                <span style="color:#d97706;">${sr.distance || 0} км</span>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${gears.map(g => `
+                  <button type="button" class="ctrl-btn dark" style="height:34px;" onclick="window.sotkaHub.handleRaceRegistration('${sr.id}', '${g}', true)">
+                    <span>${this.escapeHTML(gearLabels[g] || g || 'ЗАЯВИТЬСЯ')}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    modal.style.display = 'flex';
+  }
+
+  openManageMyRegModal(race, reg) {
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+    const price = Number(race.price || 0);
+
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">УПРАВЛЕНИЕ ЗАЯВКОЙ</span>
+        <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+      </div>
+      <div style="background:var(--bg-subtle); padding:14px; border-radius:14px;">
+        <div style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">${this.escapeHTML(race.name)}</div>
+        <div style="font-family:'Roboto Mono',monospace; font-size:11px; color:var(--text-muted); margin-top:4px;">
+          Категория: ${this.escapeHTML(reg.final_cluster || 'Абсолют')} • BIB: ${reg.bib || 'на старте'}
+        </div>
+      </div>
+      ${(!reg.is_paid && price > 0) ? `
+        <button type="button" class="ctrl-btn primary" style="height:44px; font-size:10px; width:100%;" onclick="window.sotkaHub.payRaceFee('${race.id}', '${reg.id}', ${price})">
+          ${ICONS.bolt} <span>ОПЛАТИТЬ ВЗНОС (${price} W)</span>
+        </button>
+      ` : ''}
+      <button type="button" class="ctrl-btn" style="height:44px; width:100%;" onclick="window.sotkaHub.openRaceHubModal('${race.id}', 'force_start')">
+        <span>ОТКРЫТЬ СТАРТ-ЛИСТ ГОНКИ</span>
+      </button>
+      <button type="button" class="ctrl-btn" style="height:44px; width:100%; color:var(--pin-red); border-color:rgba(230,0,35,0.3);" onclick="window.sotkaHub.revokeMyReg('${race.id}', '${reg.id}')">
+        <span>ОТОЗВАТЬ ЗАЯВКУ</span>
+      </button>
+    `;
+    modal.style.display = 'flex';
+  }
+
+  async payRaceFee(raceId, rosterId, price) {
+    if (!confirm(`Списать ${price} Ватт за участие?`)) return;
+    try {
+      const res = await this.pb.send('/api/draft/pay', {
+        method: 'POST',
+        body: { amount: price, purpose: `[RACE_FEE] Взнос за старт`, race_id: raceId, roster_id: rosterId }
+      });
+      if (res?.success) {
+        await this.pb.collection('race_rosters').update(rosterId, { is_paid: true }, { requestKey: null });
+        this.showToast('Участие оплачено!');
+        await this.loadEcosystem();
+        document.getElementById('hubQrModal').style.display = 'none';
+      }
+    } catch (e) {
+      if (confirm('Недостаточно Ватт на балансе. Пополнить счёт через Т-Банк?')) {
+        this.promptTopup();
+      }
+    }
+  }
+
+  async revokeMyReg(raceId, rosterId) {
+    if (!confirm('Отозвать вашу заявку из старт-листа?')) return;
+    try {
+      await this.pb.collection('race_rosters').delete(rosterId, { requestKey: null });
+      delete this.myRostersMap[raceId];
+      this.rosterCounts[raceId] = Math.max(0, (this.rosterCounts[raceId] || 1) - 1);
+      document.getElementById('hubQrModal').style.display = 'none';
+      this.showToast('Заявка отозвана');
+      this.buildPinsStream();
+      this.renderGrid();
+    } catch (e) {
+      alert('Ошибка отмены: ' + e.message);
+    }
+  }
+
+  // =====================================================================
+  // 🛠 4. НАТИВНЫЕ ИНСТРУМЕНТЫ МЕНЮ «+ СОЗДАТЬ В ЭКОСИСТЕМЕ»
+  // =====================================================================
+  openCreateEventModal() {
+    if (this.isGuest || !this.currentRider) return this.openLoginModal();
+    this.closeDrawers();
+    this.pendingGpxTrack = null;
+
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">+ СОЗДАТЬ СТАРТ ИЛИ ТРЕНИРОВКУ</span>
+        <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+      </div>
+
+      <div>
+        <label class="hub-lbl">Название события *</label>
+        <input type="text" id="ceName" class="hub-input" placeholder="Напр.: Выборг-Тур / Кофе-райд">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label class="hub-lbl">Дата *</label>
+          <input type="date" id="ceDate" class="hub-input" value="${today}">
+        </div>
+        <div>
+          <label class="hub-lbl">Время старта *</label>
+          <input type="time" id="ceTime" class="hub-input" value="11:00">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label class="hub-lbl">Покрытие</label>
+          <select id="ceSurface" class="hub-input">
+            <option value="road">Шоссе</option>
+            <option value="offroad">Грунт</option>
+            <option value="track">Трек</option>
+            <option value="indoor">Индор</option>
+          </select>
+        </div>
+        <div>
+          <label class="hub-lbl">Формат</label>
+          <select id="ceFormat" class="hub-input">
+            <option value="mass">Группа / Масс-старт</option>
+            <option value="itt">Разделка (ITT)</option>
+            <option value="ttt">Командная (TTT)</option>
+            <option value="crit">Критериум</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label class="hub-lbl">Дистанция (км)</label>
+          <input type="number" id="ceDist" class="hub-input" placeholder="50" step="0.1">
+        </div>
+        <div>
+          <label class="hub-lbl">Статус</label>
+          <select id="ceStatus" class="hub-input">
+            <option value="Registration">Открыта регистрация</option>
+            <option value="Скоро">Анонс (Скоро)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-subtle); padding:10px 12px; border-radius:12px;">
+        <label class="hub-lbl">3D Трек маршрута (.GPX)</label>
+        <input type="file" accept=".gpx" style="font-size:12px; width:100%;" onchange="window.sotkaHub.handleCreateGpxFile(this)">
+        <div id="ceGpxStatus" style="font-family:'Roboto Mono',monospace; font-size:10px; color:#d97706; margin-top:4px;"></div>
+      </div>
+
+      <button type="button" class="ctrl-btn primary" id="btnSubmitNewEvent" style="height:44px; font-size:10px; width:100%;" onclick="window.sotkaHub.submitCreatedEvent()">
+        <span>ОПУБЛИКОВАТЬ В КАЛЕНДАРЬ</span>
+        ${ICONS.arrowRight}
+      </button>
+    `;
+    modal.style.display = 'flex';
+  }
+
+  async handleCreateGpxFile(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const xml = new DOMParser().parseFromString(text, 'application/xml');
+      let pts = Array.from(xml.querySelectorAll('trkpt'));
+      if (!pts.length) pts = Array.from(xml.querySelectorAll('rtept'));
+      if (!pts.length) throw new Error('Точки трека не найдены');
+
+      let totalKm = 0, gain = 0, loss = 0, maxSlope = 0;
+      const raw = [];
+      let lastEle = null;
+      const distFn = (la1, lo1, la2, lo2) => {
+        const R = 6371, dLa = (la2-la1)*Math.PI/180, dLo = (lo2-lo1)*Math.PI/180;
+        const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+        return 2 * R * Math.asin(Math.sqrt(a));
+      };
+
+      pts.forEach((pt) => {
+        const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
+        const ele = parseFloat(pt.querySelector('ele')?.textContent || 0);
+        if (isNaN(lat) || isNaN(lon)) return;
+        let slope = 0;
+        if (raw.length > 0) {
+          const prev = raw[raw.length - 1];
+          const segKm = distFn(prev.lat, prev.lon, lat, lon);
+          totalKm += segKm;
+          if (lastEle === null) lastEle = prev.ele;
+          if (Math.abs(ele - lastEle) >= 1.2) {
+            if (ele > lastEle) gain += (ele - lastEle);
+            else loss += (lastEle - ele);
+            lastEle = ele;
+          }
+          if (segKm * 1000 > 12) {
+            slope = ((ele - prev.ele) / (segKm * 1000)) * 100;
+            if (Math.abs(slope) <= 40) maxSlope = Math.max(maxSlope, slope);
+          }
+        }
+        raw.push({ lat, lon, ele, dist: parseFloat(totalKm.toFixed(2)), slope: parseFloat(slope.toFixed(1)) });
+      });
+
+      const step = Math.max(1, Math.floor(raw.length / 300));
+      this.pendingGpxTrack = {
+        summary: { distance: parseFloat(totalKm.toFixed(2)), gain: Math.round(gain), loss: Math.round(loss), maxSlope: parseFloat(maxSlope.toFixed(1)) },
+        points: raw.filter((_, idx) => idx % step === 0 || idx === raw.length - 1)
+      };
+
+      const distInp = document.getElementById('ceDist');
+      if (distInp && !distInp.value) distInp.value = this.pendingGpxTrack.summary.distance;
+      const st = document.getElementById('ceGpxStatus');
+      if (st) st.innerText = `✓ GPX: ${this.pendingGpxTrack.summary.distance} км • Набор +${this.pendingGpxTrack.summary.gain} м • Уклон ${this.pendingGpxTrack.summary.maxSlope}%`;
+    } catch (e) {
+      alert('Ошибка чтения GPX: ' + e.message);
+    }
+  }
+
+  async submitCreatedEvent() {
+    const name = (document.getElementById('ceName')?.value || '').trim();
+    const date = document.getElementById('ceDate')?.value;
+    const time = document.getElementById('ceTime')?.value || '11:00';
+    const surface = document.getElementById('ceSurface')?.value || 'road';
+    const format = document.getElementById('ceFormat')?.value || 'mass';
+    const distance = parseFloat(document.getElementById('ceDist')?.value) || 0;
+    const status = document.getElementById('ceStatus')?.value || 'Registration';
+
+    if (!name || !date) return alert('Укажите название и дату старта');
+
+    const btn = document.getElementById('btnSubmitNewEvent');
+    if (btn) { btn.innerText = 'ПУБЛИКАЦИЯ...'; btn.disabled = true; }
+
+    try {
+      const isoDate = new Date(`${date}T${time}:00`).toISOString();
+      const catLogic = JSON.stringify({
+        has_absolute: true,
+        track_data: this.pendingGpxTrack || null
+      });
+
+      const newRace = await this.pb.collection('races').create({
+        name,
+        date: isoDate,
+        surface,
+        format,
+        distance,
+        laps: 1,
+        status,
+        level: 'personal',
+        is_public: true,
+        creator_id: this.pb.authStore.model?.id || this.currentRider.id,
+        cat_logic: catLogic
+      }, { requestKey: null });
+
+      await this.pb.collection('chats').create({
+        type: 'global',
+        name: `${name.toUpperCase()}`,
+        race_id: newRace.id,
+        participants: [this.currentRider.id]
+      }, { requestKey: null });
+
+      document.getElementById('hubQrModal').style.display = 'none';
+      this.showToast(`Событие «${name}» создано!`);
+      await this.loadEcosystem();
+    } catch (e) {
+      alert('Ошибка сохранения: ' + e.message);
+      if (btn) { btn.innerText = 'ОПУБЛИКОВАТЬ В КАЛЕНДАРЬ'; btn.disabled = false; }
+    }
+  }
+
+  openStoryPosterModal() {
+    if (this.isGuest || !this.currentRider) return this.openLoginModal();
+    this.closeDrawers();
+
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+
+    const upcomingList = this.races.slice(0, 25);
+
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">СТОРИС-ПОСТЕР «Я В ДЕЛЕ»</span>
+        <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+      </div>
+      <div>
+        <label class="hub-lbl">1. Выберите старт</label>
+        <select id="spRaceSelect" class="hub-input">
+          ${upcomingList.map(r => `<option value="${r.id}">${this.escapeHTML(r.name)} (${r.distance || 0} км)</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="hub-lbl">2. Выберите ваше фото для фона</label>
+        <input type="file" id="spPhotoInput" accept="image/*" class="hub-input" style="padding:7px;" onchange="window.sotkaHub.renderStoryPosterCanvas()">
+      </div>
+      <div id="spCanvasPreviewWrap" style="display:none; flex-direction:column; align-items:center; gap:10px;">
+        <canvas id="spPosterCanvas" width="1080" height="1920" style="width:100%; max-width:260px; border-radius:14px; box-shadow:var(--shadow-sm);"></canvas>
+        <button type="button" class="ctrl-btn primary" style="height:44px; width:100%; font-size:10px;" onclick="window.sotkaHub.downloadStoryPoster()">СКАЧАТЬ ГОТОВЫЙ ПОСТЕР</button>
+      </div>
+    `;
+    modal.style.display = 'flex';
+  }
+
+  async renderStoryPosterCanvas() {
+    const raceId = document.getElementById('spRaceSelect')?.value;
+    const file = document.getElementById('spPhotoInput')?.files?.[0];
+    const race = this.racesById[raceId];
+    if (!file || !race) return;
+
+    const wrap = document.getElementById('spCanvasPreviewWrap');
+    if (wrap) wrap.style.display = 'flex';
+
+    const imgUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.getElementById('spPosterCanvas');
+      const ctx = canvas.getContext('2d');
+      const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+      const x = (canvas.width / 2) - (img.width / 2) * scale;
+      const y = (canvas.height / 2) - (img.height / 2) * scale;
+      ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+      const grad = ctx.createLinearGradient(0, canvas.height * 0.35, 0, canvas.height);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.92)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#FFC107';
+      ctx.font = '900 38px "Unbounded", sans-serif';
+      const dateStr = new Date(race.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+      ctx.fillText(`${dateStr} • ${race.distance || 0} КМ`, 80, canvas.height - 420);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 72px "Unbounded", sans-serif';
+      const cleanName = (race.name.includes('[') ? race.name.split('[')[0].trim() : race.name).toUpperCase();
+      ctx.fillText(cleanName.slice(0, 22), 80, canvas.height - 320);
+
+      ctx.fillStyle = '#FFC107';
+      ctx.font = '900 64px "Unbounded", sans-serif';
+      ctx.fillText('Я В ДЕЛЕ • SOTKA.ONE', 80, canvas.height - 180);
+    };
+    img.src = imgUrl;
+  }
+
+  downloadStoryPoster() {
+    const canvas = document.getElementById('spPosterCanvas');
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/jpeg', 0.92);
+    a.download = `sotka_story_${Date.now()}.jpg`;
+    a.click();
+  }
+
+  openCreateRadarModal() {
+    if (this.isGuest || !this.currentRider) return this.openLoginModal();
+    this.closeDrawers();
+
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">СИГНАЛ РАДАРА (GPS)</span>
+        <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+      </div>
+      <div>
+        <label class="hub-lbl">Тип сигнала</label>
+        <select id="rdType" class="hub-input">
+          <option value="ride">Сбор на покатушку / Кофе-райд</option>
+          <option value="sos">Нужна техпомощь на трассе (SOS)</option>
+        </select>
+      </div>
+      <div>
+        <label class="hub-lbl">Сообщение для пелотона *</label>
+        <input type="text" id="rdMsg" class="hub-input" placeholder="Напр.: Старт от Приморского в 19:00, темп 33 км/ч">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label class="hub-lbl">Широта (Lat)</label>
+          <input type="text" id="rdLat" class="hub-input" placeholder="Определение...">
+        </div>
+        <div>
+          <label class="hub-lbl">Долгота (Lon)</label>
+          <input type="text" id="rdLon" class="hub-input" placeholder="Определение...">
+        </div>
+      </div>
+      <button type="button" class="ctrl-btn primary" id="btnLaunchRadar" style="height:44px; font-size:10px; width:100%;" onclick="window.sotkaHub.submitRadarSignal()">
+        ${ICONS.bolt} <span>ЗАПУСТИТЬ РАДАР</span>
+      </button>
+    `;
+    modal.style.display = 'flex';
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const la = document.getElementById('rdLat'), lo = document.getElementById('rdLon');
+        if (la) la.value = pos.coords.latitude.toFixed(6);
+        if (lo) lo.value = pos.coords.longitude.toFixed(6);
+      }, () => {
+        const la = document.getElementById('rdLat'), lo = document.getElementById('rdLon');
+        if (la) la.value = '59.934280';
+        if (lo) lo.value = '30.335099';
+      });
+    }
+  }
+
+  async submitRadarSignal() {
+    const type = document.getElementById('rdType')?.value || 'ride';
+    const msg = (document.getElementById('rdMsg')?.value || '').trim();
+    const lat = parseFloat(document.getElementById('rdLat')?.value);
+    const lon = parseFloat(document.getElementById('rdLon')?.value);
+    if (!msg || isNaN(lat) || isNaN(lon)) return alert('Заполните сообщение и координаты');
+
+    const btn = document.getElementById('btnLaunchRadar');
+    if (btn) { btn.innerText = 'ОТПРАВКА...'; btn.disabled = true; }
+
+    try {
+      const yandexMapUrl = `https://yandex.ru/maps/?pt=${lon},${lat}&z=16&l=map`;
+      const panelData = {
+        text: `Сигнал от: ${this.currentRider.first_name} ${this.currentRider.last_name}\nКоординаты: ${lat}, ${lon}`,
+        buttons: [{ label: 'ПОКАЗАТЬ НА КАРТЕ', url: yandexMapUrl, blank: true }],
+        expiresAt: new Date(Date.now() + 6 * 3600 * 1000).toISOString()
+      };
+
+      const newChat = await this.pb.collection('chats').create({
+        name: msg,
+        type: 'radar',
+        participants: [this.currentRider.id],
+        panel_data: JSON.stringify(panelData)
+      }, { requestKey: null });
+
+      await this.pb.send('/api/push', {
+        method: 'POST',
+        body: {
+          title: type === 'sos' ? 'СИГНАЛ SOS В ПЕЛОТОНЕ' : 'СБОР НА ПОКАТУШКУ',
+          message: `${this.currentRider.first_name} ${this.currentRider.last_name}: ${msg}`,
+          targetUserIds: [],
+          url: `https://vilka.sotka.one/?chat=${newChat.id}`
+        }
+      }).catch(() => {});
+
+      document.getElementById('hubQrModal').style.display = 'none';
+      this.showToast('Сигнал Радара отправлен пелотону!');
+      await this.loadEcosystem();
+    } catch (e) {
+      alert('Ошибка запуска радара: ' + e.message);
+      if (btn) { btn.innerText = 'ЗАПУСТИТЬ РАДАР'; btn.disabled = false; }
+    }
+  }
+
+  openJudgeRaceSelectorModal() {
+    this.closeDrawers();
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+
+    const list = this.races.slice(0, 20);
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">МОБИЛЬНЫЙ ПУЛЬТ СУДЬИ PERO</span>
+        <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+      </div>
+      <div>
+        <label class="hub-lbl">Выберите гонку для хронометража</label>
+        <select id="judgeRaceSelect" class="hub-input" onchange="window.sotkaHub.updateJudgeQrPreview(this.value)">
+          ${list.map(r => `<option value="${r.id}">${this.escapeHTML(r.name)} (${new Date(r.date).toLocaleDateString('ru-RU')})</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex; justify-content:center; padding:10px 0;">
+        <canvas id="hubJudgeQrCanvas" width="200" height="200" style="border-radius:12px; border:1px solid var(--border-light);"></canvas>
+      </div>
+      <button type="button" class="ctrl-btn primary" style="height:44px; font-size:10px; width:100%;" onclick="const id=document.getElementById('judgeRaceSelect').value; window.open('https://pero.sotka.one/?race_id='+id, '_blank')">
+        ${ICONS.clock} <span>ОТКРЫТЬ СЕКУНДОМЕР PERO</span>
+      </button>
+    `;
+    modal.style.display = 'flex';
+    if (list[0]) setTimeout(() => this.updateJudgeQrPreview(list[0].id), 40);
+  }
+
+  updateJudgeQrPreview(raceId) {
+    const canvas = document.getElementById('hubJudgeQrCanvas');
+    if (canvas && typeof QRCode !== 'undefined') {
+      QRCode.toCanvas(canvas, `https://pero.sotka.one/?race_id=${raceId}`, { width: 200, margin: 1 });
+    }
+  }
+
+  // =====================================================================
+  // ⚡ 5. КОШЕЛЁК ВАТТ, ПОПОЛНЕНИЕ Т-БАНК И ПЕРЕВОДЫ ПРЯМО НА БОРДЕ
+  // =====================================================================
+  async openWalletModal() {
+    if (this.isGuest || !this.currentRider) return this.openLoginModal();
+    this.closeDrawers();
+
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-family:'Unbounded',sans-serif; font-size:13px; font-weight:900;">КОШЕЛЁК ДРАФТ (ВАТТЫ)</span>
+        <button type="button" class="pin-icon-round" style="width:28px; height:28px;" onclick="document.getElementById('hubQrModal').style.display='none'">✕</button>
+      </div>
+      <div style="background:#111111; color:#ffffff; padding:20px; border-radius:16px; text-align:center;">
+        <div style="font-family:'Roboto Mono',monospace; font-size:10px; color:var(--sotka-gold); font-weight:800;">ДОСТУПНЫЙ БАЛАНС АТЛЕТА</div>
+        <div style="font-family:'Roboto Mono',monospace; font-size:38px; font-weight:900; margin:6px 0;">${this.walletBalance} <span style="font-size:18px; color:var(--sotka-gold);">W</span></div>
+        <button type="button" class="ctrl-btn primary" style="height:42px; width:100%; font-size:10px; margin-top:8px;" onclick="window.sotkaHub.promptTopup()">
+          ${ICONS.bolt} <span>+ ПОПОЛНИТЬ ЧЕРЕЗ Т-БАНК</span>
+        </button>
+      </div>
+      <div id="hubWalletTxList" style="display:flex; flex-direction:column; gap:6px; max-height:240px; overflow-y:auto;">
+        <div style="text-align:center; padding:16px; color:var(--text-muted); font-size:12px;">Загрузка истории операций...</div>
+      </div>
+    `;
+    modal.style.display = 'flex';
+
+    try {
+      const uid = this.pb.authStore.model?.id;
+      const txRes = await this.pb.collection('draft_transactions').getList(1, 15, {
+        filter: `sender_id="${uid}" || receiver_id="${uid}"`,
+        sort: '-created',
+        requestKey: null
+      });
+      const txBox = document.getElementById('hubWalletTxList');
+      if (!txBox) return;
+      if (!txRes.items.length) {
+        txBox.innerHTML = `<div style="text-align:center; padding:16px; color:var(--text-muted); font-size:12px;">Операций пока нет</div>`;
+      } else {
+        txBox.innerHTML = txRes.items.map(tx => {
+          const isOut = tx.sender_id === uid;
+          return `
+            <div class="roster-row">
+              <div style="min-width:0;">
+                <div style="font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHTML(tx.description || tx.type || 'Операция')}</div>
+                <div style="font-size:10px; color:var(--text-muted); font-family:'Roboto Mono',monospace;">${new Date(tx.created).toLocaleDateString('ru-RU')}</div>
+              </div>
+              <div style="font-family:'Roboto Mono',monospace; font-weight:900; font-size:13px; color:${isOut ? '#111' : 'var(--sotka-green)'};">
+                ${isOut ? '−' : '+'}${tx.amount} W
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    } catch(e) {}
+  }
+
+  async promptTopup() {
+    if (this.isGuest || !this.currentRider) return this.openLoginModal();
+    const amount = prompt('Введите сумму пополнения (руб / Ватт):', '1000');
+    if (!amount || isNaN(parseInt(amount, 10))) return;
+    const email = this.pb.authStore.model?.email || this.currentRider.email || 'info@sotka.one';
+    try {
+      const res = await this.pb.send('/api/draft/topup', {
+        method: 'POST',
+        body: { amount: parseInt(amount, 10), email }
+      });
+      if (res?.paymentUrl) {
+        window.location.href = res.paymentUrl;
+      } else {
+        alert('Платёжный шлюз не вернул ссылку.');
+      }
+    } catch (e) {
+      alert('Ошибка создания платежа: ' + (e.data?.error || e.message));
+    }
+  }
+
+  // =====================================================================
+  // 💬 6. ШТОРКИ БОКОВОГО МЕНЮ С ЖИВЫМ ЧАТОМ И ВЫЗОВОМ ФУНКЦИЙ
+  // =====================================================================
+  toggleDrawer(drawerKey) {
+    const drawer = document.getElementById('railDrawer');
+    const backdrop = document.getElementById('railDrawerBackdrop');
+    const titleEl = document.getElementById('railDrawerTitle');
+    const bodyEl = document.getElementById('railDrawerBody');
+
+    if (this.activeDrawer === drawerKey && drawer.classList.contains('open')) {
+      this.closeDrawers();
+      return;
+    }
+
+    this.activeDrawer = drawerKey;
+    document.querySelectorAll('.rail-btn').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.getElementById(`railBtn-${drawerKey}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    if (drawerKey === 'create') {
+      titleEl.innerText = 'СОЗДАТЬ В ЭКОСИСТЕМЕ';
+      bodyEl.innerHTML = `
+        <div class="drawer-card" onclick="window.sotkaHub.openCreateEventModal()">
+          <div style="font-family:'Unbounded',sans-serif; font-size:12px; font-weight:800;">+ Гонка или Тренировка</div>
+          <div style="font-size:12px; color:var(--text-muted);">Открыть конструктор стартов, загрузить GPX и настроить категории</div>
+        </div>
+        <div class="drawer-card" onclick="window.sotkaHub.openStoryPosterModal()">
+          <div style="font-family:'Unbounded',sans-serif; font-size:12px; font-weight:800;">Сторис-постер «Я в деле»</div>
+          <div style="font-size:12px; color:var(--text-muted);">Сгенерировать карточку участника или финишера для соцсетей</div>
+        </div>
+        <div class="drawer-card" onclick="window.sotkaHub.openCreateRadarModal()">
+          <div style="font-family:'Unbounded',sans-serif; font-size:12px; font-weight:800;">Сигнал Радара (GPS)</div>
+          <div style="font-size:12px; color:var(--text-muted);">Отправить точку сбора на покатушку или сигнал технической помощи</div>
+        </div>
+        <div class="drawer-card" onclick="window.sotkaHub.openJudgeRaceSelectorModal()">
+          <div style="font-family:'Unbounded',sans-serif; font-size:12px; font-weight:800;">Мобильный пульт судьи Pero</div>
+          <div style="font-size:12px; color:var(--text-muted);">Автономная отсечка старта и финиша со смартфона</div>
+        </div>
+      `;
+    } else if (drawerKey === 'notif') {
+      titleEl.innerText = 'УВЕДОМЛЕНИЯ И АНОНСЫ';
+      const badge = document.getElementById('railNotifBadge');
+      if (badge) badge.style.display = 'none';
+
+      if (this.announcements.length === 0) {
+        bodyEl.innerHTML = `<div style="text-align:center; padding:40px 10px; color:var(--text-muted); font-size:13px;">Новых анонсов пока нет</div>`;
+      } else {
+        bodyEl.innerHTML = this.announcements.slice(0, 20).map(m => {
+          const sourceTitle = this.resolveAnnouncementSource(m);
+          const cleanTxt = (m.text || 'Анонс события')
+            .replace(/\[ACTION:[^\]]+\]/g, '')
+            .replace(/[⚡📢🏁🚀🏆📡]/g, '')
+            .trim();
+
+          const dateStr = new Date(m.created).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+          let imgHtml = '';
+          if (m.file) {
+            const fName = Array.isArray(m.file) ? m.file[0] : m.file;
+            if (typeof fName === 'string' && /\.(jpe?g|png|webp|gif|svg)$/i.test(fName)) {
+              const col = m.collectionId || 'messages';
+              imgHtml = `<img class="notif-thumb" src="https://vilka.sotka.one/api/files/${col}/${m.id}/${fName}" alt="Афиша" loading="lazy">`;
+            }
+          }
+
+          const chat = this.chatsById[m.chat_id];
+          const raceId = chat?.race_id;
+          const clickCall = raceId
+            ? `window.sotkaHub.closeDrawers(); window.sotkaHub.openRaceHubModal('${raceId}', 'briefing');`
+            : `window.sotkaHub.openLiveChatInDrawer('${m.chat_id}', '${this.escapeHTML(sourceTitle)}');`;
+
+          return `
+            <div class="drawer-card" onclick="${clickCall}">
+              <div class="notif-card-head">
+                <div class="notif-source-badge">
+                  ${ICONS.flag}
+                  <span>${this.escapeHTML(sourceTitle)}</span>
+                </div>
+                <span class="notif-date">${dateStr}</span>
+              </div>
+              ${cleanTxt ? `<div style="font-size:12.5px; font-weight:600; color:#111; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${this.escapeHTML(cleanTxt)}</div>` : ''}
+              ${imgHtml}
+            </div>
+          `;
+        }).join('');
+      }
+    } else if (drawerKey === 'messages') {
+      titleEl.innerText = 'РАЦИЯ И ЭФИРЫ';
+      const activeChats = this.chatsList.slice(0, 20);
+      bodyEl.innerHTML = activeChats.map(c => {
+        const cleanTitle = (c.name || 'Канал').replace(/\s+\d{1,2}\s+[а-яА-Я]+\s+\d{1,2}:\d{2}$/i, '').trim();
+        return `
+          <div class="drawer-card" onclick="window.sotkaHub.openLiveChatInDrawer('${c.id}', '${this.escapeHTML(cleanTitle)}')">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span style="font-family:'Unbounded',sans-serif; font-size:11px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHTML(cleanTitle)}</span>
+              <span style="font-family:'Roboto Mono',monospace; font-size:9px; color:var(--text-muted); flex-shrink:0;">${c.type === 'team_channel' ? 'КЛУБ' : 'ЭФИР'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else if (drawerKey === 'settings') {
+      titleEl.innerText = 'НАСТРОЙКИ БОРДА';
+      const isRight = document.body.classList.contains('rail-right');
+
+      // Собираем только те годы, которые реально есть в базе гонок
+      const yearsSet = new Set();
+      this.races.forEach(r => {
+        if (r.date) {
+          const y = new Date(r.date).getFullYear();
+          if (!isNaN(y) && y > 2000) yearsSet.add(y);
+        }
+      });
+      const availableYears = Array.from(yearsSet).sort((a, b) => a - b);
+
+      bodyEl.innerHTML = `
+        <div style="font-family:'Unbounded',sans-serif; font-size:10px; font-weight:800; color:var(--text-muted); margin-top:4px;">РАСПОЛОЖЕНИЕ МЕНЮ НА ЭКРАНЕ</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button type="button" class="ctrl-btn ${!isRight ? 'dark' : ''}" style="height:38px;" onclick="window.sotkaHub.setRailPosition('left')">Слева (По умолч.)</button>
+          <button type="button" class="ctrl-btn ${isRight ? 'dark' : ''}" style="height:38px;" onclick="window.sotkaHub.setRailPosition('right')">Справа</button>
+        </div>
+
+        <div style="font-family:'Unbounded',sans-serif; font-size:10px; font-weight:800; color:var(--text-muted); margin-top:12px;">СЕЗОН КАЛЕНДАРЯ</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <button type="button" class="ctrl-btn ${this.selectedSeasonYear === 'all' ? 'dark' : ''}" style="height:36px; flex:1; min-width:70px;" onclick="window.sotkaHub.setSeasonYear('all')">Все</button>
+          ${availableYears.map(yr => `
+            <button type="button" class="ctrl-btn ${Number(this.selectedSeasonYear) === yr ? 'dark' : ''}" style="height:36px; flex:1; min-width:70px;" onclick="window.sotkaHub.setSeasonYear(${yr})">${yr}</button>
+          `).join('')}
+        </div>
+
+        <div style="font-family:'Unbounded',sans-serif; font-size:10px; font-weight:800; color:var(--text-muted); margin-top:12px;">ФИЛЬТР ПО ПЕЛОТОНУ / ЛИГЕ</div>
+        <div class="drawer-card" onclick="window.sotkaHub.setPelotonFilter('all')" style="${this.selectedPelotonId === 'all' ? 'border:1.5px solid #111;' : ''}">
+          <div style="font-weight:700; font-size:13px;">Все пелотоны (Глобально)</div>
+        </div>
+        ${this.pelotonsList.map(p => `
+          <div class="drawer-card" onclick="window.sotkaHub.setPelotonFilter('${p.id}')" style="${this.selectedPelotonId === p.id ? 'border:1.5px solid #111;' : ''}">
+            <div style="font-weight:700; font-size:13px;">${this.escapeHTML(p.name)}</div>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    backdrop.classList.add('open');
+    drawer.classList.add('open');
+  }
+
+  async openLiveChatInDrawer(chatId, chatTitle) {
+    const titleEl = document.getElementById('railDrawerTitle');
+    const bodyEl = document.getElementById('railDrawerBody');
+    if (!bodyEl) return;
+
+    titleEl.innerText = chatTitle || 'ЭФИР';
+    bodyEl.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">Загрузка сообщений...</div>`;
+
+    const chat = this.chatsById[chatId];
+    const raceId = chat?.race_id;
+
+    const msgsRes = await this.pb.collection('messages').getList(1, 30, {
+      filter: `chat_id="${chatId}"`,
+      sort: '-created',
+      expand: 'sender_id',
+      requestKey: null
+    }).catch(() => ({ items: [] }));
+
+    const msgs = (msgsRes.items || []).reverse();
+
+    bodyEl.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:6px; margin-bottom:6px;">
+        <button type="button" class="ctrl-btn" style="flex:0 0 auto;" onclick="window.sotkaHub.toggleDrawer('messages')">← К списку</button>
+        ${raceId ? `<button type="button" class="ctrl-btn primary" onclick="window.sotkaHub.closeDrawers(); window.sotkaHub.openRaceHubModal('${raceId}', 'briefing')">КАРТОЧКА ГОНКИ</button>` : ''}
+      </div>
+      <div style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;" id="drawerChatStream">
+        ${msgs.map(m => {
+          const s = m.expand?.sender_id || {};
+          const sName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Атлет';
+          const cleanTxt = (m.text || '').replace(/\[ACTION:[^\]]+\]/g, '').trim();
+          return `
+            <div style="background:var(--bg-subtle); padding:10px 12px; border-radius:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:800; margin-bottom:3px;">
+                <span style="font-family:'Unbounded',sans-serif;">${this.escapeHTML(sName)}</span>
+                <span style="font-family:'Roboto Mono',monospace; color:var(--text-muted);">${new Date(m.created).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})}</span>
+              </div>
+              <div style="font-size:12.5px; line-height:1.4; white-space:pre-wrap;">${this.escapeHTML(cleanTxt)}</div>
+            </div>
+          `;
+        }).join('') || '<div style="text-align:center; padding:30px; color:var(--text-muted);">Сообщений пока нет</div>'}
+      </div>
+      <div style="display:flex; gap:6px; padding-top:8px; border-top:1px solid var(--border-light);">
+        <input type="text" id="drawerChatInput" class="hub-input" placeholder="Сообщение..." onkeydown="if(event.key==='Enter') window.sotkaHub.sendDrawerChatMessage('${chatId}', '${this.escapeHTML(chatTitle)}')">
+        <button type="button" class="ctrl-btn dark" style="flex:0 0 auto; height:40px; padding:0 12px;" onclick="window.sotkaHub.sendDrawerChatMessage('${chatId}', '${this.escapeHTML(chatTitle)}')">→</button>
+      </div>
+    `;
+    const stream = document.getElementById('drawerChatStream');
+    if (stream) stream.scrollTop = stream.scrollHeight;
+  }
+
+  async sendDrawerChatMessage(chatId, chatTitle) {
+    if (this.isGuest || !this.currentRider) return this.openLoginModal();
+    const inp = document.getElementById('drawerChatInput');
+    const txt = (inp?.value || '').trim();
+    if (!txt) return;
+    inp.value = '';
+    try {
+      await this.pb.collection('messages').create({
+        chat_id: chatId,
+        sender_id: this.currentRider.id,
+        text: txt
+      }, { requestKey: null });
+      await this.openLiveChatInDrawer(chatId, chatTitle);
+    } catch (e) {
+      alert('Ошибка отправки: ' + e.message);
+    }
+  }
+
+  closeDrawers() {
+    this.activeDrawer = null;
+    document.getElementById('railDrawer')?.classList.remove('open');
+    document.getElementById('railDrawerBackdrop')?.classList.remove('open');
+    document.querySelectorAll('.rail-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('railBtn-home')?.classList.add('active');
+  }
+
+  setRailPosition(pos) {
+    if (pos === 'right') {
+      document.body.classList.add('rail-right');
+      localStorage.setItem('sotka_rail_pos', 'right');
+    } else {
+      document.body.classList.remove('rail-right');
+      localStorage.setItem('sotka_rail_pos', 'left');
+    }
+    this.toggleDrawer('settings');
+  }
+
+  setSeasonYear(yr) {
+    this.selectedSeasonYear = yr;
+    this.buildPinsStream();
+    this.renderGrid();
+    this.closeDrawers();
+  }
+
+  setPelotonFilter(pId) {
+    this.selectedPelotonId = pId;
+    this.buildPinsStream();
+    this.renderGrid();
+    this.closeDrawers();
+  }
+
+  isRacePinned(raceId) {
+    if (!this.currentRider) return false;
+    let pinned = this.currentRider.pinned_chats || [];
+    if (typeof pinned === 'string') {
+      try { pinned = JSON.parse(pinned); } catch(e) { pinned = []; }
+    }
+    if (!Array.isArray(pinned)) return false;
+
+    const chat = this.chatsByRaceId[raceId];
+    const chatId = chat?.id;
+    return pinned.includes(raceId) || Boolean(chatId && pinned.includes(chatId));
+  }
+
+  async togglePinRace(raceId, event) {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
+    if (this.isGuest || !this.currentRider || this.currentRider.id === 'anonymous_guest') {
+      this.openLoginModal();
+      return;
+    }
+
+    let pinned = this.currentRider.pinned_chats || [];
+    if (typeof pinned === 'string') {
+      try { pinned = JSON.parse(pinned); } catch(e) { pinned = []; }
+    }
+    if (!Array.isArray(pinned)) pinned = [];
+
+    const chat = this.chatsByRaceId[raceId];
+    const chatId = chat?.id;
+
+    const pinObj = this.allPins.find(p => p.race?.id === raceId);
+    const sisterIds = (pinObj?.sisters || []).map(s => s.id);
+    const targetIds = new Set([raceId, chatId, ...sisterIds].filter(Boolean));
+
+    const alreadyPinned = Array.from(targetIds).some(id => pinned.includes(id));
+
+    if (alreadyPinned) {
+      pinned = pinned.filter(id => !targetIds.has(id));
+      this.showToast('Убрано из ваших пинов');
+    } else {
+      targetIds.forEach(id => {
+        if (!pinned.includes(id)) pinned.push(id);
+      });
+      this.showToast('Добавлено в ваши пины');
+    }
+
+    this.currentRider.pinned_chats = pinned;
+
+    try {
+      localStorage.setItem('vilka_cached_rider', JSON.stringify(this.currentRider));
+      if (window.location.hostname.endsWith('sotka.one')) {
+        document.cookie = `pb_rider=${encodeURIComponent(JSON.stringify(this.currentRider))}; path=/; domain=sotka.one; max-age=31536000; SameSite=Lax; Secure`;
+      }
+    } catch(e) {}
+
+    this.buildPinsStream();
+    this.renderGrid();
+
+    try {
+      await this.pb.collection('riders').update(this.currentRider.id, { pinned_chats: pinned }, { requestKey: null });
+    } catch(err) {
+      console.error('Ошибка сохранения пина в БД:', err);
+    }
+  }
+
+  async initAuth() {
+    const authCookieMatch = document.cookie.match(/(?:^|;\s*)pb_auth=([^;]+)/);
+    const hasAuthCookie = Boolean(authCookieMatch && authCookieMatch[1] && authCookieMatch[1].trim() !== '');
+
+    if (!hasAuthCookie) {
+      this.pb.authStore.clear();
+      localStorage.removeItem('pocketbase_auth');
+      localStorage.removeItem('vilka_cached_rider');
+      this.currentRider = null;
+      this.isGuest = true;
+      this.renderHeaderIdentity();
+      return;
+    }
+
+    try {
+      this.pb.authStore.loadFromCookie(document.cookie, 'pb_auth');
+    } catch (e) {}
+
+    if (!this.pb.authStore.isValid || !this.pb.authStore.token) {
+      this.pb.authStore.clear();
+      localStorage.removeItem('pocketbase_auth');
+      localStorage.removeItem('vilka_cached_rider');
+      this.currentRider = null;
+      this.isGuest = true;
+      this.renderHeaderIdentity();
+      return;
+    }
+
+    try {
+      await this.pb.collection('users').authRefresh({ requestKey: null });
+      const authModel = this.pb.authStore.model || this.pb.authStore.record;
+      if (authModel) {
+        this.isGuest = false;
+        this.userRoles = Array.isArray(authModel.role) ? authModel.role : (authModel.role ? [authModel.role] : []);
+        const freshRider = await this.pb.collection('riders').getFirstListItem(
+          `user_id="${authModel.id}" || email="${authModel.email}"`,
+          { requestKey: null }
+        );
+        if (freshRider) {
+          this.currentRider = freshRider;
+          localStorage.setItem('vilka_cached_rider', JSON.stringify(freshRider));
+        }
+      }
+    } catch (err) {
+      this.pb.authStore.clear();
+      localStorage.removeItem('pocketbase_auth');
+      localStorage.removeItem('vilka_cached_rider');
+      this.currentRider = null;
+      this.isGuest = true;
+    }
+
+    this.renderHeaderIdentity();
+  }
+
+  renderHeaderIdentity() {
+    const avEl = document.getElementById('hubUserAv');
+    if (!avEl) return;
+
+    if (!this.isGuest && this.currentRider) {
+      if (this.currentRider.avatar) {
+        const avFile = Array.isArray(this.currentRider.avatar) ? this.currentRider.avatar[0] : this.currentRider.avatar;
+        avEl.innerHTML = `<img src="https://vilka.sotka.one/api/files/riders/${this.currentRider.id}/${avFile}" alt="AV">`;
+      } else {
+        avEl.innerText = ((this.currentRider.first_name?.[0] || 'A') + (this.currentRider.last_name?.[0] || '')).toUpperCase();
+      }
+    } else {
+      avEl.innerHTML = `<img src="${DUCK_SVG_URL}" style="width:20px; height:20px; object-fit:contain;" alt="Guest">`;
+    }
+  }
+
+  async loadEcosystem() {
+    try {
+      const [racesRes, rostersRes, teamsRes, postersRes, chatsRes, pelotonsRes] = await Promise.all([
+        this.pb.collection('races').getFullList({ sort: 'date', requestKey: null }).catch(() => []),
+        this.pb.collection('race_rosters').getFullList({ filter: 'status != "canceled"', fields: 'id,race_id,rider_id,bib,planned_start,is_paid,status,final_cluster', requestKey: null }).catch(() => []),
+        this.pb.collection('teams').getFullList({ sort: '-points', requestKey: null }).catch(() => []),
+        this.pb.collection('messages').getList(1, 50, { filter: 'is_announcement = true', sort: '-created', expand: 'chat_id', requestKey: null }).catch(() => ({ items: [] })),
+        this.pb.collection('chats').getFullList({ filter: 'type = "global" || type = "team_channel"', fields: 'id,collectionId,name,type,race_id,team_id,panel_image,slug,panel_data', sort: '-updated', requestKey: null }).catch(() => []),
+        this.pb.collection('pelotons').getFullList({ filter: 'is_private = false', sort: 'name', requestKey: null }).catch(() => [])
+      ]);
+
+      this.races = racesRes || [];
+      this.racesById = {};
+      this.races.forEach(r => { this.racesById[r.id] = r; });
+
+      this.rosters = rostersRes || [];
+      this.pelotonsList = pelotonsRes || [];
+      this.chatsList = chatsRes || [];
+      this.announcements = postersRes.items || [];
+
+      const notifBadge = document.getElementById('railNotifBadge');
+      if (notifBadge && this.announcements.length > 0) {
+        notifBadge.innerText = Math.min(9, this.announcements.length);
+        notifBadge.style.display = 'flex';
+      }
+
+      (teamsRes || []).forEach(t => { this.teamsMap[t.id] = t; });
+
+      this.rosterCounts = {};
+      this.myRostersMap = {};
+      this.rosters.forEach(r => {
+        if (r.race_id) {
+          this.rosterCounts[r.race_id] = (this.rosterCounts[r.race_id] || 0) + 1;
+          if (this.currentRider && r.rider_id === this.currentRider.id) {
+            this.myRostersMap[r.race_id] = r;
+          }
+        }
+      });
+
+      this.chatsById = {};
+      this.chatsByRaceId = {};
+      (chatsRes || []).forEach(c => {
+        this.chatsById[c.id] = c;
+        if (c.race_id) this.chatsByRaceId[c.race_id] = c;
+      });
+
+      (postersRes.items || []).forEach(m => {
+        if (m.file && m.chat_id && !this.postersMap[m.chat_id]) {
+          this.postersMap[m.chat_id] = m;
+        }
+      });
+
+      if (!this.isGuest && this.pb.authStore.model?.id) {
+        try {
+          const wallet = await this.pb.collection('draft_wallets').getFirstListItem(`user_id="${this.pb.authStore.model.id}"`, { requestKey: null });
+          if (wallet?.balances) {
+            this.walletBalance = Object.values(wallet.balances).reduce((a, b) => a + Number(b || 0), 0);
+          }
+        } catch(e) {}
+      }
+
+      this.buildPinsStream();
+      this.renderGrid();
+    } catch (err) {
+      console.error("Ошибка синхронизации с PocketBase:", err);
+    }
+  }
+
+  buildCardElevationSvg(points, isPhotoOverlay = false) {
+    if (!Array.isArray(points) || points.length < 3) return '';
+
+    const eles = points.map(p => Number(p.ele) || 0);
+    const minE = Math.min(...eles);
+    const maxE = Math.max(...eles);
+    const span = Math.max(1, maxE - minE);
+    const w = 300, h = 42;
+
+    const coords = points.map((p, i) => {
+      const x = ((i / (points.length - 1)) * w).toFixed(1);
+      const y = (h - 4 - (((Number(p.ele) - minE) / span) * (h - 10))).toFixed(1);
+      return `${x},${y}`;
+    });
+
+    const polyline = `M${coords.join(' L')}`;
+    const area = `${polyline} L${w},${h} L0,${h} Z`;
+
+    const strokeColor = isPhotoOverlay ? '#ffc107' : '#111111';
+    const fillColor = isPhotoOverlay ? 'rgba(255, 193, 7, 0.28)' : 'rgba(0, 0, 0, 0.14)';
+
+    return `
+      <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:38px; display:block;" preserveAspectRatio="none">
+        <path d="${area}" fill="${fillColor}" />
+        <path d="${polyline}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    `;
+  }
+
+  buildPinsStream() {
+    const nowStartOfDay = new Date();
+    nowStartOfDay.setHours(0, 0, 0, 0);
+    const nowMs = nowStartOfDay.getTime();
+
+    const groupedEventsMap = new Map();
+    this.races.forEach(r => {
+      if (this.selectedPelotonId !== 'all') {
+        const pId = Array.isArray(r.peloton_id) ? r.peloton_id[0] : r.peloton_id;
+        if (pId !== this.selectedPelotonId) return;
+      }
+
+      if (this.selectedSeasonYear !== 'all' && r.date) {
+        const rYear = new Date(r.date).getFullYear();
+        if (rYear !== Number(this.selectedSeasonYear)) return;
+      }
+
+      const baseName = r.name && r.name.includes('[') ? r.name.split('[')[0].trim() : (r.name || 'Гонка').trim();
+      const dayStr = r.date ? String(r.date).slice(0, 10) : 'nodate';
+      const key = `${dayStr}_${baseName.toLowerCase()}`;
+
+      if (!groupedEventsMap.has(key)) {
+        groupedEventsMap.set(key, {
+          baseName,
+          dayStr,
+          dateMs: new Date(r.date || 0).getTime() || 0,
+          primaryRace: r,
+          sisters: [r]
+        });
+      } else {
+        groupedEventsMap.get(key).sisters.push(r);
+      }
+    });
+
+    const upcomingRacePins = [];
+    const myTicketPins = [];
+    const archiveRacePins = [];
+
+    const isImgFile = (name) => typeof name === 'string' && /\.(jpe?g|png|webp|gif|svg)$/i.test(name.trim());
+
+    groupedEventsMap.forEach((group) => {
+      const r = group.primaryRace;
+      const sisters = group.sisters;
+      sisters.sort((a, b) => (parseFloat(b.distance) || 0) - (parseFloat(a.distance) || 0));
+
+      const totalRiders = sisters.reduce((acc, sr) => acc + (this.rosterCounts[sr.id] || 0), 0);
+
+      let myReg = null;
+      let myRegRace = r;
+      for (const sr of sisters) {
+        if (this.myRostersMap[sr.id]) {
+          myReg = this.myRostersMap[sr.id];
+          myRegRace = sr;
+          break;
+        }
+      }
+
+      let trackData = null;
+      for (const sr of sisters) {
+        if (sr.cat_logic) {
+          try {
+            const cl = typeof sr.cat_logic === 'string' ? JSON.parse(sr.cat_logic) : sr.cat_logic;
+            if (cl?.track_data?.points?.length) {
+              trackData = cl.track_data;
+              break;
+            }
+          } catch(e) {}
+        }
+      }
+
+      let eventChat = null;
+      let posterUrl = null;
+      for (const sr of sisters) {
+        const chat = this.chatsByRaceId[sr.id];
+        if (chat && !eventChat) eventChat = chat;
+        if (chat?.panel_image && isImgFile(chat.panel_image) && !posterUrl) {
+          const col = chat.collectionId || 'chats';
+          posterUrl = `https://vilka.sotka.one/api/files/${col}/${chat.id}/${chat.panel_image}`;
+        }
+        const postMsg = (chat && this.postersMap[chat.id]) || this.postersMap[sr.id];
+        if (postMsg?.file && !posterUrl) {
+          const f = Array.isArray(postMsg.file) ? postMsg.file[0] : postMsg.file;
+          if (isImgFile(f)) {
+            const col = postMsg.collectionId || 'messages';
+            posterUrl = `https://vilka.sotka.one/api/files/${col}/${postMsg.id}/${f}`;
+          }
+        }
+      }
+
+      const isLive = sisters.some(s => s.status === 'LIVE');
+      const isFinished = sisters.every(s => s.status === 'Finished');
+      const hasOpenReg = !isFinished && sisters.some(s => s.status === 'Registration');
+      const isSoon = !isLive && !isFinished && !hasOpenReg;
+      const isUpcoming = isLive || (!isFinished && group.dateMs >= nowMs);
+      const isPinned = sisters.some(s => this.isRacePinned(s.id));
+      const surface = r.surface || 'road';
+
+      if (myReg && !isFinished) {
+        myTicketPins.push({
+          id: `my_ticket_${r.id}`,
+          tagGroups: ['my', 'upcoming'],
+          kind: 'my_start_ticket',
+          dateMs: group.dateMs,
+          race: myRegRace,
+          baseName: group.baseName,
+          reg: myReg,
+          totalRiders,
+          chat: eventChat
+        });
+      }
+
+      const tagList = [
+        surface === 'offroad' ? 'offroad' : 'road',
+        isUpcoming ? 'upcoming' : 'archive'
+      ];
+      if (trackData) tagList.push('gpx');
+      if (isPinned || myReg) tagList.push('my');
+
+      const racePinObj = {
+        id: `race_pin_${r.id}`,
+        tagGroups: tagList,
+        kind: posterUrl ? 'media_race' : 'yellow_poster_race',
+        dateMs: group.dateMs,
+        isUpcoming,
+        hasOpenReg,
+        isSoon,
+        isPinned,
+        race: r,
+        baseName: group.baseName,
+        sisters,
+        posterUrl,
+        trackData,
+        totalRiders,
+        myReg,
+        isLive,
+        isFinished,
+        chat: eventChat
+      };
+
+      if (isUpcoming) {
+        upcomingRacePins.push(racePinObj);
+      } else {
+        archiveRacePins.push(racePinObj);
+      }
+    });
+
+    upcomingRacePins.sort((a, b) => a.dateMs - b.dateMs);
+    archiveRacePins.sort((a, b) => b.dateMs - a.dateMs);
+
+    const finalStream = [];
+
+    if (!this.isGuest && this.currentRider) {
+      finalStream.push({
+        id: 'pin_personal_control',
+        tagGroups: ['my'],
+        kind: 'control_athlete',
+        rider: this.currentRider
+      });
+    } else {
+      finalStream.push({
+        id: 'pin_guest_welcome',
+        tagGroups: ['my'],
+        kind: 'control_guest'
+      });
+    }
+
+    finalStream.push(...myTicketPins);
+    finalStream.push(...upcomingRacePins);
+
+    const combatTeams = Object.values(this.teamsMap).filter(t => t.name && !t.name.toUpperCase().includes('ONE TEAM')).slice(0, 4);
+    if (combatTeams.length > 0) {
+      finalStream.push({
+        id: 'pin_clubs_leaderboard',
+        tagGroups: ['clubs'],
+        kind: 'data_clubs_top',
+        teams: combatTeams
+      });
+    }
+
+    const isJudgeOrAdmin = this.userRoles.some(rl => ['superadmin', 'admin', 'judge'].includes(rl));
+    if (isJudgeOrAdmin) {
+      const targetJudgeRace = upcomingRacePins[0]?.race || this.races[0];
+      finalStream.push({
+        id: 'pin_judge_control',
+        tagGroups: ['my'],
+        kind: 'control_judge',
+        race: targetJudgeRace
+      });
+    }
+
+    finalStream.push(...archiveRacePins);
+
+    this.allPins = finalStream;
+  }
+
+  // Жёлтая плашка без картинки: покрытие, дата и дистанция расположены прямо под названием
+  getYellowPosterInnerHtml(pin, surfaceLabel, dateFmt, ctaText, ctaClass, ctaIcon) {
+    const r = pin.race;
+    const titleLen = (pin.baseName || '').length;
+    const fontSize = titleLen > 24 ? '15px' : (titleLen > 15 ? '17px' : '20px');
+
+    const bottomActionLabel = pin.isFinished 
+      ? 'ПРОТОКОЛ' 
+      : (pin.isLive ? 'LIVE ТАБЛО' : (pin.hasOpenReg ? 'БРИФИНГ' : 'АНОНС'));
+
+    let gpxEmbeddedHtml = '';
+    if (pin.trackData?.points?.length) {
+      const sm = pin.trackData.summary || {};
+      const svgCurve = this.buildCardElevationSvg(pin.trackData.points, false);
+      gpxEmbeddedHtml = `
+        <div class="yp-gpx-box">
+          <div class="yp-gpx-stats">
+            <span style="display:inline-flex; align-items:center; gap:3px;">${ICONS.map} <span>3D GPX +${sm.gain || 0}М</span></span>
+            <span>MAX ${sm.maxSlope || 0}%</span>
+          </div>
+          ${svgCurve}
+        </div>
+      `;
+    }
+
+    const radioHoverBtn = pin.chat ? `
+      <button class="pin-radio-pill-btn" onclick="window.sotkaHub.openEventRadio('${r.id}', event)" title="Перейти в Радио события">
+        ${ICONS.radio}
+        <span>Радио</span>
+      </button>
+    ` : '';
+
+    return `
+      <div class="pin-hover-layer">
+        <div class="pin-hover-bottom-bar">
+          <button class="pin-cta-btn ${ctaClass}" onclick="event.stopPropagation(); window.sotkaHub.handleRaceRegistration('${r.id}')">
+            ${ctaIcon}
+            <span>${ctaText}</span>
+          </button>
+          <div style="display:flex; align-items:center; gap:5px;">
+            ${radioHoverBtn}
+            <button class="pin-icon-round ${pin.isPinned ? 'is-pinned' : ''}" onclick="window.sotkaHub.togglePinRace('${r.id}', event)" title="${pin.isPinned ? 'В моих пинах (убрать)' : 'Добавить в мои пины'}">
+              ${pin.isPinned ? ICONS.pinFilled : ICONS.pinOutline}
+            </button>
+            <button class="pin-icon-round" onclick="event.stopPropagation(); window.sotkaHub.shareRace('${r.id}')" title="Скопировать ссылку">
+              ${ICONS.share}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="yp-center-body">
+        <h3 class="yp-event-title" style="font-size:${fontSize};">${this.escapeHTML(pin.baseName)}</h3>
+        <div class="yp-under-title-pills">
+          <span class="yp-meta-pill">${ICONS.flag} <span>${surfaceLabel}</span></span>
+          <span class="yp-meta-pill is-date">${dateFmt}</span>
+          ${r.distance ? `<span class="yp-meta-pill">${r.distance} КМ</span>` : ''}
+        </div>
+      </div>
+
+      ${gpxEmbeddedHtml}
+
+      <div class="yp-bottom-bar">
+        <span style="display:inline-flex; align-items:center; gap:4px;">${ICONS.users} <span>${pin.totalRiders} УЧ.</span></span>
+        <span style="display:inline-flex; align-items:center; gap:3px;"><span>${bottomActionLabel}</span> ${ICONS.arrowRight}</span>
+      </div>
+    `;
+  }
+
+  upgradeBrokenImgToYellowPoster(imgEl, pinId) {
+    const pin = this.allPins.find(p => p.id === pinId);
+    const card = imgEl.closest('.pin-visual-card');
+    if (!card || !pin) return;
+
+    const r = pin.race;
+    const dObj = new Date(r.date);
+    const dateFmt = !isNaN(dObj.getTime()) ? dObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).toUpperCase() : 'СКОРО';
+    const surfaceLabel = { road: 'ШОССЕ', offroad: 'ГРУНТ', track: 'ТРЕК', indoor: 'ИНДОР' }[r.surface] || 'ВЕЛОГОНКА';
+
+    let ctaText = 'Заявиться';
+    let ctaClass = '';
+    let ctaIcon = ICONS.bolt;
+    if (pin.isFinished) { ctaText = 'Результаты'; ctaClass = 'is-dark'; ctaIcon = ICONS.flag; }
+    else if (pin.isLive) { ctaText = 'LIVE'; ctaClass = ''; ctaIcon = ICONS.bolt; }
+    else if (pin.myReg) { ctaText = 'В старте'; ctaClass = 'is-green'; ctaIcon = ICONS.check; }
+    else if (pin.isSoon) { ctaText = 'Анонс'; ctaClass = 'is-soon'; ctaIcon = ICONS.clock; }
+
+    card.classList.remove('is-media');
+    card.classList.add('pin-yellow-poster');
+    card.innerHTML = this.getYellowPosterInnerHtml(pin, surfaceLabel, dateFmt, ctaText, ctaClass, ctaIcon);
+  }
+
+  renderGrid() {
+    const grid = document.getElementById('hubMasonryGrid');
+    const mobileDeck = document.getElementById('hubMobileDeck');
+    if (!grid) return;
+
+    const isMobile = window.innerWidth <= 640;
+
+    const filtered = this.allPins.filter(p => {
+      const tags = p.tagGroups || [];
+      const matchTag = (this.activeTag === 'all') 
+        || tags.includes(this.activeTag)
+        || (this.activeTag === 'my' && (p.myReg || p.isPinned));
+
+      if (!matchTag) return false;
+      if (!this.searchQuery) return true;
+
+      const dump = JSON.stringify({
+        b: p.baseName,
+        n: p.race?.name,
+        s: p.race?.surface,
+        k: p.kind
+      }).toLowerCase();
+      return dump.includes(this.searchQuery);
+    });
+
+    if (filtered.length === 0) {
+      if (mobileDeck) mobileDeck.innerHTML = '';
+      grid.innerHTML = `<div style="width:100%; text-align:center; padding:60px 20px; color:var(--text-muted); font-family:'Unbounded'; font-size:12px;">В ЭТОЙ КАТЕГОРИИ ПОКА НЕТ ПИНОВ</div>`;
+      return;
+    }
+
+    let gridPins = filtered;
+    if (isMobile && mobileDeck) {
+      const controlPin = filtered.find(p => p.kind === 'control_athlete' || p.kind === 'control_guest');
+      if (controlPin && (this.activeTag === 'all' || this.activeTag === 'my')) {
+        mobileDeck.innerHTML = this.renderPinHTML(controlPin);
+        gridPins = filtered.filter(p => p.id !== controlPin.id);
+      } else {
+        mobileDeck.innerHTML = '';
+      }
+    } else if (mobileDeck) {
+      mobileDeck.innerHTML = '';
+    }
+
+    const colCount = this.getColumnsCount();
+    const colsHtml = Array.from({ length: colCount }, () => []);
+    const colHeights = Array.from({ length: colCount }, () => 0);
+
+    gridPins.forEach((pin) => {
+      let shortestColIdx = 0;
+      for (let i = 1; i < colCount; i++) {
+        if (colHeights[i] < colHeights[shortestColIdx]) {
+          shortestColIdx = i;
+        }
+      }
+
+      colsHtml[shortestColIdx].push(this.renderPinHTML(pin));
+      const estHeight = pin.kind === 'media_race' ? 320 : 250;
+      colHeights[shortestColIdx] += estHeight;
+    });
+
+    grid.innerHTML = colsHtml.map(colItems => `
+      <div class="hub-masonry-col">
+        ${colItems.join('')}
+      </div>
+    `).join('');
+  }
+
+  renderPinHTML(pin) {
+    if (pin.kind === 'control_athlete') {
+      const r = pin.rider;
+      const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+      const pinnedCount = Array.isArray(r.pinned_chats) ? r.pinned_chats.length : 0;
+      return `
+        <article class="pin-unit">
+          <div class="pin-visual-card pin-data-box surface-gold-soft" onclick="window.sotkaHub.openMyIduckModal()">
+            <div>
+              <div class="data-kicker">
+                <span>МОЙ ПУЛЬТ • КЛАСТЕР ${r.base_cluster || 'B'}</span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">${ICONS.bolt} <span>${this.walletBalance} W</span></span>
+              </div>
+              <h3 class="data-title" style="font-size:15px;">${this.escapeHTML(fullName)}</h3>
+              <div class="data-grid-mini">
+                <div class="data-cell">
+                  <div class="data-cell-lbl">ШОССЕ (${r.cluster_road || r.base_cluster || 'B'})</div>
+                  <div class="data-cell-val">${r.rating_road || r.rating || 0} pts</div>
+                </div>
+                <div class="data-cell">
+                  <div class="data-cell-lbl">ГРУНТ (${r.cluster_offroad || 'O'})</div>
+                  <div class="data-cell-val">${r.rating_offroad || 0} pts</div>
+                </div>
+                <div class="data-cell">
+                  <div class="data-cell-lbl">ТРЕК (${r.cluster_track || 'O'})</div>
+                  <div class="data-cell-val">${r.rating_track || 0} pts</div>
+                </div>
+                <div class="data-cell">
+                  <div class="data-cell-lbl">КОШЕЛЕК ДРАФТ</div>
+                  <div class="data-cell-val">${this.walletBalance} W</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ctrl-btn-row" onclick="event.stopPropagation()">
+              <button class="ctrl-btn dark" onclick="window.sotkaHub.openMyIduckModal()">
+                ${ICONS.qr}
+                <span>QR ПАСПОРТ</span>
+              </button>
+              <button class="ctrl-btn primary" onclick="window.sotkaHub.openCreateEventModal()">
+                ${ICONS.plus}
+                <span>ДОБАВИТЬ СВОЁ</span>
+              </button>
+            </div>
+          </div>
+          <div class="pin-caption">
+            <div class="pin-caption-meta"><span>Sotka IDuck Pass</span><span>В пинах: ${pinnedCount}</span></div>
+          </div>
+        </article>
+      `;
+    }
+
+    if (pin.kind === 'control_guest') {
+      return `
+        <article class="pin-unit">
+          <div class="pin-visual-card pin-data-box surface-gold-soft" onclick="window.sotkaHub.openLoginModal()">
+            <div>
+              <div class="data-kicker"><span>ЭКОСИСТЕМА СОТКА</span><span>IDUCK PASS</span></div>
+              <div class="data-big-metric">SOTKA</div>
+              <h3 class="data-title">Получи свой скоростной кластер и создавай старты</h3>
+            </div>
+            <div class="ctrl-btn-row" onclick="event.stopPropagation()">
+              <button class="ctrl-btn dark" onclick="window.sotkaHub.openLoginModal()">
+                <span>ВОЙТИ</span>
+                ${ICONS.arrowRight}
+              </button>
+              <button class="ctrl-btn primary" onclick="window.sotkaHub.openCreateEventModal()">
+                ${ICONS.plus}
+                <span>ДОБАВИТЬ СВОЁ</span>
+              </button>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    if (pin.kind === 'control_judge') {
+      const r = pin.race;
+      const rName = r ? (r.name.includes('[') ? r.name.split('[')[0].trim() : r.name) : 'Управление';
+      return `
+        <article class="pin-unit">
+          <div class="pin-visual-card pin-data-box surface-dark">
+            <div>
+              <div class="data-kicker" style="color:var(--sotka-gold);">
+                <span style="display:inline-flex; align-items:center; gap:5px;">${ICONS.shield} <span>СУДЕЙСКИЙ & ОРГ ПУЛЬТ</span></span>
+                <span>PERO PRO+</span>
+              </div>
+              <h3 class="data-title">${this.escapeHTML(rName)}</h3>
+              <div style="font-size:11px; opacity:0.75; margin-top:6px;">
+                Быстрый доступ к мобильному хронометражу, выдаче BIB и конструктору гонок.
+              </div>
+            </div>
+            <div class="ctrl-btn-row">
+              ${r ? `<button class="ctrl-btn primary" onclick="window.open('https://pero.sotka.one/?race_id=${r.id}', '_blank')">${ICONS.clock} <span>ПУЛЬТ PERO</span></button>` : ''}
+              ${r ? `<button class="ctrl-btn" onclick="window.sotkaHub.openJudgeQrModal('${r.id}', '${this.escapeHTML(rName)}')">${ICONS.qr} <span>QR СУДЬИ</span></button>` : ''}
+              <button class="ctrl-btn" onclick="window.sotkaHub.openCreateEventModal()"><span>+ ДОБАВИТЬ СВОЁ</span></button>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    if (pin.kind === 'my_start_ticket') {
+      const r = pin.race;
+      const reg = pin.reg;
+      const isPaid = Boolean(reg.is_paid) || !(Number(r.price) > 0);
+      return `
+        <article class="pin-unit">
+          <div class="pin-visual-card pin-data-box surface-white" onclick="window.sotkaHub.openRaceHubModal('${r.id}', 'briefing')">
+            <div>
+              <div class="data-kicker">
+                <span style="color:var(--sotka-green); display:inline-flex; align-items:center; gap:4px;">${ICONS.check} <span>ВЫ В СТАРТ-ЛИСТЕ</span></span>
+                <span>${isPaid ? 'ОПЛАЧЕНО' : 'ОЖИДАЕТ ОПЛАТЫ'}</span>
+              </div>
+              <div class="data-big-metric">${reg.bib ? `№${reg.bib}` : 'BIB —'}</div>
+              <h3 class="data-title">${this.escapeHTML(pin.baseName)}</h3>
+              <div class="data-grid-mini">
+                <div class="data-cell">
+                  <div class="data-cell-lbl">СТАРТ ВОЛНЫ</div>
+                  <div class="data-cell-val">${reg.planned_start || 'По расписанию'}</div>
+                </div>
+                <div class="data-cell">
+                  <div class="data-cell-lbl">КАТЕГОРИЯ</div>
+                  <div class="data-cell-val">${this.escapeHTML(reg.final_cluster || 'Абсолют')}</div>
+                </div>
+              </div>
+            </div>
+            <div class="data-footer">
+              <span style="display:inline-flex; align-items:center; gap:4px;">${ICONS.users} <span>${pin.totalRiders} УЧ.</span></span>
+              <div style="display:inline-flex; align-items:center; gap:8px;">
+                ${pin.chat ? `<span class="pin-caption-radio-chip" onclick="window.sotkaHub.openEventRadio('${r.id}', event)">${ICONS.radio} <span>РАДИО</span></span>` : ''}
+                <span style="color:var(--pin-red); display:inline-flex; align-items:center; gap:3px;"><span>БРИФИНГ</span> ${ICONS.arrowRight}</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    if (pin.kind === 'data_clubs_top') {
+      return `
+        <article class="pin-unit">
+          <div class="pin-visual-card pin-data-box surface-soft" onclick="window.sotkaHub.toggleDrawer('messages')">
+            <div>
+              <div class="data-kicker">
+                <span style="display:inline-flex; align-items:center; gap:4px;">${ICONS.trophy} <span>КОМАНДНЫЙ ЗАЧЕТ</span></span>
+                <span>ПЕЛОТОН</span>
+              </div>
+              <h3 class="data-title" style="margin-bottom:10px;">Лидеры Клубной Лиги</h3>
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                ${pin.teams.map((t, idx) => `
+                  <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:6px 9px; border-radius:8px; border:1px solid var(--border-light); font-size:11px; font-weight:700;">
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;">${idx + 1}.${this.escapeHTML(t.name)}</span>
+                    <span style="font-family:'Roboto Mono',monospace; color:#b45309;">${t.points || 0} pts</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <div class="data-footer">
+              <span>РАЦИЯ КОМАНД</span>
+              <span style="display:inline-flex; align-items:center; gap:3px;"><span>ОТКРЫТЬ ЭФИР</span> ${ICONS.arrowRight}</span>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    const r = pin.race;
+    const dObj = new Date(r.date);
+    const dateFmt = !isNaN(dObj.getTime()) ? dObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).toUpperCase() : 'СКОРО';
+    const surfaceLabel = { road: 'ШОССЕ', offroad: 'ГРУНТ', track: 'ТРЕК', indoor: 'ИНДОР' }[r.surface] || 'ВЕЛОГОНКА';
+
+    let ctaText = 'Заявиться';
+    let ctaClass = '';
+    let ctaIcon = ICONS.bolt;
+    let statusMetaLabel = 'Открыта регистрация';
+
+    if (pin.isFinished) {
+      ctaText = 'Результаты';
+      ctaClass = 'is-dark';
+      ctaIcon = ICONS.flag;
+      statusMetaLabel = 'Завершена';
+    } else if (pin.isLive) {
+      ctaText = 'LIVE';
+      ctaClass = '';
+      ctaIcon = ICONS.bolt;
+      statusMetaLabel = 'Идет гонка';
+    } else if (pin.myReg) {
+      ctaText = 'В старте';
+      ctaClass = 'is-green';
+      ctaIcon = ICONS.check;
+      statusMetaLabel = 'Вы заявлены';
+    } else if (pin.isSoon) {
+      ctaText = 'Анонс';
+      ctaClass = 'is-soon';
+      ctaIcon = ICONS.clock;
+      statusMetaLabel = 'Анонс старта';
+    }
+
+    const sisterChipsHtml = (pin.sisters && pin.sisters.length > 1) ? `
+      <div class="pin-sister-chips" onclick="event.stopPropagation()">
+        ${pin.sisters.map(sr => {
+          const tag = sr.name.includes('[') ? sr.name.split('[')[1].replace(']', '').trim() : `${sr.distance || 0} км`;
+          const cnt = this.rosterCounts[sr.id] || 0;
+          return `<span class="pin-sister-chip" onclick="window.sotkaHub.openRaceHubModal('${sr.id}', 'briefing')" title="Открыть дистанцию ${this.escapeHTML(tag)}">${this.escapeHTML(tag)} (${cnt})</span>`;
+        }).join('')}
+      </div>
+    ` : '';
+
+    const radioCaptionChipHtml = pin.chat ? `
+      <button type="button" class="pin-caption-radio-chip" onclick="window.sotkaHub.openEventRadio('${r.id}', event)" title="Перейти в Радио гонки">
+        ${ICONS.radio}
+        <span>Радио</span>
+      </button>
+    ` : '';
+
+    let photoGpxOverlayHtml = '';
+    if (pin.trackData?.points?.length) {
+      const sm = pin.trackData.summary || {};
+      const svgCurve = this.buildCardElevationSvg(pin.trackData.points, true);
+      photoGpxOverlayHtml = `
+        <div class="pin-gpx-overlay">
+          <div class="pin-gpx-overlay-stats">
+            <span style="display:inline-flex; align-items:center; gap:4px;">${ICONS.map} <span>3D GPX • +${sm.gain || 0}М</span></span>
+            <span>${sm.distance || r.distance || 0} КМ • MAX ${sm.maxSlope || 0}%</span>
+          </div>
+          ${svgCurve}
+        </div>
+      `;
+    }
+
+    if (pin.kind === 'media_race' && pin.posterUrl) {
+      const radioHoverBtn = pin.chat ? `
+        <button class="pin-radio-pill-btn" onclick="window.sotkaHub.openEventRadio('${r.id}', event)" title="Перейти в Радио события">
+          ${ICONS.radio}
+          <span>Радио</span>
+        </button>
+      ` : '';
+
+      return `
+        <article class="pin-unit">
+          <div class="pin-visual-card is-media" onclick="window.sotkaHub.openRaceHubModal('${r.id}', 'briefing')">
+            <div class="pin-unified-topbar">
+              <span class="pin-surface-pill">${ICONS.flag} <span>${surfaceLabel}</span></span>
+              <span class="pin-date-pill">${dateFmt}</span>
+            </div>
+
+            ${photoGpxOverlayHtml}
+
+            <div class="pin-hover-layer">
+              <div class="pin-hover-bottom-bar">
+                <button class="pin-cta-btn ${ctaClass}" onclick="event.stopPropagation(); window.sotkaHub.handleRaceRegistration('${r.id}')">
+                  ${ctaIcon}
+                  <span>${ctaText}</span>
+                </button>
+                <div style="display:flex; align-items:center; gap:5px;">
+                  ${radioHoverBtn}
+                  <button class="pin-icon-round ${pin.isPinned ? 'is-pinned' : ''}" onclick="window.sotkaHub.togglePinRace('${r.id}', event)" title="${pin.isPinned ? 'В моих пинах (убрать)' : 'Добавить в мои пины'}">
+                    ${pin.isPinned ? ICONS.pinFilled : ICONS.pinOutline}
+                  </button>
+                  <button class="pin-icon-round" onclick="event.stopPropagation(); window.sotkaHub.shareRace('${r.id}')" title="Скопировать ссылку">
+                    ${ICONS.share}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <img class="pin-main-img" src="${pin.posterUrl}" alt="${this.escapeHTML(pin.baseName)}" loading="lazy"
+                 onerror="window.sotkaHub.upgradeBrokenImgToYellowPoster(this, '${pin.id}')">
+          </div>
+
+          <div class="pin-caption">
+            <div class="pin-caption-row">
+              <h4 class="pin-caption-title" onclick="window.sotkaHub.openRaceHubModal('${r.id}', 'briefing')" style="cursor:pointer;">${this.escapeHTML(pin.baseName)}</h4>
+              <button class="pin-caption-pin-btn ${pin.isPinned ? 'is-pinned' : ''}" onclick="window.sotkaHub.togglePinRace('${r.id}', event)" title="${pin.isPinned ? 'В моих пинах' : 'В мои пины'}">
+                ${pin.isPinned ? ICONS.pinFilled : ICONS.pinOutline}
+              </button>
+            </div>
+            <div class="pin-caption-meta">
+              <div style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span>${statusMetaLabel}</span>
+                ${radioCaptionChipHtml}
+              </div>
+              <span style="font-family:'Roboto Mono',monospace; font-weight:700; display:inline-flex; align-items:center; gap:3px;">${ICONS.users} <span>${pin.totalRiders}</span></span>
+            </div>
+            ${sisterChipsHtml}
+          </div>
+        </article>
+      `;
+    }
+
+    return `
+      <article class="pin-unit">
+        <div class="pin-visual-card pin-yellow-poster" onclick="window.sotkaHub.openRaceHubModal('${r.id}', 'briefing')">
+          ${this.getYellowPosterInnerHtml(pin, surfaceLabel, dateFmt, ctaText, ctaClass, ctaIcon)}
+        </div>
+        <div class="pin-caption">
+          <div class="pin-caption-row">
+            <div style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:600;">${statusMetaLabel}</span>
+              ${radioCaptionChipHtml}
+            </div>
+            <button class="pin-caption-pin-btn ${pin.isPinned ? 'is-pinned' : ''}" onclick="window.sotkaHub.togglePinRace('${r.id}', event)" title="${pin.isPinned ? 'В моих пинах' : 'В мои пины'}">
+              ${pin.isPinned ? ICONS.pinFilled : ICONS.pinOutline}
+            </button>
+          </div>
+          ${sisterChipsHtml}
+        </div>
+      </article>
+    `;
+  }
+
+  openMyIduckModal() {
+    if (this.isGuest || !this.currentRider) {
+      return this.openLoginModal();
+    }
+
+    const r = this.currentRider;
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+
+    const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+    const cluster = r.base_cluster || 'B';
+    const yob = r.yob || '';
+    const gender = (r.gender || 'M').toUpperCase();
+    const tIds = Array.isArray(r.team_id) ? r.team_id : (r.team_id ? [r.team_id] : []);
+    const teamName = (tIds[0] && this.teamsMap[tIds[0]]?.name) ? this.teamsMap[tIds[0]].name : 'ONE TEAM';
+
+    const qrPayload = `V1|${r.id}|${r.last_name || ''}|${r.first_name || ''}|${yob}|${gender}|${cluster}|${teamName}`;
+
+    box.innerHTML = `
+      <div style="font-family:'Roboto Mono',monospace; font-size:10px; font-weight:800; color:var(--text-muted); margin-bottom:4px; display:inline-flex; align-items:center; gap:5px; justify-content:center;">
+        ${ICONS.qr} <span>IDUCK • ПРОПУСК УЧАСТНИКА</span>
+      </div>
+      <div style="font-family:'Unbounded',sans-serif; font-size:15px; font-weight:900; text-transform:uppercase; text-align:center;">${this.escapeHTML(fullName)}</div>
+      <div style="font-family:'Roboto Mono',monospace; font-size:10.5px; font-weight:700; color:#b45309; text-align:center;">${this.escapeHTML(teamName)} • КЛАСТЕР ${cluster}</div>
+      <div style="display:flex; justify-content:center;">
+        <canvas id="hubIduckCanvas" width="210" height="210" style="border-radius:12px; border:1px solid var(--border-light);"></canvas>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted); text-align:center;">Покажите QR судье на регистрации для мгновенной выдачи номера BIB</div>
+      <button class="ctrl-btn dark" style="width:100%; height:44px;" onclick="document.getElementById('hubQrModal').style.display='none'">ЗАКРЫТЬ</button>
+    `;
+
+    modal.style.display = 'flex';
+
+    setTimeout(() => {
+      const canvas = document.getElementById('hubIduckCanvas');
+      if (canvas && typeof QRCode !== 'undefined') {
+        QRCode.toCanvas(canvas, qrPayload, { width: 210, margin: 1, errorCorrectionLevel: 'H' });
+      }
+    }, 30);
+  }
+
+  openJudgeQrModal(raceId, raceName) {
+    const modal = document.getElementById('hubQrModal');
+    const box = document.getElementById('hubQrModalContent');
+    box.className = 'hub-modal-card';
+    const pultUrl = `https://pero.sotka.one/?race_id=${raceId}`;
+
+    box.innerHTML = `
+      <div style="font-family:'Roboto Mono',monospace; font-size:10px; font-weight:800; color:var(--pin-red); display:inline-flex; align-items:center; gap:5px; justify-content:center;">
+        ${ICONS.shield} <span>МОБИЛЬНЫЙ ПУЛЬТ СУДЬИ PERO</span>
+      </div>
+      <div style="font-family:'Unbounded',sans-serif; font-size:14px; font-weight:900; text-transform:uppercase; text-align:center;">${this.escapeHTML(raceName)}</div>
+      <div style="display:flex; justify-content:center;">
+        <canvas id="hubJudgeQrCanvas" width="210" height="210" style="border-radius:12px; border:1px solid var(--border-light);"></canvas>
+      </div>
+      <div style="display:flex; gap:8px; width:100%;">
+        <button class="ctrl-btn primary" style="height:42px;" onclick="window.open('${pultUrl}', '_blank')">
+          <span>ОТКРЫТЬ ПУЛЬТ</span>
+          ${ICONS.arrowRight}
+        </button>
+        <button class="ctrl-btn" style="height:42px;" onclick="document.getElementById('hubQrModal').style.display='none'">ЗАКРЫТЬ</button>
+      </div>
+    `;
+    modal.style.display = 'flex';
+
+    setTimeout(() => {
+      const canvas = document.getElementById('hubJudgeQrCanvas');
+      if (canvas && typeof QRCode !== 'undefined') {
+        QRCode.toCanvas(canvas, pultUrl, { width: 210, margin: 1 });
+      }
+    }, 30);
+  }
+
+  setTag(tag, btn) {
+    this.activeTag = tag;
+    document.querySelectorAll('.hub-tag').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    this.renderGrid();
+  }
+
+  onSearch(val) {
+    this.searchQuery = (val || '').toLowerCase().trim();
+    this.renderGrid();
+  }
+
+  shareRace(raceId) {
+    const url = `https://vilka.sotka.one/#${raceId}`;
+    navigator.clipboard.writeText(url).then(() => this.showToast('Ссылка скопирована'));
+  }
+
+  async start() {
+    await this.initAuth();
+    await this.loadEcosystem();
+  }
+}
+
+window.sotkaHub = new SotkaPinterestHub();
+document.addEventListener('DOMContentLoaded', () => window.sotkaHub.start());
+</script>
+</body>
+</html>
