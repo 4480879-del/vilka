@@ -2,35 +2,42 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    
+    <!-- PWA для Android и iOS -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#18181b">
-	<link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg">
+    <link rel="manifest" href="/manifest.json">
     <title>VILKA RADIO</title>
-
+    <link rel="icon" type="image/svg+xml" href="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg">
+    <link rel="stylesheet" href="/vilka.css?v=63">
+    
     <script src="https://cdn.jsdelivr.net/npm/pocketbase/dist/pocketbase.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <link rel="stylesheet" href="/vilka.css?v=42">
-	
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "7cfc3fab-1eee-439b-b231-a7084e6398d5",
-          safari_web_id: "web.onesignal.auto.1a908d8f-b1c2-454b-a8c2-6bb9d82d2555",
-          notifyButton: {
-            enable: false, // Скрываем стандартный колокольчик
-          },
-          // 🔥 ДОБАВЛЯЕМ ВОТ ЭТИ ДВЕ СТРОКИ:
-          serviceWorkerParam: { scope: "/" },
-          serviceWorkerPath: "sw.js"
+      if (window.location.hostname === 'vilka.sotka.one') {
+        OneSignalDeferred.push(async function(OneSignal) {
+          try {
+            await OneSignal.init({
+              appId: "7cfc3fab-1eee-439b-b231-a7084e6398d5",
+              safari_web_id: "web.onesignal.auto.1a908d8f-b1c2-454b-a8c2-6bb9d82d2555",
+              notifyButton: { enable: false },
+              serviceWorkerParam: { scope: "/" },
+              serviceWorkerPath: "/sw.js"
+            });
+          } catch (e) {
+            console.warn("OneSignal init skipped:", e);
+          }
         });
-      });
+      }
     </script>
+    <script src="/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -83,7 +90,6 @@
         }
     })();
 </script>
-</div>
 
 <div class="messenger-layout" id="app-root">
     <aside class="sidebar" id="sidebar">
@@ -98,57 +104,48 @@
     </div>
 </div>
         
-        <div class="tab-content active" id="tab-chats">
-            <!-- Акцентная полоса -->
-            <div style="width: 100%; height: 4px; min-height: 4px; flex-shrink: 0; background-image: linear-gradient(110deg, var(--primary) 35%, var(--border) 35%); position: relative; z-index: 10; display: block;"></div>
-
-            <!-- 🔥 ПОИСК ПО ЧАТАМ НАВЕРХУ СПИСКА -->
-            <div class="search-box" style="padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--bg-surface);">
-                <input type="search" id="chatSearch" class="search-input" placeholder="Поиск гонок..." oninput="window.app.filterChats(this.value)" style="width: 100%; box-sizing: border-box;">
-                
-                <button onclick="window.app.openMonthCalendarView()" 
-                        style="width: 100%; margin-top: 8px; background: var(--bg-surface-hover); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: var(--text-main); font-family: 'Unbounded', sans-serif; font-size: 10px; font-weight: 800; transition: 0.2s;"
-                        onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';"
-                        onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-main)';">
-                    <span style="display:flex; align-items:center; gap:6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                        ОБЩИЙ КАЛЕНДАРЬ МЕСЯЦА
-                    </span>
-                    <span style="color: var(--primary); font-size: 12px;">➔</span>
-                </button>
-            </div>
-
-            <!-- Список чатов -->
-            <div class="chat-list" id="chatList">
+        <!-- 1. ВКЛАДКА КАЛЕНДАРЯ (АКТИВНАЯ) -->
+        <div class="tab-content active" id="tab-chats" style="height: 100%; overflow: hidden; display: flex; flex-direction: column;">
+            
+            <!-- Список событий -->
+            <div class="chat-list" id="chatList" style="flex: 1; overflow-y: auto; padding-bottom: 20px;">
                 <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:12px;">подгружаем...</div>
             </div>
-            
-            <button class="main-fab" onclick="window.app.openMobileCreateMenu()">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            </button>
+
         </div>
 
-        <div class="tab-content" id="tab-pelotons">
+        <!-- 2. ВЫБОР ПЕЛОТОНА -->
+        <div class="tab-content" id="tab-pelotons" style="height: 100%; overflow: hidden; display: none; flex-direction: column;">
             <div style="padding: 10px 20px 0 20px; font-size: 11px; color: var(--text-muted); font-family: 'Unbounded'; font-weight: 700;">
                 ВЫБОР ПЕЛОТОНА
             </div>
-            <div class="search-box">
-                <input type="text" id="pelotonTabSearch" class="search-input" placeholder="Поиск пелотона..." oninput="window.app.filterPelotons(this.value)">
-            </div>
-            <div class="chat-list" id="pelotonList">
+            <div class="search-box" style="padding: 10px 12px; border-top: 1px solid var(--border); border-bottom: none; background: var(--bg-surface); z-index: 20; flex-shrink: 0;">
+                <div class="search-box-rel">
+                    <svg class="search-left-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="pelotonTabSearch" class="search-input search-input-pad" placeholder="Поиск пелотона..." oninput="window.app.onSearchInput(this, 'pelotonSearchClearBtn', 'pelotons')" style="width: 100%; box-sizing: border-box;">
+                    <button id="pelotonSearchClearBtn" class="search-clear-cross" onclick="window.app.clearSearchField('pelotonTabSearch', 'pelotonSearchClearBtn', 'pelotons')" title="Очистить">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
+            </div>
+            <div class="chat-list" id="pelotonList" style="flex: 1; overflow-y: auto; padding-bottom: 20px;"></div>
         </div>
 
-        <div class="tab-content" id="tab-contacts">
-            <div class="search-box">
-                <input type="text" id="contactSearch" class="search-input" placeholder="Поиск спортсмена или команды" oninput="window.app.filterContacts(this.value)">
+        <!-- 3. РАЦИЯ / КОНТАКТЫ -->
+        <div class="tab-content" id="tab-contacts" style="height: 100%; overflow: hidden; display: none; flex-direction: column;">
+            <!-- Список контента Рации (новости / спортсмены / команды) -->
+            <div class="chat-list" id="contactList" style="flex: 1; overflow-y: auto; padding-bottom: 20px;"></div>
+
+            <!-- Чистый поиск рации (без желтой кнопки слева) -->
+            <div class="search-box" style="padding: 10px 12px; border-top: 1px solid var(--border); border-bottom: none; background: var(--bg-surface); z-index: 20; flex-shrink: 0;">
+                <div class="search-box-rel">
+                    <svg class="search-left-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="contactSearch" class="search-input search-input-pad" placeholder="Поиск новостей, спортсменов, команд..." oninput="window.app.onSearchInput(this, 'contactSearchClearBtn', 'contacts')" style="width: 100%; box-sizing: border-box;">
+                    <button id="contactSearchClearBtn" class="search-clear-cross" onclick="window.app.clearSearchField('contactSearch', 'contactSearchClearBtn', 'contacts')" title="Очистить">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
             </div>
-            <div class="chat-list" id="contactList"></div>
         </div>
 		
 		<div class="tab-content" id="tab-draft" style="background: var(--bg-body); padding: 0;">
@@ -175,6 +172,17 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg> ПЕРЕВОД
                         </button>
                     </div>
+					<!-- 👑 КНОПКА СУПЕРАДМИНА (видна только суперадмину) -->
+                    <button type="button" 
+                            id="btn-open-treasury" 
+                            onclick="openDraftTreasury()" 
+                            style="display: none; width: 100%; margin-top: 10px; background: rgba(0,0,0,0.6); border: 1.5px solid var(--primary); color: var(--primary); font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 10px; padding: 12px; border-radius: 12px; align-items: center; justify-content: center; gap: 8px; cursor: pointer; position: relative; z-index: 2; transition: 0.2s;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="4" width="20" height="16" rx="2"/>
+                            <path d="M7 15h0M2 9.5h20"/>
+                        </svg>
+                        <span>КАЗНАЧЕЙСТВО ДРАФТА</span>
+                    </button>
                 </div>
 
                 <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 25px; text-align: center;">
@@ -200,58 +208,23 @@
 
             </div> </div>
 
-        <div class="tab-content" id="tab-profile">
-            <div id="profileTabContent" class="dash-container">
-                <div style="text-align:center; padding: 50px;"><div class="spinner"></div></div>
-            </div>
-        </div>
+        <div class="tab-content" id="tab-profile" style="height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+    <div id="profileTabContent" class="dash-container" style="padding-bottom: 110px; box-sizing: border-box;">
+        <div style="text-align:center; padding: 50px;"><div class="spinner"></div></div>
+    </div>
+</div>
 
-        <nav class="bottom-nav">
-            <!-- 1. ГОНКИ: 28x28 (масштаб на максимум для солидности) -->
-            <div class="nav-item active" id="nav-btn-chats" onclick="window.app.switchTab('chats', event)">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 2px;">
-                    <circle cx="18.5" cy="17.5" r="3.5"></circle>
-                    <circle cx="5.5" cy="17.5" r="3.5"></circle>
-                    <circle cx="15" cy="5" r="1"></circle>
-                    <path d="M12 17.5V14l-3-3 4-3 2 3h2"></path>
-                </svg>
-                КАЛЕНДАРЬ
-            </div>
-            
-            <!-- 2. ПЕЛОТОНЫ: визуально 24x24, но прозрачная рамка 28x28 для линейки -->
-            
-
-            <!-- 3. ДРАФТ: визуально 26x26, прозрачная рамка 28x28 -->
-            <div class="nav-item" id="nav-btn-draft" onclick="window.app.switchTab('draft')" style="color: var(--primary); font-family: 'Unbounded', sans-serif; font-weight: 800;">
-                <svg width="28" height="28" viewBox="-1 -1 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 2px;">
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                </svg>
-                ДРАФТ
-            </div>
-
-            <!-- 4. РАЦИЯ: С радиосигналом -->
-            <div class="nav-item" id="nav-btn-contacts" onclick="window.app.switchTab('contacts')">
-                <svg width="28" height="28" viewBox="-2 -2 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 2px;">
-                    <path d="M13 2v4"></path>
-                    <rect x="6" y="6" width="9" height="15" rx="2"></rect>
-                    <line x1="9" y1="10" x2="12" y2="10"></line>
-                    <line x1="9" y1="13" x2="12" y2="13"></line>
-                    <!-- Сигнал радиоэфира -->
-                    <path d="M18 9a3 3 0 0 1 0 6"></path>
-                    <path d="M21 7a6 6 0 0 1 0 10"></path>
-                </svg>
-                РАЦИЯ
-            </div>
-        </nav>
+        <!-- НАВИГАЦИЯ С ВСТРОЕННЫМ МОРФИНГ-АККОРДЕОНОМ -->
+        
     </aside>
 
     <main class="chat-area" id="mainChatArea">
         <div class="chat-header" id="chatHeader" style="display: none;">
             <button class="back-btn" style="display:none;" onclick="window.app.closeChatMobile()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            </button>
-            <div id="activeChatAvatarContainer"></div>
-            <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; margin-left:10px;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+</button>
+<div id="activeChatAvatarContainer"></div>
+<div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; margin-left:3px;">
                 <div style="display:flex; align-items:center; gap:5px;">
                     <div class="chat-name" id="activeChatName">Чат</div>
                     <button id="editChatNameBtn" style="display:none; background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0;" onclick="window.app.editCurrentChatName()">
@@ -306,6 +279,7 @@
             </div>
 
             <div class="input-area" id="inputArea" style="position: relative;">
+    <!-- Превью выбранного файла -->
     <div id="filePreviewBox" style="display:none;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
         <span id="filePreviewName" style="font-size:12px; color:var(--text-main); font-family:'Inter'; font-weight:600; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
@@ -313,32 +287,78 @@
         <button onclick="window.app.removeFile()" style="background:var(--danger-light); border:none; border-radius:50px; width:24px; height:24px; color:var(--danger); cursor:pointer; font-weight:bold; display:flex; justify-content:center; align-items:center;">✕</button>
     </div>
 
+    <!-- Скрытый системный input выбора файла -->
     <input type="file" id="fileInput" style="display:none;" onchange="window.app.handleFileSelect(this)">
-    
-    <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Прикрепить файл">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+
+    <!-- ➕ КНОПКА "ПЛЮС" -->
+    <button type="button" class="plus-attach-btn" id="attachMenuBtn" onclick="window.app.toggleAttachMenu(event)" title="Добавить вложение">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
     </button>
 
-    <button class="attach-btn" id="emojiToggleBtn" onclick="window.app.toggleEmojiPicker(event)" title="Эмодзи">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-    </button>
+    <!-- 🎯 КНОПКА @ И ВСПЛЫВАЮЩЕЕ МЕНЮ АДРЕСАТОВ -->
+    <div class="mention-composer-wrapper" style="position: relative; display: flex; align-items: center;">
+        <button type="button" id="btnRaceMentionTrigger" class="chat-action-svg-btn" onclick="window.app.toggleMentionMenu(event)" title="Упомянуть судью или гонщика">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path>
+            </svg>
+        </button>
 
-    <div id="emojiPickerContainer" style="display: none; position: absolute; bottom: 65px; left: 10px; z-index: 10000; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; background: var(--bg-surface);">
+        <div id="raceMentionPopover" class="mention-popover-card" style="display: none;">
+            <div class="mention-popover-header">
+                <div class="mention-popover-title">КОМУ ПИШЕМ:</div>
+                <button type="button" class="mention-popover-close" onclick="window.app.closeMentionMenu()">&times;</button>
+            </div>
+            <div class="mention-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="mentionSearchInput" placeholder="Поиск по имени или фамилии..." oninput="window.app.filterMentionList(this.value)">
+            </div>
+            <div class="mention-scroll-list" id="mentionListContainer"></div>
+        </div>
     </div>
 
+    <!-- 📋 МЕНЮ ВЛОЖЕНИЙ -->
+    <div id="attachMenuPopup" class="attach-menu-popup" style="display: none;">
+        <div class="attach-menu-item" onclick="window.app.triggerFileInput('image/*')">
+            <div class="attach-item-icon">📷</div>
+            <div class="attach-item-text">
+                <span class="attach-item-title">Фото или видео</span>
+                <span class="attach-item-sub">Галерея, снимки</span>
+            </div>
+        </div>
+        <div class="attach-menu-item" onclick="window.app.triggerFileInput('*')">
+            <div class="attach-item-icon">📎</div>
+            <div class="attach-item-text">
+                <span class="attach-item-title">Файл или документ</span>
+                <span class="attach-item-sub">Любой формат</span>
+            </div>
+        </div>
+        <div class="attach-menu-item" onclick="window.app.openEmojiFromAttachMenu(event)">
+            <div class="attach-item-icon">😊</div>
+            <div class="attach-item-text">
+                <span class="attach-item-title">Смайлы и эмодзи</span>
+                <span class="attach-item-sub">Символы, реакции</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="emojiPickerContainer" style="display: none; position: absolute; bottom: 65px; left: 10px; z-index: 10000; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 12px; overflow: hidden; background: var(--bg-surface);"></div>
+
+    <!-- ПОЛЕ ВВОДА ТЕКСТА (НА ВСЮ ОСТАВШУЮСЯ ШИРИНУ) -->
     <textarea id="messageInput" class="chat-input" placeholder="Написать сообщение..." rows="1" 
-        oninput="this.style.height = '46px'; this.style.height = Math.min(this.scrollHeight, 250) + 'px'; window.app.saveDraft(window.app.activeChatId, this.value);" 
-        onkeypress="if(event.keyCode===13 && !event.shiftKey){ window.app.sendMessage(); event.preventDefault(); }"></textarea>
-    
-    <button id="sendBtnIcon" class="send-btn" onclick="window.app.sendMessage()" style="position: relative; padding: 0 !important; overflow: hidden;">
-        <!-- Слой с уточкой натянут на 100% кнопки, картинка центрируется фоном -->
+          oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 160) + 'px'; window.app.saveDraft(window.app.activeChatId, this.value);" 
+          onkeypress="if(event.keyCode===13 && !event.shiftKey){ window.app.sendMessage(); event.preventDefault(); }"></textarea>
+
+    <!-- КНОПКА ОТПРАВКИ С УТОЧКОЙ -->
+    <button id="sendBtnIcon" class="send-btn" onclick="window.app.sendMessage()" style="position: relative; padding: 0 !important; overflow: visible; background: transparent; border: none;">
         <div id="vIcon" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg') center center / 28px no-repeat; z-index: 1;"></div>
-        
-        <!-- Галочка сохранения -->
-        <svg id="checkIcon" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <svg id="checkIcon" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
     </button>
 </div>
-        </div>
+        </div>	
     </main>
 
     <div class="ctx-menu-overlay" id="ctxMenuOverlay" onclick="window.app.closeContextMenu(event)">
@@ -361,6 +381,12 @@
             <div class="ctx-action-list" style="position: relative;">
     <div class="ctx-action-item" onclick="window.app.ctxActionReply()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg> Ответить
+    </div>
+
+    <!-- 🔥 ПУНКТ: КТО ПРОЧИТАЛ -->
+    <div class="ctx-action-item" id="ctxBtnReadBy" onclick="window.app.ctxActionReadBy()" style="display:none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> 
+        <span id="ctxBtnReadByText">Кто прочитал</span>
     </div>
                 
     <div class="ctx-action-item" onclick="window.app.ctxActionCopy()">
@@ -563,9 +589,9 @@
     
   <div class="modal-overlay" id="profileModal" style="z-index: 100000;">
         <div class="modal-box" style="padding: 0; overflow: hidden; width: 600px;">
-            <div class="profile-header-close" style="background:var(--bg-surface); padding:20px 25px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink: 0;">
-                <h3 style="color:var(--text-main); font-size: 16px; margin: 0;">ПРОФИЛЬ УЧАСТНИКА</h3>
-                <button onclick="window.app.closeProfileModal()" style="background:var(--bg-surface-hover); border:1px solid var(--border); border-radius:50px; width:32px; height:32px; color:var(--text-main); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink: 0;">✕</button>
+            <div class="profile-header-close" style="background:var(--bg-surface); padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink: 0;">
+                <h3 style="color:var(--text-main); font-family:'Unbounded', sans-serif; font-size: 13px; font-weight:800; margin: 0; text-transform:uppercase;">ПРОФИЛЬ УЧАСТНИКА</h3>
+                <div id="profileHeaderActions" style="display:flex; align-items:center; gap:8px;"></div>
             </div>
             <div id="profileModalContent" class="dash-container" style="overflow-y: auto; flex: 1; padding: 25px;">
                 <div style="text-align:center; padding: 50px;"><div class="spinner"></div></div>
@@ -584,35 +610,84 @@
         </div>
     </div>
 
-<div class="modal-overlay" id="liveBoardModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.85); z-index: 999999; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+<div class="modal-overlay" id="liveBoardModal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(15, 17, 23, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); z-index: 999999; justify-content: center; align-items: center; overflow: hidden; padding: 16px; box-sizing: border-box;">
     
-    <div class="modal-box" style="background: var(--bg-surface); width: 95vw; max-width: 1400px; height: 90vh; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+    <!-- 🦆 ФОНОВЫЙ СЛОЙ ПЛАВАЮЩИХ УТОЧЕК VILKA (КАК НА ВХОДНОМ ТАБЛО) -->
+    <div class="bg-floating-ducks-layer" style="position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1;">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 6%; left: 5%; width: 56px; height: 56px; opacity: 0.22; --rot: -18deg; animation-delay: 0s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 10%; right: 7%; width: 72px; height: 72px; opacity: 0.18; --rot: 22deg; animation-delay: 1.2s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="bottom: 8%; left: 6%; width: 64px; height: 64px; opacity: 0.24; --rot: 15deg; animation-delay: 2.4s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="bottom: 7%; right: 5%; width: 78px; height: 78px; opacity: 0.18; --rot: -24deg; animation-delay: 0.8s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 48%; left: 2%; width: 44px; height: 44px; opacity: 0.15; --rot: 32deg; animation-delay: 3.1s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 45%; right: 3%; width: 48px; height: 48px; opacity: 0.14; --rot: -14deg; animation-delay: 1.9s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 3%; left: 48%; width: 46px; height: 46px; opacity: 0.20; --rot: -8deg; animation-delay: 2.7s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="bottom: 3%; left: 47%; width: 50px; height: 50px; opacity: 0.18; --rot: 12deg; animation-delay: 0.5s;" alt="">
+    </div>
+
+    <!-- 🖥 ПРОСТОРНОЕ МОДАЛЬНОЕ ОКНО (1200px НА ПК) -->
+    <div class="modal-box live-modal-dialog-box" style="position: relative; z-index: 10; background: var(--bg-surface); width: 95vw; max-width: 1200px; height: 94vh; max-height: 94vh; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 25px 70px rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
         
-        <div style="padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-hover);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div id="liveBoardDot" style="width: 10px; height: 10px; background: var(--danger); border-radius: 50%; animation: dot-pulse 1s infinite; box-shadow: 0 0 10px var(--danger);"></div>
-                <h2 id="liveBoardTitle" style="font-family:'Unbounded'; font-weight:800; font-size:18px; color:var(--text-main); margin:0; text-transform: uppercase;">ЗАГРУЗКА...</h2>
-            </div>
-            <button onclick="window.app.crm.closeLiveBoard()" style="background:var(--bg-body); color:var(--text-muted); border:1px solid var(--border); width: 32px; height: 32px; border-radius: 50%; font-size:18px; font-weight:bold; cursor:pointer; display:flex; justify-content:center; align-items:center; transition:0.2s;">&times;</button>
+        <!-- 1. Монохромная шапка с анимированным крестиком -->
+        <div class="live-modal-top-bar">
+            <div id="liveBoardTitle" style="flex: 1; min-width: 0;">ЗАГРУЗКА...</div>
+            <button type="button" class="live-modal-close-btn" onclick="window.app.crm.closeLiveBoard()" title="Закрыть (Esc)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
         </div>
 
-        <div style="padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: var(--bg-body); gap: 15px; overflow-x: auto; scrollbar-width: none;">
-            
-            <div style="display: flex; gap: 8px; background: var(--bg-surface); padding: 4px; border-radius: 50px; border: 1px solid var(--border); flex-shrink: 0;">
-                <button id="liveTabStart" class="tab-btn" onclick="window.app.crm.switchLiveTab('start')">СТАРТ-ЛИСТ</button>
-                <button id="liveTabResult" class="tab-btn active" onclick="window.app.crm.switchLiveTab('result')">РЕЗУЛЬТАТЫ</button>
+        <!-- 2. Адаптивная панель переключения сегментов -->
+        <div class="live-nav-header-row">
+            <div class="live-nav-capsule">
+                <button type="button" id="liveTabStart" class="live-nav-btn active" onclick="window.app.crm.switchLiveTab('start')">
+                    <svg class="live-nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        <line x1="9" y1="12" x2="15" y2="12"></line>
+                        <line x1="9" y1="16" x2="13" y2="16"></line>
+                    </svg>
+                    <span class="live-btn-txt-full">СТАРТ-ЛИСТ</span>
+                    <span class="live-btn-txt-short">СТАРТ</span>
+                </button>
+
+                <button type="button" id="liveTabResult" class="live-nav-btn" onclick="window.app.crm.switchLiveTab('result')">
+                    <svg class="live-nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span class="live-btn-txt-full">РЕЗУЛЬТАТЫ</span>
+                    <span class="live-btn-txt-short">ФИНИШ</span>
+                </button>
             </div>
-            
-            <div style="display: flex; gap: 8px; background: var(--bg-surface); padding: 4px; border-radius: 50px; border: 1px solid var(--border); flex-shrink: 0;">
-                <button id="liveSortAbs" class="tab-btn active" onclick="window.app.crm.switchLiveSort('absolute')">АБСОЛЮТ</button>
-                <button id="liveSortGrp" class="tab-btn" onclick="window.app.crm.switchLiveSort('category')">ПО ГРУППАМ</button>
+
+            <div class="live-nav-capsule">
+                <button type="button" id="liveSortAbs" class="live-nav-btn active" onclick="window.app.crm.switchLiveSort('absolute')">
+                    <svg class="live-nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="6"></circle>
+                        <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
+                    </svg>
+                    <span class="live-btn-txt-full">АБСОЛЮТ</span>
+                    <span class="live-btn-txt-short">АБС</span>
+                </button>
+
+                <button type="button" id="liveSortGrp" class="live-nav-btn" onclick="window.app.crm.switchLiveSort('category')">
+                    <svg class="live-nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="live-btn-txt-full">ПО ГРУППАМ</span>
+                    <span class="live-btn-txt-short">ГРУППЫ</span>
+                </button>
             </div>
-            
         </div>
 
-        <div style="flex: 1; overflow-y: auto; padding: 20px 30px; background: var(--bg-surface);">
-            <div id="liveBoardTable" style="width: 100%; min-width: 800px;">
-                </div>
+        <!-- 3. Основной контейнер протокола -->
+        <div style="flex: 1; overflow-y: auto; padding: 16px 20px; background: var(--bg-surface); -webkit-overflow-scrolling: touch;">
+            <div id="liveBoardTable" style="width: 100%;"></div>
         </div>
 
     </div>
@@ -806,11 +881,24 @@
         </div>
         
         <div style="padding:20px; overflow-y:auto; flex:1;">
-            <label style="display:block; font-size:11px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:8px;">ОБЛОЖКА (ИЗОБРАЖЕНИЕ)</label>
-            <input type="file" id="curtainImgInput" accept="image/*" class="auth-input" style="margin-bottom:10px; width:100%; box-sizing:border-box;">
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--danger); margin-bottom:20px; cursor:pointer; font-weight:bold;">
-                <input type="checkbox" id="curtainImgDelete" style="accent-color:var(--danger); width:16px; height:16px;"> Удалить текущую обложку
-            </label>
+					<!-- 1. БЛОК ОБЛОЖКИ -->
+    <label style="display:block; font-size:11px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:8px;">ОБЛОЖКА (ИЗОБРАЖЕНИЕ)</label>
+    <input type="file" id="curtainImgInput" accept="image/*" class="auth-input" style="margin-bottom:10px; width:100%; box-sizing:border-box;">
+    <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--danger); margin-bottom:20px; cursor:pointer; font-weight:bold;">
+        <input type="checkbox" id="curtainImgDelete" style="accent-color:var(--danger); width:16px; height:16px;"> Удалить текущую обложку
+    </label>
+
+    <!-- 🎨 2. БЛОК ФОНОВОГО ПАТТЕРНА (ВСТАВИТЬ СЮДА) -->
+    <div style="background: rgba(0,0,0,0.05); padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px;">
+        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px; font-weight: bold; font-family: 'Unbounded';">
+            ФОНОВЫЙ ПАТТЕРН ЧАТА (PNG / SVG ВМЕСТО ВОЛН)
+        </div>
+        <input type="file" id="curtainPatternInput" accept="image/png,image/svg+xml,image/webp" class="auth-input" style="font-size: 11px; width: 100%; box-sizing: border-box; padding: 6px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-main); margin-top: 6px; cursor: pointer;">
+            <input type="checkbox" id="curtainPatternDelete" style="accent-color: var(--danger); width: 15px; height: 15px;"> 
+            Сбросить кастомный паттерн на стандартные волны
+        </label>
+    </div>
 
             <label style="display:block; font-size:11px; color:var(--text-muted); font-family:'Unbounded'; font-weight:800; margin-bottom:8px;">ТЕКСТ (ПРАВИЛА, ОПИСАНИЕ)</label>
             <textarea id="curtainTextInput" class="auth-input" style="height:120px; resize:vertical; margin-bottom:25px; font-family:'Inter'; width:100%; box-sizing:border-box; line-height:1.5; padding:12px;" placeholder="Добро пожаловать в чат! Здесь вы можете..."></textarea>
@@ -831,14 +919,13 @@
 <div class="modal-overlay" id="mapEmbedModal" style="z-index: 1000000; display: none;">
         <div class="modal-box" style="width: 95vw; max-width: 1200px; height: 85vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-body);">
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 15px 20px; border-bottom: 1px solid var(--border); background: var(--bg-surface);">
-                <h3 style="color:var(--text-main); font-family:'Unbounded'; font-weight:800; font-size:16px; margin:0;">🗺️ КАРТА МАРШРУТА</h3>
+                <h3 style="color:var(--text-main); font-family:'Unbounded'; font-weight:800; font-size:16px; margin:0;">КАРТА МАРШРУТА</h3>
                 <button onclick="document.getElementById('mapEmbedModal').style.display='none'; document.getElementById('mapEmbedContainer').innerHTML='';" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; line-height:1;">&times;</button>
             </div>
             <div id="mapEmbedContainer" style="flex: 1; width: 100%; height: 100%; background: #000;">
                 </div>
         </div>
     </div>
-</div>
 
 <div class="modal-overlay" id="cupStandingsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.85); z-index: 1000000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
     <div class="modal-box" style="background: var(--bg-surface); width: 95vw; max-width: 800px; max-height: 90vh; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 0; overflow: hidden;">
@@ -914,11 +1001,24 @@
     </div>
 </div>
 
-<script src="/vilka.js?v=52" defer></script>
+<script src="/vilka.js?v=81" defer></script>
 
 
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Unbounded:wght@700;800&display=swap');
+	
+	/* Полностью скрываем элементы старой навигации */
+#bottomNavContainer,
+.bottom-nav,
+#subnavMorphPod,
+#eventsFloatingDock {
+    display: none !important;
+}
+
+/* Отступ списка гонок, чтобы последняя карточка не упиралась в остров */
+#chatList {
+    padding-bottom: 85px !important;
+}
 
     /* Окно авторизации */
     #sotka-auth-overlay {
@@ -1010,77 +1110,12 @@
         padding: 4px 14px;
     }
 
-    /* 🔥 КАРТОЧКА ПОСТА С РАЗМЫТИЕМ И МАСКОЙ (КАК В ВИДЖЕТЕ НА САЙТЕ) */
-    .vk-card-media {
-        position: relative;
-        width: calc(100% + 40px) !important;
-        margin: -16px -20px 16px -20px !important;
-        max-height: 380px;
-        display: flex;
-        overflow: hidden;
-        border-radius: 16px 16px 0 0;
-        cursor: pointer;
-    }
-
-    .vk-card-image {
-        width: 100%;
-        max-height: 380px;
-        object-fit: cover;
-        display: block;
-    }
-
-    .vk-card-media-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        padding: 80px 20px 20px 20px;
-        box-sizing: border-box;
-        background: linear-gradient(to top, rgba(18, 18, 24, 0.9) 0%, rgba(18, 18, 24, 0.4) 50%, transparent 100%);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        mask-image: linear-gradient(to top, black 65%, transparent 100%);
-        -webkit-mask-image: linear-gradient(to top, black 65%, transparent 100%);
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-    }
-
-    .vk-card-channel {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: var(--primary, #ffc107);
-        color: #000000;
-        padding: 5px 12px;
-        border-radius: 8px;
-        font-family: 'Unbounded', sans-serif;
-        font-size: 10px;
-        font-weight: 800;
-        text-transform: uppercase;
-        margin-bottom: 12px;
-        align-self: flex-start;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-
-    .vk-card-title {
-        font-family: 'Unbounded', sans-serif;
-        font-size: clamp(16px, 4vw, 20px);
-        font-weight: 800;
-        margin: 0;
-        line-height: 1.3;
-        color: #ffffff !important;
-        word-wrap: break-word;
-        text-transform: uppercase;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    }
-
     /* 🔥 ЕДИНАЯ ПАНЕЛЬ СМОТРЮ / ПИШУ (АДАПТИВНАЯ) */
     #recipientSelectorBar {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        flex-wrap: nowrap !important;
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: nowrap;
         gap: 8px;
         padding: 6px 12px;
         background: var(--bg-surface);
@@ -1200,78 +1235,811 @@
         align-items: center;
         gap: 6px;
     }
+	
+	/* 🦆 АКВАРИУМ С ПЛАВАЮЩИМИ УТОЧКАМИ В КАЛЕНДАРЕ */
+    .month-cal-day.has-race {
+        background: radial-gradient(circle at 50% 30%, rgba(255, 193, 7, 0.16) 0%, rgba(24, 24, 27, 0.02) 85%) !important;
+        border: 1px solid rgba(255, 193, 7, 0.35) !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    .cal-duck-aquarium {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 1;
+        overflow: hidden;
+    }
+
+    .cal-floating-duck {
+        position: absolute;
+        opacity: 0.32;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        filter: drop-shadow(0 2px 6px rgba(255, 193, 7, 0.4));
+        animation: duckSwim 6s ease-in-out infinite alternate;
+    }
+
+    .month-cal-day:hover .cal-floating-duck {
+        opacity: 0.75;
+        transform: scale(1.1);
+    }
+
+    @keyframes duckSwim {
+        0% { transform: translate(0, 0) rotate(-6deg); }
+        50% { transform: translate(8px, -7px) rotate(8deg); }
+        100% { transform: translate(-6px, 4px) rotate(-3deg); }
+    }
+	
+/* =======================================================
+   🦆 САП-АКВАРИУМ VILKA — АДАПТИВНЫЙ МОНОХРОМ (СВЕТЛАЯ / ТЕМНАЯ ТЕМА)
+   ======================================================= */
+
+/* 1. Главный контейнер календаря */
+#monthCalendarViewContainer {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    width: 100% !important;
+    padding: 16px 20px !important;
+    box-sizing: border-box !important;
+    background: var(--bg-surface, #ffffff) !important;
+    overflow: hidden !important;
+    user-select: none !important;
+    transition: background 0.25s ease !important;
+}
+
+/* 2. Шапка навигации */
+.month-cal-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 12px !important;
+    border-bottom: 1px solid var(--border, rgba(128, 128, 128, 0.15)) !important;
+    gap: 10px !important;
+}
+
+.month-cal-nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.month-cal-title {
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.4px !important;
+    color: var(--text-main, #111111) !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+}
+
+/* Стрелки навигации */
+.month-cal-btn-arrow {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 10px !important;
+    background: var(--bg-surface-elevated, #ffffff) !important;
+    border: 1px solid var(--border, rgba(128, 128, 128, 0.2)) !important;
+    color: var(--text-main, #111111) !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.month-cal-btn-arrow:hover {
+    background: var(--text-main, #111111) !important;
+    color: var(--bg-surface, #ffffff) !important;
+    border-color: var(--text-main, #111111) !important;
+}
+
+/* Кнопка СЕГОДНЯ */
+.month-cal-btn-today {
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.4px !important;
+    border-radius: 8px !important;
+    padding: 7px 12px !important;
+    background: var(--bg-surface-elevated, #ffffff) !important;
+    border: 1px solid var(--border, rgba(128, 128, 128, 0.2)) !important;
+    color: var(--text-main, #111111) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.month-cal-btn-today:hover {
+    background: var(--text-main, #111111) !important;
+    color: var(--bg-surface, #ffffff) !important;
+    border-color: var(--text-main, #111111) !important;
+}
+
+.month-cal-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+/* Кнопка СОЗДАТЬ — всегда золотая */
+.month-cal-btn-create {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    background: var(--primary, #ffc107) !important;
+    color: #000000 !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 7px 14px !important;
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    box-shadow: 0 3px 12px rgba(255, 193, 7, 0.35) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.month-cal-btn-create:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 16px rgba(255, 193, 7, 0.45) !important;
+}
+
+/* Кнопка ЗАКРЫТЬ */
+.month-cal-btn-close {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 10px !important;
+    background: var(--bg-surface-elevated, #ffffff) !important;
+    border: 1px solid var(--border, rgba(128, 128, 128, 0.2)) !important;
+    color: var(--text-muted, #8e8e93) !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.month-cal-btn-close:hover {
+    color: var(--text-main, #111111) !important;
+    border-color: var(--text-main, #111111) !important;
+}
+
+/* 3. Дни недели */
+.month-cal-weekdays {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    margin-bottom: 6px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    color: var(--text-muted, #8e8e93) !important;
+}
+
+.month-cal-weekdays div:nth-child(6),
+.month-cal-weekdays div:nth-child(7) {
+    color: var(--text-main, #111111) !important;
+}
+
+/* 4. Сетка Bento-ячеек */
+.month-cal-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    grid-auto-rows: 1fr !important;
+    gap: 8px !important;
+    flex: 1 !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    padding-bottom: 4px !important;
+    background: transparent !important;
+}
+
+/* 5. Карточка пустого дня (Адаптивная под тему) */
+.month-cal-day {
+    background: var(--bg-surface-elevated, #f8f9fa) !important;
+    border: 1px solid var(--border, #edf0f3) !important;
+    border-radius: 18px !important;
+    padding: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease !important;
+    cursor: pointer !important;
+}
+
+.month-cal-day:hover {
+    background: var(--bg-surface-hover, #f1f3f6) !important;
+    border-color: var(--border-hover, #d1d5db) !important;
+    transform: translateY(-2px) !important;
+}
+
+.month-cal-day.other-month {
+    background: transparent !important;
+    opacity: 0.2 !important;
+    border-style: dashed !important;
+    cursor: default !important;
+}
+
+/* Номер дня */
+.month-cal-day-num {
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    color: var(--text-muted, #8e8e93) !important;
+    margin-bottom: 4px !important;
+    line-height: 1 !important;
+    position: relative !important;
+    z-index: 4 !important;
+}
+
+/* Сегодняшний день */
+.month-cal-day.today .month-cal-day-num {
+    background: var(--text-main, #111111) !important;
+    color: var(--bg-surface, #ffffff) !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+    display: inline-block !important;
+    width: fit-content !important;
+}
+
+/* 6. Призыв «добавь свою уточку» */
+.cal-empty-slot {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    padding-bottom: 6px !important;
+    pointer-events: none !important;
+    opacity: 0.45 !important;
+    transition: opacity 0.2s ease, transform 0.2s ease !important;
+}
+
+.month-cal-day:hover .cal-empty-slot {
+    opacity: 1 !important;
+    transform: scale(1.03) !important;
+}
+
+.cal-empty-plus {
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    background: var(--bg-surface, #ffffff) !important;
+    border: 1px solid var(--border, #d1d5db) !important;
+    color: var(--text-muted, #6b7280) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+}
+
+.month-cal-day:hover .cal-empty-plus {
+    background: var(--primary, #ffc107) !important;
+    border-color: var(--primary, #ffc107) !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4) !important;
+}
+
+.cal-empty-label {
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 7px !important;
+    font-weight: 800 !important;
+    color: var(--text-muted, #8e8e93) !important;
+    letter-spacing: -0.2px !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    max-width: 80px !important;
+    transition: color 0.2s ease !important;
+}
+
+.month-cal-day:hover .cal-empty-label {
+    color: var(--text-main, #111111) !important;
+}
+
+/* 7. ДНИ СО СТАРТАМИ (ЗОЛОТОЙ АКВАРИУМ — ОСТАЁТСЯ СОЧНЫМ В ОБЕИХ ТЕМАХ) */
+.month-cal-day.has-race {
+    background: radial-gradient(130% 130% at 50% 15%, #ffffff 0%, #fffbe6 55%, #ffe699 100%) !important;
+    border: 1.5px solid rgba(255, 193, 7, 0.6) !important;
+    box-shadow: 
+        inset 0 2px 6px rgba(255, 255, 255, 0.9),
+        inset 0 -4px 10px rgba(255, 160, 0, 0.25),
+        0 8px 22px rgba(255, 180, 0, 0.15) !important;
+}
+
+.month-cal-day.has-race:hover {
+    background: radial-gradient(130% 130% at 50% 15%, #ffffff 0%, #fffbe6 55%, #ffe699 100%) !important;
+    transform: translateY(-2px) scale(1.01) !important;
+    box-shadow: 
+        inset 0 2px 6px rgba(255, 255, 255, 0.9),
+        inset 0 -4px 10px rgba(255, 160, 0, 0.35),
+        0 12px 28px rgba(255, 180, 0, 0.25) !important;
+}
+
+.month-cal-day.has-race .month-cal-day-num {
+    opacity: 0.95 !important;
+    font-weight: 900 !important;
+    color: #4a3400 !important;
+}
+
+.cal-water-pond {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 2 !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+}
+
+/* 8. САП-ЮНИТЫ */
+.cal-sup-unit {
+    position: absolute !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    z-index: 3 !important;
+}
+
+.cal-sup-unit:hover {
+    z-index: 10 !important;
+}
+
+.cal-duck-rider {
+    width: var(--duck-size, 26px) !important;
+    height: var(--duck-size, 26px) !important;
+    margin-bottom: -5px !important;
+    z-index: 2 !important;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15)) !important;
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+.cal-sup-unit:hover .cal-duck-rider {
+    transform: translateY(-3px) scale(1.1) !important;
+}
+
+.cal-sup-board {
+    background: #141518 !important;
+    border: 1.5px solid var(--primary, #ffc107) !important;
+    border-radius: 12px !important;
+    padding: 3px 8px !important;
+    max-width: 96px !important;
+    min-width: 60px !important;
+    min-height: 22px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25) !important;
+    z-index: 1 !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease !important;
+}
+
+.cal-sup-unit:hover .cal-sup-board {
+    border-color: #ffffff !important;
+    box-shadow: 0 6px 16px rgba(255, 193, 7, 0.45) !important;
+    transform: scale(1.04) !important;
+}
+
+.cal-sup-board::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -2px !important;
+    left: 15% !important;
+    right: 15% !important;
+    height: 3px !important;
+    background: rgba(255, 255, 255, 0.4) !important;
+    border-radius: 50% !important;
+    filter: blur(1px) !important;
+}
+
+.cal-sup-text {
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 7px !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    color: #ffffff !important;
+    letter-spacing: -0.2px !important;
+    text-align: center !important;
+    text-transform: uppercase !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+
+/* 9. Траектории плавания */
+.cal-swim-center {
+    top: 40% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    animation: supBobCenter 5s ease-in-out infinite alternate !important;
+}
+@keyframes supBobCenter {
+    0%   { transform: translate(-50%, -50%) rotate(-3deg); }
+    50%  { transform: translate(-46%, -56%) rotate(3deg); }
+    100% { transform: translate(-54%, -44%) rotate(-2deg); }
+}
+
+.cal-swim-top {
+    top: 28% !important;
+    left: 36% !important;
+    animation: supBobTop 4.5s ease-in-out infinite alternate !important;
+}
+@keyframes supBobTop {
+    0%   { transform: translate(-40%, -10%) rotate(-4deg); }
+    100% { transform: translate(-25%, 6%) rotate(4deg); }
+}
+
+.cal-swim-bottom {
+    top: 64% !important;
+    left: 58% !important;
+    animation: supBobBottom 5.2s ease-in-out infinite alternate !important;
+}
+@keyframes supBobBottom {
+    0%   { transform: translate(-50%, -15%) rotate(3deg); }
+    100% { transform: translate(-65%, 4%) rotate(-4deg); }
+}
+
+/* 10. Чипс "+N" */
+.cal-sup-more-badge {
+    position: absolute !important;
+    top: 6px !important;
+    right: 8px !important;
+    background: #141518 !important;
+    color: var(--primary, #ffc107) !important;
+    border: 1px solid var(--primary, #ffc107) !important;
+    font-family: 'Unbounded', sans-serif !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    padding: 2px 6px !important;
+    border-radius: 999px !important;
+    z-index: 5 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+/* 11. Скрытие скроллбаров */
+#monthCalendarViewContainer *,
+.month-cal-grid,
+.month-cal-day {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+#monthCalendarViewContainer *::-webkit-scrollbar,
+.month-cal-grid::-webkit-scrollbar,
+.month-cal-day::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* =======================================================
+   🌙 ПРЯМЫЕ ПРАВИЛА ДЛЯ ТЁМНОЙ ТЕМЫ (КЛАССЫ ПЛАТФОРМЫ VILKA)
+   ======================================================= */
+body.dark #monthCalendarViewContainer,
+body.dark-theme #monthCalendarViewContainer,
+body.theme-dark #monthCalendarViewContainer,
+[data-theme="dark"] #monthCalendarViewContainer {
+    background: #16171b !important;
+}
+
+body.dark .month-cal-day,
+body.dark-theme .month-cal-day,
+body.theme-dark .month-cal-day,
+[data-theme="dark"] .month-cal-day {
+    background: #1f2026 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark .month-cal-day:hover,
+body.dark-theme .month-cal-day:hover,
+body.theme-dark .month-cal-day:hover,
+[data-theme="dark"] .month-cal-day:hover {
+    background: #262830 !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+body.dark .month-cal-title,
+body.dark-theme .month-cal-title,
+body.theme-dark .month-cal-title,
+[data-theme="dark"] .month-cal-title {
+    color: #ffffff !important;
+}
+
+body.dark .month-cal-weekdays div:nth-child(6),
+body.dark .month-cal-weekdays div:nth-child(7),
+body.dark-theme .month-cal-weekdays div:nth-child(6),
+body.dark-theme .month-cal-weekdays div:nth-child(7),
+[data-theme="dark"] .month-cal-weekdays div:nth-child(6),
+[data-theme="dark"] .month-cal-weekdays div:nth-child(7) {
+    color: #ffffff !important;
+}
+
+body.dark .month-cal-btn-arrow,
+body.dark .month-cal-btn-today,
+body.dark .month-cal-btn-close,
+body.dark-theme .month-cal-btn-arrow,
+body.dark-theme .month-cal-btn-today,
+body.dark-theme .month-cal-btn-close,
+[data-theme="dark"] .month-cal-btn-arrow,
+[data-theme="dark"] .month-cal-btn-today,
+[data-theme="dark"] .month-cal-btn-close {
+    background: #1f2026 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+body.dark .month-cal-btn-arrow:hover,
+body.dark .month-cal-btn-today:hover,
+body.dark-theme .month-cal-btn-arrow:hover,
+body.dark-theme .month-cal-btn-today:hover,
+[data-theme="dark"] .month-cal-btn-arrow:hover,
+[data-theme="dark"] .month-cal-btn-today:hover {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-color: #ffffff !important;
+}
+
+body.dark .month-cal-day.today .month-cal-day-num,
+body.dark-theme .month-cal-day.today .month-cal-day-num,
+[data-theme="dark"] .month-cal-day.today .month-cal-day-num {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+
+body.dark .cal-empty-plus,
+body.dark-theme .cal-empty-plus,
+[data-theme="dark"] .cal-empty-plus {
+    background: #282a33 !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #a0a0a8 !important;
+}
+
+body.dark .cal-empty-label,
+body.dark-theme .cal-empty-label,
+[data-theme="dark"] .cal-empty-label {
+    color: #8e8e93 !important;
+}
+
+body.dark .month-cal-day:hover .cal-empty-label,
+body.dark-theme .month-cal-day:hover .cal-empty-label,
+[data-theme="dark"] .month-cal-day:hover .cal-empty-label {
+    color: #ffffff !important;
+}
+
+/* =======================================================
+   📱 МОБИЛЬНАЯ АДАПТАЦИЯ (до 650px)
+   ======================================================= */
+@media (max-width: 650px) {
+    #monthCalendarViewContainer {
+        padding: 10px 8px !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+    }
+
+    .month-cal-header {
+        padding-bottom: 8px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .month-cal-title {
+        font-size: 13px !important;
+        letter-spacing: 0 !important;
+    }
+
+    .month-cal-btn-arrow {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 14px !important;
+    }
+
+    .month-cal-btn-today {
+        display: none !important;
+    }
+
+    .month-cal-btn-create {
+        padding: 6px 10px !important;
+    }
+    .month-cal-btn-create .create-text {
+        display: none !important;
+    }
+
+    .month-cal-weekdays {
+        gap: 3px !important;
+        font-size: 9px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .month-cal-grid {
+        gap: 4px !important;
+    }
+
+    .month-cal-day {
+        min-height: 56px !important;
+        height: auto !important;
+        padding: 4px 2px !important;
+        border-radius: 10px !important;
+    }
+
+    .month-cal-day-num {
+        font-size: 11px !important;
+        margin-bottom: 2px !important;
+    }
+
+    .cal-empty-label {
+        display: none !important;
+    }
+    .cal-empty-plus {
+        width: 16px !important;
+        height: 16px !important;
+    }
+    .cal-empty-plus svg {
+        width: 9px !important;
+        height: 9px !important;
+    }
+
+    .cal-sup-board {
+        max-width: 44px !important;
+        min-width: 36px !important;
+        min-height: 14px !important;
+        padding: 1px 3px !important;
+        border-radius: 6px !important;
+    }
+
+    .cal-duck-rider {
+        --duck-size: 18px !important;
+        margin-bottom: -3px !important;
+    }
+
+    .cal-sup-text {
+        font-size: 6px !important;
+        -webkit-line-clamp: 1 !important;
+    }
+
+    .cal-swim-center { top: 48% !important; }
+    .cal-swim-top { top: 32% !important; left: 30% !important; }
+    .cal-swim-bottom { top: 60% !important; left: 54% !important; }
+}
 </style>
 
-<div id="sotka-auth-overlay">
-    <div class="sa-modal" style="position: relative;">
-        
+<div id="sotka-auth-overlay" style="position: fixed; inset: 0; z-index: 9999999; display: none; align-items: center; justify-content: center; background: rgba(15, 17, 23, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); overflow: hidden; padding: 16px; box-sizing: border-box;">
+
+    <!-- 🦆 ФОНОВЫЙ СЛОЙ ПЛАВАЮЩИХ УТОЧЕК -->
+    <div class="bg-floating-ducks-layer" style="position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1;">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 8%; left: 7%; width: 54px; height: 54px; opacity: 0.28; --rot: -18deg; animation-delay: 0s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 14%; right: 9%; width: 68px; height: 68px; opacity: 0.22; --rot: 22deg; animation-delay: 1.2s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="bottom: 12%; left: 9%; width: 60px; height: 60px; opacity: 0.30; --rot: 15deg; animation-delay: 2.4s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="bottom: 10%; right: 8%; width: 76px; height: 76px; opacity: 0.22; --rot: -24deg; animation-delay: 0.8s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 50%; left: 3%; width: 40px; height: 40px; opacity: 0.18; --rot: 32deg; animation-delay: 3.1s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 48%; right: 4%; width: 46px; height: 46px; opacity: 0.16; --rot: -14deg; animation-delay: 1.9s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="top: 5%; left: 48%; width: 42px; height: 42px; opacity: 0.24; --rot: -8deg; animation-delay: 2.7s;" alt="">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-floating-duck" style="bottom: 4%; left: 46%; width: 48px; height: 48px; opacity: 0.20; --rot: 12deg; animation-delay: 0.5s;" alt="">
+    </div>
+
+    <!-- Модальное окно -->
+    <div class="sa-modal" style="position: relative; z-index: 10;">
         <button onclick="document.getElementById('sotka-auth-overlay').style.display='none'" style="position: absolute; top: 12px; right: 15px; background: transparent; border: none; color: #8a8d9b; font-size: 24px; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#8a8d9b'">&times;</button>
 
+        <!-- 1. СМАРТ-ВХОД И РЕГИСТРАЦИЯ -->
         <div id="sa-step-login" class="sa-step active">
-		<div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 15px; margin-bottom: 20px; margin-top: 15px; display: flex; gap: 12px; align-items: flex-start;">
-                <span style="font-size: 20px;">🧪</span>
-                <div style="font-size: 13px; line-height: 1.5; color: #e4e4e7;">
-                    <b style="color: #ffc107; display: block; margin-bottom: 4px; letter-spacing: 0.5px;">VILKA В РЕЖИМЕ ТЕСТИРОВАНИЯ</b>
-                    Мы активно развиваем продукт! Если вы заметили баг или у вас есть идеи по улучшению — пожалуйста, сообщайте нам. Ваша помощь делает VILKA лучше.
+            <div style="background: rgba(255, 193, 7, 0.08); border: 1px solid rgba(255, 193, 7, 0.25); border-radius: 12px; padding: 12px; margin-bottom: 15px; margin-top: 10px; display: flex; gap: 10px; align-items: center; text-align: left;">
+                <span style="font-size: 20px; flex-shrink: 0;">🔐</span>
+                <div style="font-size: 11px; line-height: 1.4; color: #e4e4e7;">
+                    <b>ВХОД И РЕГИСТРАЦИЯ ПО ПИН</b><br>
+                    Уже зарегистрированы? Нажмите <a href="javascript:void(0)" onclick="window.sotkaAuth.switchStep('sa-step-reset')" style="color: #ffc107; font-weight: 800; text-decoration: underline;">«Сбросить ПИН»</a>, чтобы задать 4 цифры для входа.
                 </div>
             </div>
+
             <div class="sa-header" style="margin-bottom: 15px;">
                 <div class="sa-title">ВХОД И РЕГИСТРАЦИЯ</div>
-                <div class="sa-subtitle">Войдите в аккаунт или создайте новый для доступа к экосистеме VILKA.</div>
+                <div class="sa-subtitle" id="sa-login-subtitle">Введите Email и 4-значный ПИН-код (для входа или создания аккаунта)</div>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-                
-                <div style="display: flex; gap: 10px;">
-                    <button class="sa-btn" style="background: #fff; color: #000; flex: 1; margin: 0; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.sotkaAuth.oauthAction('google')">
-                        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
-                        Google
-                    </button>
-
-                    <button class="sa-btn" style="background: #fc3f1d; color: #fff; flex: 1; margin: 0; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.sotkaAuth.oauthAction('yandex')">
-                        <span style="font-family: Arial; font-weight: 900; font-size: 16px;">Я</span> Яндекс
-                    </button>
+            <!-- Блок сохраненного пользователя -->
+            <div id="savedUserBlock" style="display:none; margin-bottom: 15px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-body); border:1px solid var(--border); padding:10px 14px; border-radius:12px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div id="savedUserAvatar" style="width:34px; height:34px; border-radius:50%; background:var(--primary); color:#000; font-family:'Unbounded'; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center;">⚡</div>
+                        <div>
+                            <div id="savedUserName" style="font-size:13px; font-weight:800; color:var(--text-main);">Атлет</div>
+                            <div id="savedUserEmail" style="font-size:10px; color:var(--text-muted); font-family:'Roboto Mono';">user@email.com</div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="window.sotkaAuth.forgetDeviceUser()" style="background:none; border:none; color:var(--primary); font-size:11px; font-family:'Unbounded'; font-weight:800; cursor:pointer;" title="Сменить аккаунт">СМЕНИТЬ</button>
                 </div>
+            </div>
 
-                <!-- <button class="sa-btn" style="background: #FC4C02; color: #fff; margin: 0; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: none;" onclick="window.sotkaAuth.oauthAction('strava')">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
-                    Войти через Strava
-                </button>-->
+            <!-- Поле Email -->
+            <div id="newDeviceEmailBlock" class="sa-input-group">
+                <label class="sa-label">Email</label>
+                <input type="email" id="sa-login-email" class="sa-input" placeholder="mail@example.com" autocomplete="username">
             </div>
-            
-            <div style="text-align: center; color: #8a8d9b; font-size: 10px; font-weight: 800; margin-bottom: 15px; letter-spacing: 1px;">ИЛИ ПО ПОЧТЕ</div>
 
-            <div class="sa-input-group">
-                <input type="email" id="sa-login-email" class="sa-input" placeholder="Email">
-            </div>
-            <div class="sa-input-group">
-                <input type="password" id="sa-login-password" class="sa-input" placeholder="Пароль">
+            <!-- 4 ячейки ПИН-кода -->
+            <div class="sa-input-group" style="text-align: center; margin-top: 10px;">
+                <label class="sa-label" style="text-align: center; margin-bottom: 8px;">ПИН-код (4 цифры)</label>
+                <div style="display: flex; justify-content: center; gap: 10px;" id="pinInputsContainer">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore class="pin-digit" style="width: 48px; height: 52px; text-align: center; font-size: 24px; font-family: 'Roboto Mono', monospace; font-weight: 800; border-radius: 10px; border: 1px solid #3f3f46; background: #27272a; color: #fff; outline: none; -webkit-text-security: disc;">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore class="pin-digit" style="width: 48px; height: 52px; text-align: center; font-size: 24px; font-family: 'Roboto Mono', monospace; font-weight: 800; border-radius: 10px; border: 1px solid #3f3f46; background: #27272a; color: #fff; outline: none; -webkit-text-security: disc;">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore class="pin-digit" style="width: 48px; height: 52px; text-align: center; font-size: 24px; font-family: 'Roboto Mono', monospace; font-weight: 800; border-radius: 10px; border: 1px solid #3f3f46; background: #27272a; color: #fff; outline: none; -webkit-text-security: disc;">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore class="pin-digit" style="width: 48px; height: 52px; text-align: center; font-size: 24px; font-family: 'Roboto Mono', monospace; font-weight: 800; border-radius: 10px; border: 1px solid #3f3f46; background: #27272a; color: #fff; outline: none; -webkit-text-security: disc;">
+                </div>
+                <div id="sa-lockout-msg" style="display: none; color: #ef4444; font-size: 11px; margin-top: 8px; font-weight: 700;"></div>
             </div>
             
-            <button class="sa-btn" onclick="window.sotkaAuth.login()">ПРОДОЛЖИТЬ</button>
+            <button class="sa-btn" id="sa-login-btn" onclick="window.sotkaAuth.login()" style="margin-top: 15px; margin-bottom: 10px; width: 100%;">
+                ПРОДОЛЖИТЬ
+            </button>
             
-            <div style="display:flex; justify-content: space-between; margin-top: 10px;">
-                <button class="sa-link-btn" style="margin: 0;" onclick="window.sotkaAuth.switchStep('sa-step-reset')">Забыли пароль?</button>
-                <button class="sa-link-btn" style="margin: 0; color: #ffc107;" onclick="window.location.href='https://vilka.sotka.one/?support=1'">Написать в ПОДДЕРЖКУ</button>
+            <div style="margin-bottom: 15px;">
+                <button class="sa-btn" style="background: #fc3f1d; color: #fff; width: 100%; margin: 0; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 800;" onclick="window.sotkaAuth.oauthAction('yandex')">
+                    <span style="background: #fff; color: #fc3f1d; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: Arial; font-weight: 900; font-size: 13px;">Я</span> Войти через Яндекс ID
+                </button>
             </div>
-			<button class="sa-link-btn" style="margin-top: 15px; text-decoration: none; color: #8a8d9b; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; font-family: 'Unbounded';" onclick="document.getElementById('sotka-auth-overlay').style.display='none'">
+
+            <div style="display:flex; justify-content: space-between; margin-bottom: 10px; padding: 0 4px;">
+                <button type="button" class="sa-link-btn" style="margin: 0;" onclick="window.sotkaAuth.switchStep('sa-step-reset')">Сбросить ПИН-код</button>
+                <button type="button" class="sa-link-btn" style="margin: 0; color: #ffc107;" onclick="window.sotkaAuth.contactSupportFromAuth()">ПОДДЕРЖКА</button>
+            </div>
+
+            <button type="button" class="sa-link-btn" style="margin-top: 5px; text-decoration: none; color: #8a8d9b; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; font-family: 'Unbounded'; width: 100%;" onclick="document.getElementById('sotka-auth-overlay').style.display='none'">
                 Вернуться к просмотру (Гость)
             </button>
         </div>
 
+        <!-- 2. ВЫБОР РОЛИ (4 ПЛИТКИ) -->
         <div id="sa-step-role" class="sa-step">
-            <div class="sa-header">
-                <div class="sa-title">👋 ДОБРО ПОЖАЛОВАТЬ!</div>
-                <div class="sa-subtitle" style="margin-top: 10px;">Аккаунт успешно создан.<br>Давайте настроим ваш спортивный профиль. Вы участвуете в соревнованиях или катаетесь в свое удовольствие?</div>
+            <div class="sa-header" style="margin-bottom: 18px;">
+                <div class="sa-title">ДОБРО ПОЖАЛОВАТЬ!</div>
+                <div class="sa-subtitle" style="font-size: 11px;">Выберите роль для настройки спортивного профиля:</div>
             </div>
-            <button class="sa-btn" style="padding: 16px; margin-bottom: 10px;" onclick="window.sotkaAuth.chooseRole('racer')">
-                <span style="font-size:16px; margin-right:5px;">🚴‍♂️</span> Я ГОНЩИК (УЧАСТВУЮ В ГОНКАХ)
-            </button>
-            <button class="sa-btn" style="padding: 16px; background: #27272a; color: #fff; border: 1px solid #3f3f46;" onclick="window.sotkaAuth.chooseRole('cyclist')">
-                <span style="font-size:16px; margin-right:5px;">🚲</span> Я ВЕЛОСИПЕДИСТ (НЕ ГОНЯЮСЬ)
-            </button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <!-- 1. Я — СПОРТСМЕН -->
+                <div onclick="window.sotkaAuth.chooseRole('racer')" style="background: var(--primary, #ffc107); color: #000; border-radius: 14px; padding: 18px 10px; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.35);">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"></circle><circle cx="5.5" cy="17.5" r="3.5"></circle><circle cx="15" cy="5" r="1"></circle><path d="M12 17.5V14l-3-3 4-3 2 3h2"></path></svg>
+                    <div style="font-family: 'Unbounded'; font-size: 10.5px; font-weight: 800;">Я — СПОРТСМЕН</div>
+                    <div style="font-size: 8.5px; opacity: 0.8; font-weight: 700;">Участие в гонках и заездах</div>
+                </div>
+                <!-- 2. Я — КАПИТАН -->
+                <div onclick="window.sotkaAuth.chooseRole('captain')" style="background: rgba(255, 193, 7, 0.16); color: var(--text-main); border: 1.5px solid var(--primary, #ffc107); border-radius: 14px; padding: 18px 10px; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--primary, #ffc107)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"></path><path d="M5 20h14"></path></svg>
+                    <div style="font-family: 'Unbounded'; font-size: 10.5px; font-weight: 800; color: var(--primary, #ffc107);">Я — КАПИТАН</div>
+                    <div style="font-size: 8.5px; color: var(--text-muted); font-weight: 700;">Создать свой велоклуб</div>
+                </div>
+                <!-- 3. Я — СУДЬЯ -->
+                <div onclick="alert('⚖️ Раздел регистрации судей в разработке.')" style="background: #3f3f46; color: #d4d4d8; border-radius: 14px; padding: 18px 10px; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; opacity: 0.8;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#d4d4d8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="M2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h18"></path></svg>
+                    <div style="font-family: 'Unbounded'; font-size: 10.5px; font-weight: 800;">Я — СУДЬЯ</div>
+                    <div style="font-size: 8.5px; color: #a1a1aa; font-weight: 700;">В разработке</div>
+                </div>
+                <!-- 4. Я — ОРГАНИЗАТОР -->
+                <div onclick="alert('🎪 Раздел регистрации организаторов в разработке.')" style="background: #27272a; color: #a1a1aa; border-radius: 14px; padding: 18px 10px; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; opacity: 0.7;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    <div style="font-family: 'Unbounded'; font-size: 10.5px; font-weight: 800;">Я — ОРГАНИЗАТОР</div>
+                    <div style="font-size: 8.5px; color: #71717a; font-weight: 700;">В разработке</div>
+                </div>
+            </div>
+            <button type="button" class="sa-link-btn" onclick="window.sotkaAuth.switchStep('sa-step-login')" style="color: var(--text-muted); font-size: 11px;">← Назад ко входу</button>
         </div>
 
+        <!-- 3. ПОИСК В БАЗЕ ПРОТОКОЛОВ -->
         <div id="sa-step-search" class="sa-step">
             <div class="sa-header">
                 <div class="sa-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffc107" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; margin-top: -4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> АКТИВАЦИЯ</div>
@@ -1289,6 +2057,7 @@
             <button class="sa-link-btn" onclick="window.sotkaAuth.switchStep('sa-step-role')">Назад</button>
         </div>
 
+        <!-- 4. ПОДТВЕРЖДЕНИЕ НАЙДЕННОГО ПРОФИЛЯ -->
         <div id="sa-step-verify" class="sa-step">
             <div class="sa-header">
                 <div class="sa-title">✅ ПРОФИЛЬ НАЙДЕН</div>
@@ -1306,6 +2075,7 @@
             <button class="sa-link-btn" onclick="window.sotkaAuth.cancelVerify()">Это не я (Назад)</button>
         </div>
 
+        <!-- 5. СОЗДАНИЕ НОВОЙ КАРТОЧКИ -->
         <div id="sa-step-create" class="sa-step">
             <div class="sa-header">
                 <div class="sa-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffc107" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; margin-top: -4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> НОВАЯ КАРТОЧКА</div>                
@@ -1318,44 +2088,61 @@
             
             <div style="display:flex; gap:10px;">
                 <div class="sa-input-group" style="flex:1;">
-                    <label class="sa-label">Фамилия</label>
+                    <label class="sa-label">Фамилия *</label>
                     <input type="text" id="sa-create-lastname" class="sa-input" placeholder="Ваша фамилия">
                 </div>
                 <div class="sa-input-group" style="flex:1;">
-                    <label class="sa-label">Имя</label>
+                    <label class="sa-label">Имя *</label>
                     <input type="text" id="sa-create-firstname" class="sa-input" placeholder="Ваше имя">
                 </div>
             </div>
             <div style="display:flex; gap:10px;">
                 <div class="sa-input-group" style="flex:1;">
-                    <label class="sa-label">Год рождения</label>
+                    <label class="sa-label">Год рождения *</label>
                     <input type="number" pattern="\d*" id="sa-create-yob" class="sa-input" placeholder="ГГГГ">
                 </div>
                 <div class="sa-input-group" style="flex:1;">
-                    <label class="sa-label">Пол</label>
-                    <select id="sa-create-gender" class="sa-select">
+                    <label class="sa-label">Пол *</label>
+                    <select id="sa-create-gender" class="sa-select" onchange="window.sotkaAuth.updateSpeedClusterPreview()">
                         <option value="M">Мужской</option>
                         <option value="F">Женский</option>
                     </select>
                 </div>
             </div>
-            
+
+            <!-- Поле оценки скорости -->
+            <div style="background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <label class="sa-label" style="margin-bottom:0; color:var(--text-main); font-weight:800; font-size:10px;">СРЕДНЯЯ СКОРОСТЬ НА ШОССЕ ДО 25 КМ</label>
+                    <span id="sa-cluster-preview-badge" style="background:var(--primary); color:#000; font-family:'Roboto Mono'; font-weight:900; font-size:10px; padding:2px 8px; border-radius:6px;">КЛАСТЕР</span>
+                </div>
+                <input type="number" step="0.1" min="10" max="60" id="sa-create-speed" class="sa-input" placeholder="Например: 34.5 км/ч" style="font-family:'Roboto Mono'; font-weight:700; margin-bottom:4px;" oninput="window.sotkaAuth.updateSpeedClusterPreview()">
+            </div>
+
+            <!-- Блок создания команды капитаном -->
+            <div id="sa-captain-team-wrapper" style="display:none; background: rgba(255, 193, 7, 0.08); border: 1.5px solid var(--primary); border-radius: 12px; padding: 14px; margin-bottom: 15px;">
+                <label class="sa-label" style="color:var(--primary); font-family:'Unbounded'; font-weight:800; font-size:10px; margin-bottom: 6px;">НАЗВАНИЕ ВАШЕЙ КОМАНДЫ *</label>
+                <input type="text" id="sa-captain-team-name" class="sa-input" placeholder="Например: TITANS CYCLING" style="margin-bottom:12px; font-weight:bold;">
+                <label class="sa-label" style="color:var(--primary); font-family:'Unbounded'; font-weight:800; font-size:10px; margin-bottom: 6px;">ОСНОВНАЯ ЛИГА / ПЕЛОТОН КОМАНДЫ *</label>
+                <select id="sa-captain-peloton-select" class="sa-select" style="margin-bottom:0; font-weight:bold;"></select>
+            </div>
+
+            <!-- Блок выбора клубов спортсмена -->
             <div id="sa-team-wrapper">
                 <div style="border-top: 1px solid #3f3f46; margin: 15px 0;"></div>
                 <div class="sa-subtitle" style="margin-bottom: 10px;">Выберите клубы, за которые будете выступать:</div>
+                <div id="sa-team-selections-container"></div>
                 
-                <div id="sa-team-selections-container">
-                    </div>
-                
-                <button class="sa-btn" style="background: transparent; color: #ffc107; border: 1px dashed #ffc107; margin-top: 5px; padding: 10px;" onclick="window.sotkaAuth.addTeamSelectionRow(event)">
-                    + ДОБАВИТЬ ЕЩЕ ПЕЛОТОН
-                </button>
+                <button type="button" id="sa-add-team-row-btn" class="sa-btn" style="background: transparent; color: #ffc107; border: 1px dashed #ffc107; margin-top: 5px; padding: 10px;" onclick="window.sotkaAuth.addTeamSelectionRow(event)">
+    + ДОБАВИТЬ КОМАНДУ
+</button>
             </div>
             
-            <button class="sa-btn" style="margin-top: 10px;" onclick="window.sotkaAuth.createProfile()">ЗАВЕРШИТЬ НАСТРОЙКУ</button>
+            <button class="sa-btn" style="margin-top: 15px;" onclick="window.sotkaAuth.createProfile()">ЗАВЕРШИТЬ НАСТРОЙКУ</button>
             <button class="sa-link-btn" onclick="window.sotkaAuth.cancelCreate()">Назад</button>
         </div>
 
+        <!-- 6. ПРОФИЛЬ ЗАНЯТ -->
         <div id="sa-step-taken" class="sa-step">
             <div class="sa-header">
                 <div class="sa-title" style="color: #ff3366;">⚠️ ПРОФИЛЬ ЗАНЯТ</div>
@@ -1368,38 +2155,41 @@
                 Пожалуйста, авторизуйтесь используя указанную выше почту. Если вы потеряли к ней доступ — напишите в поддержку.
             </div>
             <button class="sa-btn" style="background:#27272a; color:#fff;" onclick="window.sotkaAuth.switchStep('sa-step-search')">ИСКАТЬ ДРУГОЕ ИМЯ</button>
-            <button class="sa-link-btn" style="color:#ffc107;" onclick="window.location.href='https://vilka.sotka.one/?support=1'">НАПИСАТЬ В ПОДДЕРЖКУ</button>
+            <button class="sa-link-btn" style="color:#ffc107;" onclick="window.sotkaAuth.contactSupportFromAuth()">НАПИСАТЬ В ПОДДЕРЖКУ</button>
         </div>
 
+        <!-- 7. СБРОС ПИН-КОДА -->
         <div id="sa-step-reset" class="sa-step">
             <div class="sa-header">
-                <div class="sa-title">СБРОС ПАРОЛЯ</div>
-                <div class="sa-subtitle">Введите почту, на которую зарегистрирован аккаунт. Мы отправим ссылку для восстановления.</div>
+                <div class="sa-title">СБРОС ПИН-КОДА</div>
+                <div class="sa-subtitle">Введите почту, на которую зарегистрирован аккаунт. Мы отправим ссылку для смены ПИН-кода.</div>
             </div>
             <div class="sa-input-group">
                 <input type="email" id="sa-reset-email" class="sa-input" placeholder="Ваш Email">
             </div>
-            <button class="sa-btn" onclick="window.sotkaAuth.resetPassword()">ОТПРАВИТЬ ПИСЬМО</button>
+            <button class="sa-btn" onclick="window.sotkaAuth.resetPassword()">ОТПРАВИТЬ ССЫЛКУ</button>
             <button class="sa-link-btn" onclick="window.sotkaAuth.switchStep('sa-step-login')">Назад ко входу</button>
         </div>
         
+        <!-- 8. УСТАНОВКА НОВОГО ПИН-КОДА -->
         <div id="sa-step-new-password" class="sa-step">
             <div class="sa-header">
-                <div class="sa-title">НОВЫЙ ПАРОЛЬ</div>
-                <div class="sa-subtitle">Придумайте новый надежный пароль для вашего аккаунта.</div>
+                <div class="sa-title">НОВЫЙ ПИН-КОД</div>
+                <div class="sa-subtitle">Введите новый 4-значный ПИН-код для вашего аккаунта.</div>
             </div>
             <input type="hidden" id="sa-reset-token">
             <div class="sa-input-group">
-                <label class="sa-label">Новый пароль</label>
-                <input type="password" id="sa-new-password" class="sa-input" placeholder="Минимум 8 символов">
+                <label class="sa-label">Новый ПИН (4 цифры)</label>
+                <input type="password" inputmode="numeric" maxlength="4" id="sa-new-pin-1" class="sa-input" placeholder="••••" style="text-align: center; font-size: 22px; letter-spacing: 8px; font-family: 'Roboto Mono', monospace;">
             </div>
             <div class="sa-input-group">
-                <label class="sa-label">Повторите пароль</label>
-                <input type="password" id="sa-new-password-confirm" class="sa-input" placeholder="Минимум 8 символов">
+                <label class="sa-label">Повторите ПИН-код</label>
+                <input type="password" inputmode="numeric" maxlength="4" id="sa-new-pin-2" class="sa-input" placeholder="••••" style="text-align: center; font-size: 22px; letter-spacing: 8px; font-family: 'Roboto Mono', monospace;">
             </div>
-            <button class="sa-btn" onclick="window.sotkaAuth.confirmNewPassword()">СОХРАНИТЬ ПАРОЛЬ</button>
+            <button class="sa-btn" onclick="window.sotkaAuth.confirmNewPassword()">СОХРАНИТЬ ПИН-КОД</button>
         </div>
 
+        <!-- 9. ЛОАДЕР -->
         <div id="sa-step-loading" class="sa-step">
             <div class="sa-header" style="margin-bottom:0; padding: 40px 0;">
                 <div style="width: 40px; height: 40px; border: 3px solid rgba(255, 193, 7, 0.2); border-top-color: #ffc107; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px auto;"></div>
@@ -1410,30 +2200,222 @@
     </div>
 </div>
 
-<div id="raceActionModal" class="modal-overlay" style="display:none; z-index: 99999;">
+<div id="raceActionModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000000; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
     <div class="modal-content" style="background: var(--bg-surface); padding: 25px; border-radius: 16px; border: 1px solid var(--border); width: 90%; max-width: 350px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
         
-        <h3 id="modalRaceTitle" style="font-family: 'Unbounded'; font-size: 16px; font-weight: 800; color: var(--text-main); margin-top: 0; margin-bottom: 10px; line-height: 1.3;">Название гонки</h3>
+        <h3 id="modalRaceTitle" style="font-family: 'Unbounded', sans-serif; font-size: 16px; font-weight: 800; color: var(--text-main); margin-top: 0; margin-bottom: 10px; line-height: 1.3;">Название гонки</h3>
         
         <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5;">Вы уже добавлены в старт-лист, но участие еще не оплачено.</p>
         
         <div style="background: rgba(255, 193, 7, 0.05); border: 1px dashed var(--primary); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-            <div style="font-size: 10px; color: var(--text-muted); font-family: 'Unbounded'; margin-bottom: 5px;">СТОИМОСТЬ ВЗНОСА:</div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'Unbounded';"><span id="modalRacePrice">0</span> ВАТТ</div>
+            <div style="font-size: 10px; color: var(--text-muted); font-family: 'Unbounded', sans-serif; margin-bottom: 5px;">СТОИМОСТЬ ВЗНОСА:</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'Unbounded', sans-serif;"><span id="modalRacePrice">0</span> ВАТТ</div>
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 10px;">
-            <button onclick="window.app.confirmRacePayment()" style="background: var(--primary); color: #000000; border: none; padding: 14px; border-radius: 8px; font-family: 'Unbounded'; font-size: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">
-                💳 ОПЛАТИТЬ ВЗНОС
+            <!-- 1. Оплата за себя (добавлен id="btnPaySingle") -->
+            <button id="btnPaySingle" onclick="window.app.confirmRacePayment()" style="width:100%; background: var(--primary); color: #000000; border: none; padding: 14px; border-radius: 8px; font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(255,193,7,0.3);">
+                ОПЛАТИТЬ ВЗНОС
             </button>
-            <button onclick="window.app.cancelRegistration()" style="background: var(--bg-surface-hover); color: var(--text-main); border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-family: 'Unbounded'; font-size: 10px; font-weight: 800; cursor: pointer; transition: 0.2s;">
-                ❌ ОТМЕНИТЬ ЗАЯВКУ
+
+            <!-- 2. Оплата за весь экипаж -->
+            <button id="btnPaySquad" onclick="window.app.confirmSquadPayment()" style="display:none; width:100%; background:#000000; color:var(--primary, #ffc107); border:2px solid var(--primary, #ffc107); padding:12px; border-radius:8px; font-family:'Unbounded', sans-serif; font-size:11px; font-weight:900; cursor:pointer;">
+                ОПЛАТИТЬ ЗА ВЕСЬ ЭКИПАЖ
             </button>
-            <button onclick="document.getElementById('raceActionModal').style.display='none'" style="background: transparent; color: var(--text-muted); border: none; padding: 10px; border-radius: 8px; font-family: 'Unbounded'; font-size: 10px; font-weight: 800; cursor: pointer;">
+
+            <!-- 3. Выход из состава / Сплит экипажа -->
+            <button id="btnLeaveSquad" onclick="window.app.leaveOrSplitSquad()" style="display:none; width:100%; background:rgba(255,193,7,0.08); color:var(--text-main); border:1px solid var(--border); padding:11px; border-radius:8px; font-family:'Unbounded', sans-serif; font-size:11px; font-weight:800; cursor:pointer;">
+                ВЫЙТИ ИЗ СОСТАВА / СМЕНИТЬ ЭКИПАЖ
+            </button>
+
+            <!-- 4. Полная отмена заявки -->
+            <button onclick="window.app.cancelRegistration()" style="width:100%; background: var(--bg-surface-hover); color: var(--danger, #ef4444); border: 1px solid var(--border); padding: 11px; border-radius: 8px; font-family: 'Unbounded', sans-serif; font-size: 10px; font-weight: 800; cursor: pointer; transition: 0.2s;">
+                ОТОЗВАТЬ ЗАЯВКУ
+            </button>
+
+            <!-- 5. Закрыть -->
+            <button onclick="document.getElementById('raceActionModal').style.display='none'" style="background: transparent; color: var(--text-muted); border: none; padding: 8px; border-radius: 8px; font-family: 'Unbounded', sans-serif; font-size: 10px; font-weight: 800; cursor: pointer;">
                 ЗАКРЫТЬ
             </button>
         </div>
     </div>
+</div>
+
+<!-- 👑 МОДАЛЬНОЕ ОКНО: КАЗНАЧЕЙСТВО ДРАФТА (SUPERADMIN) -->
+<div class="modal-overlay" id="draftTreasuryModal" style="display: none; z-index: 10006;">
+  <div class="modal-box treasury-modal-box">
+    
+    <!-- ШАПКА -->
+    <div class="treasury-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="treasury-icon-badge">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M7 15h0M2 9.5h20"/>
+          </svg>
+        </div>
+        <div>
+          <div class="treasury-title">КАЗНАЧЕЙСТВО ДРАФТА</div>
+          <div class="treasury-subtitle">Управление счетами и мониторинг Ватт</div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button type="button" class="treasury-btn-ghost" onclick="fetchTreasuryData()" title="Обновить данные">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+        <button type="button" class="modal-close-btn" onclick="closeDraftTreasury()" title="Закрыть">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ТАБЫ УПРАВЛЕНИЯ -->
+    <div class="treasury-nav">
+      <button type="button" id="tab-btn-wallets" class="treasury-tab-btn active" onclick="switchTreasuryTab('wallets')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>КОШЕЛЬКИ</span>
+      </button>
+      <button type="button" id="tab-btn-debts" class="treasury-tab-btn" onclick="switchTreasuryTab('debts')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <span id="treasury-debt-tab-title">ЗАДОЛЖЕННОСТИ (0)</span>
+      </button>
+      <button type="button" id="tab-btn-audit" class="treasury-tab-btn" onclick="switchTreasuryTab('audit')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <span>АУДИТ ТРАНЗАКЦИЙ</span>
+      </button>
+    </div>
+
+    <!-- СВОДНЫЕ ПАНЕЛИ (KPI БЛОКИ) -->
+    <div class="treasury-kpi-grid">
+      <div class="treasury-kpi-card">
+        <span class="treasury-kpi-label">ВСЕГО В ОБОРОТЕ</span>
+        <div class="treasury-kpi-val" id="kpi-total-val">0 W</div>
+        <span class="treasury-kpi-sub" id="kpi-real-bonus-sub">Real: 0 • Bonus: 0</span>
+      </div>
+      <div class="treasury-kpi-card">
+        <span class="treasury-kpi-label">ДОХОД ТАЙМИНГА</span>
+        <div class="treasury-kpi-val" id="kpi-revenue-val">0 W</div>
+        <span class="treasury-kpi-sub">Списано за старты заездов</span>
+      </div>
+      <div class="treasury-kpi-card">
+        <span class="treasury-kpi-label">ОВЕРДРАФТ (ДОЛГ)</span>
+        <div class="treasury-kpi-val" id="kpi-debt-val" style="color: var(--danger);">0 W</div>
+        <span class="treasury-kpi-sub" id="kpi-debt-sub">0 должников</span>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА 1: РЕЕСТР КОШЕЛЬКОВ И ПОИСК -->
+    <div id="treasury-tab-wallets" class="treasury-tab-content">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" 
+               id="treasuryWalletSearch" 
+               class="search-input" 
+               placeholder="Поиск по имени, email или ID пользователя..." 
+               autocomplete="off" 
+               oninput="filterTreasuryWallets(this.value)">
+      </div>
+
+      <div class="treasury-list" id="treasury-wallets-list"></div>
+    </div>
+
+    <!-- ВКЛАДКА 2: ДОЛЖНИКИ (ОВЕРДРАФТ) -->
+    <div id="treasury-tab-debts" class="treasury-tab-content" style="display: none;">
+      <div class="treasury-notice-box">
+        В этом списке собраны организаторы с отрицательным балансом (списание тайминга превысило остаток на счёте). Овердрафт погасится автоматически при следующем пополнении счёта через Т-Банк.
+      </div>
+      <div class="treasury-list" id="treasury-debts-list"></div>
+    </div>
+
+    <!-- ВКЛАДКА 3: АУДИТ ТРАНЗАКЦИЙ -->
+    <div id="treasury-tab-audit" class="treasury-tab-content" style="display: none;">
+      <div class="treasury-list" id="treasury-audit-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ✍️ ДИАЛОГ РУЧНОЙ КОРРЕКТИРОВКИ БАЛАНСА -->
+<div class="modal-overlay" id="treasuryAdjustModal" style="display: none; z-index: 10007;">
+  <div class="modal-box" style="max-width: 360px; padding: 18px 20px; gap: 10px;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+      <div class="modal-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>КОРРЕКТИРОВКА ВАТТ</span>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeAdjustModal()">&times;</button>
+    </div>
+
+    <div style="font-size: 11px; color: var(--text-muted); font-family: 'Manrope';">
+      Пользователь: <b id="adjust-user-name" style="color: var(--text-main);">—</b>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="label-text">Сумма (+ для начисления, - для списания):</span>
+      <input type="number" 
+             id="adjust-amount-input" 
+             class="settings-input" 
+             placeholder="Например: 500 или -200" 
+             style="font-family: 'Roboto Mono'; font-weight: 800; font-size: 15px; text-align: center;">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="label-text">Корзина валюты:</span>
+      <select id="adjust-bucket-select" class="select-link">
+        <option value="real">Real (выводимые / Т-Банк)</option>
+        <option value="bonus">Bonus (призовые / промо)</option>
+      </select>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span class="label-text">Основание / Причина:</span>
+      <input type="text" 
+             id="adjust-reason-input" 
+             class="settings-input" 
+             placeholder="Грант, возврат, бонус за заезд...">
+    </div>
+
+    <div class="modal-btns" style="margin-top: 6px;">
+      <button type="button" class="btn-cancel" onclick="closeAdjustModal()">Отмена</button>
+      <button type="button" class="btn-save" id="btn-save-adjustment" onclick="submitBalanceAdjustment()">ПРИМЕНИТЬ</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- 📜 ДЕТАЛЬНАЯ ВЫПИСКА ПО ВЫБРАННОМУ КОШЕЛЬКУ -->
+<div class="modal-overlay" id="treasuryWalletHistoryModal" style="display: none; z-index: 10008;">
+  <div class="modal-box" style="max-width: 520px; width: 95vw; max-height: 85vh; padding: 18px 20px; gap: 12px; display: flex; flex-direction: column;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+      <div>
+        <div class="treasury-title" id="history-modal-user-name">ВЫПИСКА ПО КОШЕЛЬКУ</div>
+        <div class="treasury-subtitle" id="history-modal-user-meta">Загрузка...</div>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeWalletHistoryModal()">&times;</button>
+    </div>
+
+    <div id="history-modal-tx-list" class="treasury-list" style="max-height: 60vh; overflow-y: auto;">
+      <!-- Карточки транзакций -->
+    </div>
+
+    <div style="padding-top: 8px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+      <button type="button" class="btn-cancel" onclick="closeWalletHistoryModal()" style="max-width: 120px;">Закрыть</button>
+    </div>
+
+  </div>
 </div>
 
 </body>
