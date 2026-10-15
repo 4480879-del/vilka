@@ -1,5 +1,9 @@
 if (window.location.hostname.toLowerCase() === 'ru.sotka.one' && !window.location.pathname.endsWith('board.html')) {
-    window.location.replace('/board.html' + window.location.search + window.location.hash);
+  window.location.replace('/board.html' + window.location.search + window.location.hash);
+}
+
+if (window.location.hostname.toLowerCase() === 'iduck.sotka.one' && !window.location.pathname.endsWith('iduck.html')) {
+  window.location.replace('/iduck.html' + window.location.search + window.location.hash);
 }
 
 const calculateAppHeight = () => {
