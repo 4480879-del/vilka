@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>IDUCK — Цифровой паспорт спортсмена • SOTKA.ONE</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&family=Roboto+Mono:wght@700;800;900&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
+
+  <script src="https://unpkg.com/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --bg-canvas: #f4f4f5;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f8fafc;
+      --text-main: #09090b;
+      --text-muted: #71717a;
+      --sotka-gold: #ffc107;
+      --border: #e4e4e7;
+      --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.08);
+      --shadow-modal: 0 25px 65px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Фоновые уточки */
+    .bg-ducks-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .bg-duck {
+      position: absolute;
+      object-fit: contain;
+      opacity: 0.07;
+      user-select: none;
+    }
+
+    /* Центральный контейнер поиска */
+    .iduck-stage {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 540px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .iduck-brand-head {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .iduck-logo-circle {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: #09090b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+      cursor: pointer;
+    }
+    .iduck-logo-circle img {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+    }
+
+    .iduck-brand-kicker {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .iduck-brand-kicker::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--sotka-gold);
+      display: inline-block;
+    }
+
+    .iduck-brand-title {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+
+    .iduck-brand-sub {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      max-width: 400px;
+      line-height: 1.4;
+    }
+
+    /* Поисковая капсула */
+    .iduck-search-box {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border);
+      border-radius: 28px;
+      height: 56px;
+      padding: 0 18px 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .iduck-search-box:focus-within {
+      border-color: #09090b;
+      box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.25), var(--shadow-card);
+    }
+
+    .iduck-search-icon {
+      color: var(--text-muted);
+      flex-shrink: 0;
+      display: flex;
+    }
+
+    .iduck-search-input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      background: transparent;
+      font-family: 'Manrope', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      outline: none;
+    }
+    .iduck-search-input::placeholder {
+      color: #a1a1aa;
+      font-weight: 600;
+    }
+
+    .iduck-clear-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-canvas);
+      color: var(--text-muted);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: 0.15s;
+    }
+    .iduck-clear-btn:hover {
+      background: #09090b;
+      color: #ffffff;
+      border-color: #09090b;
+    }
+
+    /* Список результатов */
+    .iduck-results-wrap {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 340px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      padding: 2px;
+    }
+
+    .iduck-rider-item {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      text-align: left;
+    }
+    .iduck-rider-item:hover {
+      border-color: #09090b;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    .iduck-rider-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .iduck-rider-name {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-main);
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .iduck-rider-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .iduck-mini-pill {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .iduck-open-btn-chip {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 10px;
+      background: #09090b;
+      color: #ffffff;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 9px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .iduck-status-msg {
+      text-align: center;
+      padding: 20px 14px;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 10.5px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    /* =========================================================
+       МОДАЛЬНОЕ ОКНО КАРТОЧКИ IDUCK (1-В-1 КАК В VILKA.JS)
+       ========================================================= */
+    .iduck-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 10, 15, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .iduck-modal-overlay.open {
+      display: flex;
+    }
+
+    .iduck-pass-card {
+      width: 100%;
+      max-width: 350px;
+      background: #ffffff;
+      color: #09090b;
+      border-radius: 26px;
+      padding: 22px 22px 20px;
+      box-shadow: var(--shadow-modal);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      animation: passPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes passPop {
+      from { opacity: 0; transform: scale(0.95) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .iduck-pass-topbar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .iduck-pass-kicker {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 800;
+      color: #71717a;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .iduck-pass-kicker::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #a1a1aa;
+      display: inline-block;
+    }
+
+    .iduck-pass-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid #e4e4e7;
+      background: #ffffff;
+      color: #71717a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+      transition: 0.15s;
+    }
+    .iduck-pass-close:hover {
+      border-color: #09090b;
+      color: #09090b;
+    }
+
+    .iduck-pass-fullname {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 16px;
+      font-weight: 900;
+      color: #09090b;
+      text-transform: uppercase;
+      line-height: 1.25;
+      letter-spacing: -0.2px;
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+
+    .iduck-pass-pills {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .iduck-pass-pill {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 800;
+      color: #18181b;
+      background: #ffffff;
+      border: 1px solid #e4e4e7;
+      border-radius: 7px;
+      padding: 3.5px 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .iduck-qr-frame {
+      width: 224px;
+      height: 224px;
+      background: #ffffff;
+      border-radius: 22px;
+      border: 1px solid #f1f5f9;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .iduck-qr-frame canvas {
+      width: 196px !important;
+      height: 196px !important;
+      display: block;
+      border-radius: 6px;
+    }
+
+    .iduck-qr-center-badge {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #ffffff;
+      border: 1.5px solid #09090b;
+      border-radius: 8px;
+      padding: 3px 9px;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 9.5px;
+      font-weight: 900;
+      color: #09090b;
+      letter-spacing: 0.2px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .iduck-pass-hint {
+      font-family: 'Manrope', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: #71717a;
+      line-height: 1.45;
+      max-width: 260px;
+      margin-bottom: 18px;
+    }
+
+    .iduck-btn-download {
+      width: 100%;
+      height: 44px;
+      border-radius: 12px;
+      border: none;
+      background: #09090b;
+      color: #ffffff;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .iduck-btn-download:hover {
+      opacity: 0.92;
+    }
+    .iduck-btn-download:active {
+      transform: scale(0.98);
+    }
+
+    .iduck-btn-profile-link {
+      width: 100%;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid #e4e4e7;
+      background: #f8fafc;
+      color: #09090b;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      margin-top: 8px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: 0.15s;
+    }
+    .iduck-btn-profile-link:hover {
+      background: var(--sotka-gold);
+      border-color: var(--sotka-gold);
+      color: #000000;
+    }
+
+    .iduck-btn-close-bottom {
+      width: 100%;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid #e4e4e7;
+      background: #ffffff;
+      color: #71717a;
+      font-family: 'Unbounded', sans-serif;
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      margin-top: 8px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .iduck-btn-close-bottom:hover {
+      border-color: #09090b;
+      color: #09090b;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Фоновые уточки -->
+  <div class="bg-ducks-layer">
+    <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-duck" style="top: 8%; left: 7%; width: 64px; transform: rotate(-18deg);" alt="">
+    <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-duck" style="top: 12%; right: 8%; width: 76px; transform: rotate(20deg);" alt="">
+    <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-duck" style="bottom: 10%; left: 9%; width: 70px; transform: rotate(14deg);" alt="">
+    <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" class="bg-duck" style="bottom: 9%; right: 7%; width: 82px; transform: rotate(-22deg);" alt="">
+  </div>
+
+  <!-- Центральный блок поиска -->
+  <main class="iduck-stage">
+    <div class="iduck-brand-head">
+      <div class="iduck-logo-circle" onclick="window.iduckApp.clearSearch()" title="Сбросить поиск">
+        <img src="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg" alt="IDuck">
+      </div>
+      <div class="iduck-brand-kicker">SOTKA.ONE • СИСТЕМА IDUCK</div>
+      <h1 class="iduck-brand-title">СТАРТОВЫЙ ПРОПУСК</h1>
+      <div class="iduck-brand-sub">Введите имя, фамилию и год рождения, чтобы найти профиль спортсмена и скачать QR-код IDuck</div>
+    </div>
+
+    <div class="iduck-search-box">
+      <span class="iduck-search-icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </span>
+      <input
+        type="text"
+        id="iduckSearchInput"
+        class="iduck-search-input"
+        placeholder="Имя, фамилия и год рождения..."
+        autocomplete="off"
+        spellcheck="false"
+        autofocus
+        oninput="window.iduckApp.onSearch(this.value)"
+        onkeydown="if(event.key === 'Enter') window.iduckApp.onEnterKey()"
+      >
+      <button type="button" id="iduckClearBtn" class="iduck-clear-btn" onclick="window.iduckApp.clearSearch()" title="Очистить">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div id="iduckResultsList" class="iduck-results-wrap"></div>
+  </main>
+
+  <!-- Модальное окно карточки IDuck -->
+  <div class="iduck-modal-overlay" id="iduckPassModal" onclick="if(event.target === this) window.iduckApp.closeCard()">
+    <div class="iduck-pass-card">
+      <div class="iduck-pass-topbar">
+        <div class="iduck-pass-kicker">IDUCK • СТАРТОВЫЙ ПРОПУСК</div>
+        <button type="button" class="iduck-pass-close" onclick="window.iduckApp.closeCard()" title="Закрыть">✕</button>
+      </div>
+
+      <div class="iduck-pass-fullname" id="passFullName">—</div>
+
+      <div class="iduck-pass-pills" id="passPillsRow"></div>
+
+      <div class="iduck-qr-frame">
+        <canvas id="passQrCanvas" width="392" height="392"></canvas>
+        <div class="iduck-qr-center-badge">IDuck</div>
+      </div>
+
+      <div class="iduck-pass-hint">
+        Покажите экран судье на старте для мгновенной выдачи номера BIB.
+      </div>
+
+      <button type="button" class="iduck-btn-download" onclick="window.iduckApp.downloadPassPng()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>СКАЧАТЬ IDUCK</span>
+      </button>
+
+      <a id="passVilkaProfileBtn" href="https://vilka.sotka.one" class="iduck-btn-profile-link">
+        <span>ПРОФИЛЬ И СТАТИСТИКА В VILKA</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="7" y1="17" x2="17" y2="7"></line>
+          <polyline points="7 7 17 7 17 17"></polyline>
+        </svg>
+      </a>
+
+      <button type="button" class="iduck-btn-close-bottom" onclick="window.iduckApp.closeCard()">
+        ЗАКРЫТЬ
+      </button>
+    </div>
+  </div>
+
+  <script>
+    (function stripIduckHtmlFromUrl() {
+      if (window.location.pathname.indexOf('iduck.html') !== -1) {
+        var cleanPath = window.location.pathname.replace(/\/?iduck\.html$/i, '') || '/';
+        try {
+          history.replaceState(history.state, '', cleanPath + window.location.search + window.location.hash);
+        } catch (e) {}
+      }
+    })();
+
+    const IDUCK_CACHE_KEY = 'sotka_iduck_directory_v2';
+
+    class SotkaIduckFinder {
+      constructor() {
+        this.pb = new PocketBase('https://vilka.sotka.one');
+        this.pb.beforeSend = (url, options) => {
+          url += (url.includes('?') ? '&' : '?') + 'nocache=' + Date.now();
+          return { url, options };
+        };
+
+        this.riders = [];
+        this.teamsMap = {};
+        this.filteredMatches = [];
+        this.selectedRider = null;
+        this.isLoaded = false;
+
+        window.addEventListener('hashchange', () => this.checkHashAndOpenCard());
+      }
+
+      escapeHTML(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      normalize(str) {
+        return String(str || '')
+          .toLowerCase()
+          .replace(/ё/g, 'е')
+          .replace(/[,;.:#-]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+
+      getRiderTeamName(r) {
+        if (!r) return 'ONE TEAM';
+        if (r._fallbackTeam) return r._fallbackTeam;
+        if (!r.team_id) return 'ONE TEAM';
+        const tIds = Array.isArray(r.team_id) ? r.team_id : [r.team_id];
+        const teams = tIds.map(id => this.teamsMap[id]).filter(Boolean);
+        if (teams.length === 0) return 'ONE TEAM';
+        const combat = teams.find(t => t.name && !t.name.toUpperCase().includes('ONE TEAM'));
+        return combat ? combat.name : (teams[0].name || 'ONE TEAM');
+      }
+
+      // Гибридный QR: открывает карточку обычной камерой И читается сканером судьи (V1|...)
+      buildQrPayload(r) {
+        const teamName = this.getRiderTeamName(r);
+        const cluster = r.base_cluster || 'B';
+        const yob = r.yob || '';
+        const gender = String(r.gender || 'M').toUpperCase().trim();
+        return `https://iduck.sotka.one/#V1|${r.id}|${r.last_name || ''}|${r.first_name || ''}|${yob}|${gender}|${cluster}|${teamName}`;
+      }
+
+      // Автооткрытие карточки при сканировании QR обычной камерой телефона
+      checkHashAndOpenCard() {
+        let rawHash = '';
+        try {
+          rawHash = decodeURIComponent(window.location.hash || '').replace(/^#\/?/, '').trim();
+        } catch (e) {
+          rawHash = (window.location.hash || '').replace(/^#\/?/, '').trim();
+        }
+        if (!rawHash) return;
+
+        if (rawHash.startsWith('V1|') || rawHash.startsWith('v1|')) {
+          const parts = rawHash.split('|');
+          const riderId = (parts[1] || '').trim();
+          if (!riderId) return;
+
+          const existing = this.riders.find(x => x.id === riderId);
+          if (existing) {
+            this.openCard(existing.id, true);
+            return;
+          }
+
+          // Офлайн-фолбэк прямо из данных внутри QR-кода (до загрузки базы)
+          if (parts[2] || parts[3]) {
+            const tempRider = {
+              id: riderId,
+              last_name: parts[2] || '',
+              first_name: parts[3] || '',
+              yob: parts[4] || '',
+              gender: parts[5] || 'M',
+              base_cluster: parts[6] || 'B',
+              _fallbackTeam: parts[7] || 'ONE TEAM'
+            };
+            this.riders.push(tempRider);
+            this.openCard(riderId, true);
+          }
+        } else {
+          const found = this.riders.find(x => x.id === rawHash);
+          if (found) this.openCard(found.id, true);
+        }
+      }
+
+      async start() {
+        // 1. Мгновенный старт из локального кэша
+        try {
+          const cached = localStorage.getItem(IDUCK_CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed.riders) && parsed.riders.length > 0) {
+              this.riders = parsed.riders;
+              this.teamsMap = parsed.teamsMap || {};
+              this.isLoaded = true;
+            }
+          }
+        } catch (e) {}
+
+        // Проверяем хэш сразу (если открыли по QR-коду с камеры)
+        this.checkHashAndOpenCard();
+
+        // 2. Фоновая синхронизация со свежей базой PocketBase
+        try {
+          const [teamsRes, ridersRes] = await Promise.all([
+            this.pb.collection('teams').getFullList({
+              fields: 'id,name',
+              requestKey: null
+            }).catch(() => []),
+            this.pb.collection('riders').getFullList({
+              fields: 'id,first_name,last_name,yob,gender,base_cluster,team_id,email',
+              sort: 'last_name,first_name',
+              requestKey: null
+            }).catch(() => [])
+          ]);
+
+          if (teamsRes.length > 0) {
+            this.teamsMap = {};
+            teamsRes.forEach(t => { this.teamsMap[t.id] = t; });
+          }
+
+          if (ridersRes.length > 0) {
+            this.riders = ridersRes.filter(r => {
+              if (!r || r.email === 'bot@sotka.one') return false;
+              if (r.email && r.email.startsWith('guest_')) return false;
+              if (r.first_name === 'Гость') return false;
+              return Boolean(r.first_name || r.last_name);
+            });
+            this.isLoaded = true;
+
+            try {
+              localStorage.setItem(IDUCK_CACHE_KEY, JSON.stringify({
+                riders: this.riders,
+                teamsMap: this.teamsMap
+              }));
+            } catch (e) {}
+          }
+        } catch (err) {
+          console.error('Ошибка синхронизации базы IDuck:', err);
+        }
+
+        // Повторно синхронизируем карточку из хэша со свежими данными БД
+        this.checkHashAndOpenCard();
+
+        const currentQuery = document.getElementById('iduckSearchInput')?.value || '';
+        if (currentQuery.trim()) {
+          this.onSearch(currentQuery);
+        }
+      }
+
+      clearSearch() {
+        const inp = document.getElementById('iduckSearchInput');
+        if (inp) {
+          inp.value = '';
+          inp.focus();
+        }
+        this.onSearch('');
+      }
+
+      onSearch(rawQuery) {
+        const q = this.normalize(rawQuery);
+        const clearBtn = document.getElementById('iduckClearBtn');
+        const listEl = document.getElementById('iduckResultsList');
+
+        if (clearBtn) {
+          clearBtn.style.display = q.length > 0 ? 'flex' : 'none';
+        }
+        if (!listEl) return;
+
+        if (q.length < 2) {
+          this.filteredMatches = [];
+          listEl.innerHTML = '';
+          return;
+        }
+
+        if (!this.isLoaded && this.riders.length === 0) {
+          listEl.innerHTML = `<div class="iduck-status-msg">Синхронизация базы спортсменов...</div>`;
+          return;
+        }
+
+        const tokens = q.split(' ').filter(Boolean);
+
+        const matches = this.riders.filter(r => {
+          const target = this.normalize(`${r.first_name || ''} ${r.last_name || ''} ${r.yob || ''}`);
+          return tokens.every(t => target.includes(t));
+        }).slice(0, 12);
+
+        this.filteredMatches = matches;
+
+        if (matches.length === 0) {
+          listEl.innerHTML = `<div class="iduck-status-msg">Спортсмен не найден</div>`;
+          return;
+        }
+
+        listEl.innerHTML = matches.map(r => {
+          const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+          const teamName = this.getRiderTeamName(r);
+          const cluster = r.base_cluster || 'B';
+          const yobText = r.yob ? `${r.yob} г.р.` : '';
+
+          return `
+            <div class="iduck-rider-item" onclick="window.iduckApp.openCard('${r.id}')">
+              <div class="iduck-rider-left">
+                <div class="iduck-rider-name">${this.escapeHTML(fullName)}</div>
+                <div class="iduck-rider-meta">
+                  <span class="iduck-mini-pill">${this.escapeHTML(teamName)}</span>
+                  <span class="iduck-mini-pill">КЛАСТЕР ${this.escapeHTML(cluster)}</span>
+                  ${yobText ? `<span class="iduck-mini-pill">${this.escapeHTML(yobText)}</span>` : ''}
+                </div>
+              </div>
+              <div class="iduck-open-btn-chip">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>IDUCK</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      onEnterKey() {
+        if (this.filteredMatches.length > 0) {
+          this.openCard(this.filteredMatches[0].id);
+        }
+      }
+
+      async openCard(riderId, fromHash = false) {
+        const r = this.riders.find(x => x.id === riderId);
+        if (!r) return;
+
+        this.selectedRider = r;
+
+        const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim().toUpperCase();
+        const teamName = this.getRiderTeamName(r).toUpperCase();
+        const cluster = (r.base_cluster || 'B').toUpperCase();
+        const yob = r.yob ? `${r.yob} г.р.` : '';
+
+        document.getElementById('passFullName').innerText = fullName;
+
+        const pillsHtml = [
+          `<span class="iduck-pass-pill">${this.escapeHTML(teamName)}</span>`,
+          `<span class="iduck-pass-pill">КЛАСТЕР ${this.escapeHTML(cluster)}</span>`,
+          yob ? `<span class="iduck-pass-pill">${this.escapeHTML(yob)}</span>` : ''
+        ].filter(Boolean).join('');
+
+        document.getElementById('passPillsRow').innerHTML = pillsHtml;
+
+        const profileBtn = document.getElementById('passVilkaProfileBtn');
+        if (profileBtn) {
+          profileBtn.href = `https://vilka.sotka.one/?user=${r.id}`;
+        }
+
+        const payload = this.buildQrPayload(r);
+
+        if (!fromHash) {
+          const hashPart = payload.split('#')[1] || '';
+          try {
+            history.replaceState(null, '', '/#' + hashPart);
+          } catch (e) {}
+        }
+
+        const modal = document.getElementById('iduckPassModal');
+        modal.classList.add('open');
+
+        const canvas = document.getElementById('passQrCanvas');
+        if (canvas && typeof QRCode !== 'undefined') {
+          await QRCode.toCanvas(canvas, payload, {
+            width: 392,
+            margin: 1,
+            color: { dark: '#000000', light: '#ffffff' },
+            errorCorrectionLevel: 'H'
+          });
+        }
+      }
+
+      closeCard() {
+        document.getElementById('iduckPassModal')?.classList.remove('open');
+        try {
+          history.replaceState(null, '', '/');
+        } catch (e) {}
+      }
+
+      async downloadPassPng() {
+        const r = this.selectedRider;
+        if (!r) return;
+
+        const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim().toUpperCase();
+        const teamName = this.getRiderTeamName(r).toUpperCase();
+        const cluster = `КЛАСТЕР ${(r.base_cluster || 'B').toUpperCase()}`;
+        const yob = r.yob ? `${r.yob} г.р.` : '';
+        const payload = this.buildQrPayload(r);
+
+        const qrTempCanvas = document.createElement('canvas');
+        await QRCode.toCanvas(qrTempCanvas, payload, {
+          width: 640,
+          margin: 1,
+          color: { dark: '#000000', light: '#ffffff' },
+          errorCorrectionLevel: 'H'
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 900;
+        canvas.height = 1140;
+        const ctx = canvas.getContext('2d');
+
+        const drawRoundRect = (x, y, w, h, rad, fill, stroke, lineWidth = 2) => {
+          ctx.beginPath();
+          ctx.moveTo(x + rad, y);
+          ctx.lineTo(x + w - rad, y);
+          ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+          ctx.lineTo(x + w, y + h - rad);
+          ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+          ctx.lineTo(x + rad, y + h);
+          ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+          ctx.lineTo(x, y + rad);
+          ctx.quadraticCurveTo(x, y, x + rad, y);
+          ctx.closePath();
+          if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+          if (stroke) { ctx.lineWidth = lineWidth; ctx.strokeStyle = stroke; ctx.stroke(); }
+        };
+
+        drawRoundRect(0, 0, canvas.width, canvas.height, 64, '#ffffff', '#e4e4e7', 4);
+
+        ctx.fillStyle = '#71717a';
+        ctx.font = '800 22px "Roboto Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('• IDUCK • СТАРТОВЫЙ ПРОПУСК', canvas.width / 2, 82);
+
+        ctx.fillStyle = '#09090b';
+        ctx.font = '900 42px "Unbounded", sans-serif';
+        ctx.fillText(fullName.slice(0, 26), canvas.width / 2, 155);
+
+        const pills = [teamName, cluster, yob].filter(Boolean);
+        ctx.font = '800 22px "Roboto Mono", monospace';
+        const pillPaddingX = 22;
+        const pillGap = 14;
+        const pillHeight = 46;
+        const pillWidths = pills.map(t => ctx.measureText(t).width + pillPaddingX * 2);
+        const totalWidth = pillWidths.reduce((a, b) => a + b, 0) + pillGap * (pills.length - 1);
+
+        let curX = (canvas.width - totalWidth) / 2;
+        const pillY = 192;
+
+        pills.forEach((text, i) => {
+          const pw = pillWidths[i];
+          drawRoundRect(curX, pillY, pw, pillHeight, 14, '#ffffff', '#e4e4e7', 2);
+          ctx.fillStyle = '#18181b';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, curX + pw / 2, pillY + pillHeight / 2 + 1);
+          curX += pw + pillGap;
+        });
+
+        const qrBoxSize = 680;
+        const qrBoxX = (canvas.width - qrBoxSize) / 2;
+        const qrBoxY = 278;
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+        ctx.shadowBlur = 40;
+        ctx.shadowOffsetY = 12;
+        drawRoundRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 48, '#ffffff', '#f1f5f9', 3);
+        ctx.restore();
+
+        ctx.drawImage(qrTempCanvas, qrBoxX + 20, qrBoxY + 20, 640, 640);
+
+        const badgeW = 148;
+        const badgeH = 54;
+        const badgeX = (canvas.width - badgeW) / 2;
+        const badgeY = qrBoxY + (qrBoxSize - badgeH) / 2;
+
+        drawRoundRect(badgeX, badgeY, badgeW, badgeH, 16, '#ffffff', '#09090b', 4);
+        ctx.fillStyle = '#09090b';
+        ctx.font = '900 24px "Unbounded", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('IDuck', canvas.width / 2, badgeY + badgeH / 2 + 1);
+
+        ctx.fillStyle = '#71717a';
+        ctx.font = '600 24px "Manrope", sans-serif';
+        ctx.fillText('Покажите экран судье на старте для выдачи номера BIB', canvas.width / 2, 1025);
+
+        ctx.fillStyle = '#a1a1aa';
+        ctx.font = '800 20px "Roboto Mono", monospace';
+        ctx.fillText('IDUCK.SOTKA.ONE', canvas.width / 2, 1075);
+
+        const safeFileName = `IDuck_${r.last_name || ''}_${r.first_name || ''}`
+          .replace(/\s+/g, '_')
+          .replace(/[^a-zA-Zа-яА-ЯёЁ0-9_-]/g, '');
+
+        const link = document.createElement('a');
+        link.download = `${safeFileName || 'IDuck_Pass'}.png`;
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+
+    window.iduckApp = new SotkaIduckFinder();
+    document.addEventListener('DOMContentLoaded', () => window.iduckApp.start());
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') window.iduckApp.closeCard();
+    });
+  </script>
+</body>
+</html>

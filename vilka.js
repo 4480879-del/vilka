@@ -14253,7 +14253,8 @@ class MessengerApp {
             this.unreadCounts = {};
             this.ROLE_WEIGHTS = { 'superadmin': 100, 'admin': 80, 'judge': 60, 'captain': 40, 'rider': 20 };
             this.editingMessageId = null; this.replyingToMessageId = null; this.forwardingMessage = null; this.contextMessageObj = null; 
-            this.fileToDelete = false; 
+            this.filesToDelete = [];        // Имена старых файлов PocketBase, помеченных на удаление
+			this.editingExistingFiles = []; // Оставшиеся старые файлы в режиме редактирования 
             this.messagePage = 1; this.hasMoreMessages = true; this.isLoadingMessages = false;
             this.currentPelotonFilter = 'all';
             this.liveInterval = null; this.expandedRaceId = null; this.currentLiveBoard = []; this.currentLiveStartList = []; this.liveCurrentTab = 'start'; this.liveSortMode = 'absolute';
@@ -14270,6 +14271,7 @@ class MessengerApp {
 			this.activeMainTab = 'chats';
 			this.isSubnavOpen = true;
 			this.pendingFiles = [];
+			this._isRestoringNav = true;
 		}
 		
 		// 🔥 ЭКСТРЕННАЯ АПТЕЧКА: Полный сброс приложения при зависании
@@ -17549,6 +17551,22 @@ setRadioTab(tab = 'athletes') {
  autoOpenCalendarDesktop() {
         if (window.innerWidth <= 768) return;
 
+        // 🔒 1. Если чат уже открыт в текущей сессии — не перебиваем его
+        if (this.activeChatId && !['newsfeed', 'month_calendar', 'draft'].includes(this.activeChatId)) {
+            return;
+        }
+
+        // 🔒 2. Если в localStorage сохранен открытый чат или вкладка Радио — не сбрасываем на ближайшую гонку при F5
+        try {
+            const savedRaw = localStorage.getItem('vilka_nav_state');
+            if (savedRaw) {
+                const saved = JSON.parse(savedRaw);
+                if (saved.activeChatId || saved.mainTab === 'contacts') {
+                    return;
+                }
+            }
+        } catch (e) {}
+
         const sub = (typeof this.getSubdomainAlias === 'function') ? this.getSubdomainAlias() : null;
         const isCustomSub = Boolean(sub && !['vilka', 'www', 'api', 'db', 'dev', 'admin', 'stage'].includes(sub.toLowerCase()));
         if (this.currentRiderFilter || isCustomSub) {
@@ -17573,11 +17591,12 @@ setRadioTab(tab = 'athletes') {
             return;
         }
 
-        // 🏁 На ПК всегда по умолчанию открываем ближайшую гонку
+        // 🏁 На ПК открываем ближайшую гонку только если никакой другой чат не был выбран ранее
         if (typeof this.openUpcomingRaceChat === 'function') {
             this.openUpcomingRaceChat();
         }
     }
+	
     toggleRadioFloatingDock(event) {
         if (event) event.stopPropagation();
         const dock = document.getElementById('radioFloatingDock');
@@ -20358,16 +20377,18 @@ switchTab(tabId, event) {
 		this.saveNavState();
     }
 
-// =======================================================
+    // =========================================================================
     // 💾 СОХРАНЕНИЕ И ВОССТАНОВЛЕНИЕ НАВИГАЦИОННОГО СОСТОЯНИЯ
-    // =======================================================
+    // =========================================================================
     saveNavState() {
+        if (this._isRestoringNav) return; // Не даём стартовым авто-открытиям затереть сохранённый стейт
+
         try {
             const currentChat = (this.activeChatId && !['newsfeed', 'month_calendar', 'draft'].includes(this.activeChatId))
                 ? this.activeChatId
                 : null;
 
-            const isMobileOpen = document.getElementById('mainChatArea')?.classList.contains('mobile-open') || 
+            const isMobileOpen = document.getElementById('mainChatArea')?.classList.contains('mobile-open') ||
                                  document.body.classList.contains('mobile-chat-open') ||
                                  window.location.hash === '#chat';
 
@@ -20389,6 +20410,7 @@ switchTab(tabId, event) {
     }
 	
 async restoreNavState() {
+        this._isRestoringNav = true;
         try {
             // 🔒 ДЛЯ ГОСТЯ: очищаем старые сессии, но НЕ обнуляем activeChatId (там уже открыты новости!)
             if (this.isUserGuest()) {
@@ -20403,11 +20425,20 @@ async restoreNavState() {
             const state = JSON.parse(raw);
             if (!state || typeof state !== 'object') return false;
 
-            // 1. Восстанавливаем фильтры
+            // 1. Заранее выставляем фильтры и ID активного чата, чтобы авто-открытия в switchTab / setRadioTab не перебили его
             if (state.pelotonFilter && state.pelotonFilter !== 'all') {
                 this.currentPelotonFilter = state.pelotonFilter;
             }
             this.chatListFilter = (state.chatFilter === 'my') ? 'my' : 'all';
+            if (state.activeChatId) {
+                this.activeChatId = state.activeChatId;
+            }
+            if (state.activeRaceId) {
+                this.activeRaceId = state.activeRaceId;
+            }
+            if (state.radioTab) {
+                this.activeRadioTab = state.radioTab;
+            }
 
             // 2. Переключаем на сохраненную вкладку
             if (state.mainTab && state.mainTab !== 'chats') {
@@ -20425,15 +20456,7 @@ async restoreNavState() {
                 setTimeout(() => { this.openLiveBoard(state.liveRaceId); }, 300);
             }
 
-            // 🏁 3. В режиме "ОБЩИЙ" на десктопе гарантированно открываем актуальную гонку
-            if (this.chatListFilter === 'all' && (this.activeMainTab === 'chats' || !this.activeMainTab)) {
-                if (window.innerWidth > 768 && typeof this.openUpcomingRaceChat === 'function') {
-                    this.openUpcomingRaceChat();
-                }
-                return true;
-            }
-
-            // 4. Восстанавливаем чат, только если пользователь был в личке или в режиме «МОИ»
+            // 3. СНАЧАЛА восстанавливаем конкретный открытый чат (и в «ОБЩИЙ», и в «МОИ», и в «РАДИО»)
             if (state.activeChatId) {
                 await this.openChat(state.activeChatId, state.activeRaceId);
                 if (state.isMobileChatOpen && window.innerWidth <= 768) {
@@ -20442,12 +20465,24 @@ async restoreNavState() {
                 return true;
             }
 
+            // 🏁 4. Фолбэк: открываем ближайшую гонку ТОЛЬКО если ранее не был открыт никакой чат
+            if (this.chatListFilter === 'all' && (this.activeMainTab === 'chats' || !this.activeMainTab)) {
+                if (window.innerWidth > 768 && typeof this.openUpcomingRaceChat === 'function') {
+                    this.openUpcomingRaceChat();
+                }
+                return true;
+            }
+
             return true;
         } catch (e) {
             console.warn("Не удалось восстановить навигацию:", e);
             return false;
+        } finally {
+            this._isRestoringNav = false;
+            this.saveNavState();
         }
     }
+	
 renderSubnavPod() {
     const pod = document.getElementById('subnavMorphPod');
     if (pod) pod.style.setProperty('display', 'none', 'important');
