@@ -20412,12 +20412,11 @@ switchTab(tabId, event) {
 async restoreNavState() {
         this._isRestoringNav = true;
         try {
-            // 🔒 ДЛЯ ГОСТЯ: очищаем старые сессии, но НЕ обнуляем activeChatId (там уже открыты новости!)
             if (this.isUserGuest()) {
                 localStorage.removeItem('vilka_nav_state');
                 this.activeMainTab = 'chats';
                 this.chatListFilter = 'all';
-                return true; // Выходим: на экране остаются Утиные истории
+                return true;
             }
 
             const raw = localStorage.getItem('vilka_nav_state');
@@ -20425,27 +20424,25 @@ async restoreNavState() {
             const state = JSON.parse(raw);
             if (!state || typeof state !== 'object') return false;
 
-            // 1. Заранее выставляем фильтры и ID активного чата, чтобы авто-открытия в switchTab / setRadioTab не перебили его
+            // 1. Восстанавливаем фильтры и явно сбрасываем activeRaceId под сохраненный стейт
             if (state.pelotonFilter && state.pelotonFilter !== 'all') {
                 this.currentPelotonFilter = state.pelotonFilter;
             }
             this.chatListFilter = (state.chatFilter === 'my') ? 'my' : 'all';
-            if (state.activeChatId) {
-                this.activeChatId = state.activeChatId;
-            }
-            if (state.activeRaceId) {
-                this.activeRaceId = state.activeRaceId;
-            }
+            this.activeRaceId = state.activeRaceId || null;
+
             if (state.radioTab) {
                 this.activeRadioTab = state.radioTab;
             }
 
-            // 2. Переключаем на сохраненную вкладку
+            // 2. Переключаем вкладку (НЕ присваивая this.activeChatId заранее, чтобы openChat отработал полностью)
             if (state.mainTab && state.mainTab !== 'chats') {
                 this.switchTab(state.mainTab);
             }
 
             if (state.mainTab === 'contacts' && state.radioTab) {
+                // Если есть конкретный сохраненный чат в Радио — временно ставим его, чтобы autoOpenRadioDesktop не перебил
+                if (state.activeChatId) this.activeChatId = state.activeChatId;
                 this.setRadioTab(state.radioTab);
             }
             if (state.mainTab === 'pelotons' && state.crmView && this.crm) {
@@ -20456,16 +20453,17 @@ async restoreNavState() {
                 setTimeout(() => { this.openLiveBoard(state.liveRaceId); }, 300);
             }
 
-            // 3. СНАЧАЛА восстанавливаем конкретный открытый чат (и в «ОБЩИЙ», и в «МОИ», и в «РАДИО»)
+            // 3. Открываем сохраненный чат (сбрасываем activeChatId перед вызовом, чтобы шапка гарантированно перерисовалась)
             if (state.activeChatId) {
-                await this.openChat(state.activeChatId, state.activeRaceId);
+                this.activeChatId = null;
+                await this.openChat(state.activeChatId, state.activeRaceId || null);
                 if (state.isMobileChatOpen && window.innerWidth <= 768) {
                     this.openChatMobile();
                 }
                 return true;
             }
 
-            // 🏁 4. Фолбэк: открываем ближайшую гонку ТОЛЬКО если ранее не был открыт никакой чат
+            // 4. Только если сохраненного чата не было — открываем ближайшую гонку на ПК
             if (this.chatListFilter === 'all' && (this.activeMainTab === 'chats' || !this.activeMainTab)) {
                 if (window.innerWidth > 768 && typeof this.openUpcomingRaceChat === 'function') {
                     this.openUpcomingRaceChat();
@@ -20481,8 +20479,7 @@ async restoreNavState() {
             this._isRestoringNav = false;
             this.saveNavState();
         }
-    }
-	
+    }	
 renderSubnavPod() {
     const pod = document.getElementById('subnavMorphPod');
     if (pod) pod.style.setProperty('display', 'none', 'important');
@@ -27587,6 +27584,16 @@ async downloadNewsXml() {
     }
  // 🔥 АВТО-ОТКРЫТИЕ ЧАТА БЛИЖАЙШЕЙ ГОНКИ (СТРОГО С УЧЕТОМ ПЕЛОТОНА И ХЭШТЕГА)
         openUpcomingRaceChat() {
+			// 🔒 Не открываем гонку по умолчанию при старте, если восстанавливается сохраненный чат
+        if (this._isRestoringNav) {
+            try {
+                const raw = localStorage.getItem('vilka_nav_state');
+                if (raw) {
+                    const saved = JSON.parse(raw);
+                    if (saved.activeChatId || saved.mainTab === 'contacts') return;
+                }
+            } catch (e) {}
+        }
             if (this.currentRiderFilter) return;
             if (!this.chats || this.chats.length === 0) return;
             // Сбрасываем флаг старых новостей, если он висел
@@ -29718,12 +29725,11 @@ renderThreadCardHTML(thread) {
             ${heroMediaBlock}
 
             <div class="thread-card-body" id="msg-${root.id}" style="display: flex; flex-direction: column; text-align: left; margin-top: 4px;">
-                ${(!hasImage && headlineText) ? `<div class="thread-headline" style="font-family: 'Unbounded', sans-serif; font-size: 14px; font-weight: 900; color: var(--text-main); text-transform: uppercase; line-height: 1.35; margin-bottom: 6px; text-align: left; text-indent: 0 !important;">${formatText(headlineText)}</div>` : ''}
-                ${bodyText ? `<div class="thread-body-text">${formatText(bodyText)}</div>` : ''}
-                ${rootDocBlock}
-                ${actionButtonsHtml}
-                ${rootReactionsHtml}
-            </div>
+    ${headlineText ? `<div class="thread-headline" style="font-family: 'Unbounded', sans-serif; font-size: 14px; font-weight: 900; color: var(--text-main); text-transform: uppercase; line-height: 1.35; margin-bottom: 6px; text-align: left; text-indent: 0 !important;">${formatText(headlineText)}</div>` : ''}
+    ${bodyText ? `<div class="thread-body-text">${formatText(bodyText)}</div>` : ''}
+    ${rootDocBlock}
+    ${actionButtonsHtml}${rootReactionsHtml}
+</div>
 
             ${repliesHtml}
 
@@ -31219,8 +31225,14 @@ async sendMessage() {
         }
     }
 
+    // 📦 Фиксируем списки файлов для редактирования ДО очистки поля ввода
+    const filesToRemove = [...(this.filesToRemoveOnUpdate || [])];
+    const remainingExisting = [...(this.editingExistingFiles || [])];
+    const shouldDeleteAllFiles = Boolean(this.fileToDelete);
+
     const hasFiles = filesToSend.length > 0;
-    if ((!text && !hasFiles && !this.fileToDelete) || !this.activeChatId) return;
+    const hasRemovedFiles = filesToRemove.length > 0;
+    if ((!text && !hasFiles && !shouldDeleteAllFiles && !hasRemovedFiles && !this.editingMessageId) || !this.activeChatId) return;
 
     if (this.isGuest && (!this.currentRider || this.currentRider.id === 'anonymous_guest')) {
         const savedGuestId = localStorage.getItem('vilka_guest_id');
@@ -31270,18 +31282,19 @@ async sendMessage() {
             const updateData = new FormData();
             updateData.append('text', text);
             
-            if (this.filesToRemoveOnUpdate && this.filesToRemoveOnUpdate.length > 0) {
-                for (let fName of this.filesToRemoveOnUpdate) {
+            const noExistingLeft = (remainingExisting.length === 0);
+            const hasNewFiles = (filesToSend && filesToSend.length > 0);
+
+            // 1. Точечно удаляем только отмеченные крестиком файлы
+            if (filesToRemove.length > 0) {
+                for (let fName of filesToRemove) {
                     updateData.append('file-', fName);
                 }
-            }
-
-            const noExistingLeft = (!this.editingExistingFiles || this.editingExistingFiles.length === 0);
-            const hasNewFiles = (filesToSend && filesToSend.length > 0);
-            if (noExistingLeft && !hasNewFiles && (this.fileToDelete || (this.filesToRemoveOnUpdate && this.filesToRemoveOnUpdate.length > 0))) {
+            } else if (noExistingLeft && !hasNewFiles && shouldDeleteAllFiles) {
                 updateData.append('file', '');
             }
             
+            // 2. Дозагружаем новые фото (если прикрепили при редактировании)
             if (hasNewFiles) {
                 if (compressingText) compressingText.style.display = 'inline';
                 for (let f of filesToSend) {
@@ -31314,7 +31327,6 @@ async sendMessage() {
         }
         return; 
     }
-
     try {
         // Сжатие прикрепленных картинок
         const processedFiles = [];
