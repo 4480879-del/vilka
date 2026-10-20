@@ -3,9 +3,20 @@
 <head>
     <meta charset="UTF-8">
 	<script>
-      if (location.hostname.toLowerCase() === 'ru.sotka.one' && !location.pathname.endsWith('board.html')) {
-        location.replace('/board.html' + location.search + location.hash);
-      }
+      (function() {
+        var h = location.hostname.toLowerCase();
+        if (h === 'iduck.sotka.one' && !location.pathname.endsWith('iduck.html')) {
+          location.replace('/iduck.html' + location.search + location.hash);
+          return;
+        }
+        if (h.endsWith('.sotka.one')) {
+          var sub = h.replace('.sotka.one', '').trim();
+          var keepOnVilka = ['vilka', 'www', 'db', 'api', 'pero', 'admin', 'dev', 'iduck'];
+          if (sub && keepOnVilka.indexOf(sub) === -1 && !location.pathname.endsWith('board.html')) {
+            location.replace('/board.html' + location.search + location.hash);
+          }
+        }
+      })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     
@@ -20,7 +31,7 @@
     <link rel="icon" type="image/svg+xml" href="https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg">
     <link rel="stylesheet" href="/vilka.css?v=63">
     
-    <script src="https://cdn.jsdelivr.net/npm/pocketbase/dist/pocketbase.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.3/dist/pocketbase.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -48,8 +59,8 @@
 
 <div id="vilka-splash-screen" class="vilka-splash" style="display: flex; align-items: center; justify-content: center; flex-direction: column;">
     
-    <div id="splashGreeting" style="color: #ffffff; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(32px, 8vw, 64px); text-transform: uppercase; text-align: center; line-height: 1.1; padding: 20px; opacity: 0; transform: translateY(15px);">
-        </div>
+    <div id="splashGreeting" style="color: #ffffff; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(32px, 8vw, 64px); text-transform: uppercase; text-align: center; line-height: 1.1; padding: 20px; opacity: 0; transform: translateY(15px); animation: splashFadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+    </div>
 
     <style>
         @keyframes splashFadeInUp {
@@ -64,31 +75,32 @@
     (function() {
         let splashName = "ВЕЛОГОНЩИК";
         try {
-            // 🔥 ФИКС 1: PocketBase теперь использует ключ pb_auth
-            const authStr = localStorage.getItem('pb_auth') || localStorage.getItem('pocketbase_auth');
-            const cacheStr = localStorage.getItem('vilka_core_data');
-            
-            if (authStr && cacheStr) {
-                const auth = JSON.parse(authStr);
-                const cache = JSON.parse(cacheStr);
-                
-                if (auth.model && cache.ridersMap) {
-                    const riders = Object.values(cache.ridersMap);
-                    
-                    // 🔥 ФИКС 2: Ищем гонщика и по ID, и по Email для максимальной надежности
-                    const myRider = riders.find(r => 
-                        (r.user_id && r.user_id === auth.model.id) || 
-                        (r.email && auth.model.email && r.email.toLowerCase() === auth.model.email.toLowerCase())
-                    );
-                    
-                    if (myRider && myRider.first_name) {
-                        splashName = myRider.first_name.split(' ')[0]; 
+            const cachedRiderStr = localStorage.getItem('vilka_cached_rider');
+            if (cachedRiderStr) {
+                const cr = JSON.parse(cachedRiderStr);
+                if (cr && cr.first_name) splashName = cr.first_name.trim().split(' ')[0];
+            }
+            if (splashName === "ВЕЛОГОНЩИК") {
+                const authStr = localStorage.getItem('pb_auth') || localStorage.getItem('pocketbase_auth');
+                const cacheStr = localStorage.getItem('vilka_core_data');
+                if (authStr && cacheStr) {
+                    const auth = JSON.parse(authStr);
+                    const cache = JSON.parse(cacheStr);
+                    const model = auth.model || auth.record;
+                    if (model && cache.ridersMap) {
+                        const riders = Object.values(cache.ridersMap);
+                        const myRider = riders.find(r => 
+                            (r.user_id && r.user_id === model.id) || 
+                            (r.email && model.email && r.email.toLowerCase() === model.email.toLowerCase())
+                        );
+                        if (myRider && myRider.first_name) {
+                            splashName = myRider.first_name.trim().split(' ')[0]; 
+                        }
                     }
                 }
             }
         } catch(e) {}
         
-        // Мгновенно подменяем текст
         const greetingEl = document.getElementById('splashGreeting');
         if (greetingEl) {
             greetingEl.innerHTML = `ПРИВЕТ,<br>${splashName.toUpperCase()}!`;
@@ -140,17 +152,6 @@
         <div class="tab-content" id="tab-contacts" style="height: 100%; overflow: hidden; display: none; flex-direction: column;">
             <!-- Список контента Рации (новости / спортсмены / команды) -->
             <div class="chat-list" id="contactList" style="flex: 1; overflow-y: auto; padding-bottom: 20px;"></div>
-
-            <!-- Чистый поиск рации (без желтой кнопки слева) -->
-            <div class="search-box" style="padding: 10px 12px; border-top: 1px solid var(--border); border-bottom: none; background: var(--bg-surface); z-index: 20; flex-shrink: 0;">
-                <div class="search-box-rel">
-                    <svg class="search-left-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input type="text" id="contactSearch" class="search-input search-input-pad" placeholder="Поиск новостей, спортсменов, команд..." oninput="window.app.onSearchInput(this, 'contactSearchClearBtn', 'contacts')" style="width: 100%; box-sizing: border-box;">
-                    <button id="contactSearchClearBtn" class="search-clear-cross" onclick="window.app.clearSearchField('contactSearch', 'contactSearchClearBtn', 'contacts')" title="Очистить">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                </div>
-            </div>
         </div>
 		
 		<div class="tab-content" id="tab-draft" style="background: var(--bg-body); padding: 0;">
@@ -1006,7 +1007,7 @@
     </div>
 </div>
 
-<script src="/vilka.js?v=81" defer></script>
+<script src="/vilka.js?v=83" defer></script>
 
 
 <style>
@@ -1036,6 +1037,7 @@
     .sa-modal {
         background: #18181b; border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 20px; padding: 30px 25px; width: 90%; max-width: 380px;
+        max-height: 92dvh; overflow-y: auto;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
 

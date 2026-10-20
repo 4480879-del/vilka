@@ -1,6 +1,13 @@
-if (window.location.hostname.toLowerCase() === 'ru.sotka.one' && !window.location.pathname.endsWith('board.html')) {
-  window.location.replace('/board.html' + window.location.search + window.location.hash);
-}
+(function redirectSubdomainsToBoard() {
+    const h = window.location.hostname.toLowerCase();
+    if (h.endsWith('.sotka.one')) {
+        const sub = h.replace('.sotka.one', '').trim();
+        const keepOnVilka = ['vilka', 'www', 'db', 'api', 'pero', 'admin', 'dev', 'iduck'];
+        if (sub && !keepOnVilka.includes(sub) && !window.location.pathname.endsWith('board.html')) {
+            window.location.replace('/board.html' + window.location.search + window.location.hash);
+        }
+    }
+})();
 
 if (window.location.hostname.toLowerCase() === 'iduck.sotka.one' && !window.location.pathname.endsWith('iduck.html')) {
   window.location.replace('/iduck.html' + window.location.search + window.location.hash);
@@ -537,80 +544,94 @@ destroyAnalyticsCharts() {
         } catch (e) {}
     }
 
-    // 6. Декодер раскладки для аппаратных 2D USB-сканеров
-    decodeScannerLayout(str) {
-        if (!str) return '';
-        const ruToEn = {
-            'й':'q', 'ц':'w', 'у':'e', 'к':'r', 'е':'t', 'н':'y', 'г':'u', 'ш':'i', 'щ':'o', 'з':'p', 'х':'[', 'ъ':']',
-            'ф':'a', 'ы':'s', 'в':'d', 'а':'f', 'п':'g', 'р':'h', 'о':'j', 'л':'k', 'д':'l', 'ж':';', 'э':"'",
-            'я':'z', 'ч':'x', 'с':'c', 'м':'v', 'и':'b', 'т':'n', 'ь':'m', 'б':',', 'ю':'.',
-            'Й':'Q', 'Ц':'W', 'У':'E', 'К':'R', 'Е':'T', 'Н':'Y', 'Г':'U', 'Ш':'I', 'Щ':'O', 'З':'P', 'Х':'{', 'Ъ':'}',
-            'Ф':'A', 'Ы':'S', 'В':'D', 'А':'F', 'П':'G', 'Р':'H', 'О':'J', 'Л':'K', 'Д':'L', 'Ж':':', 'Э':'"',
-            'Я':'Z', 'Ч':'X', 'С':'C', 'М':'V', 'И':'B', 'Т':'N', 'Ь':'M', 'Б':'<', 'Ю':'>'
-        };
-        let res = '';
-        for (let i = 0; i < str.length; i++) {
-            const ch = str[i];
-            res += ruToEn[ch] !== undefined ? ruToEn[ch] : ch;
-        }
-        return res.replace(/[\/\\]/g, '|');
+    // 6. Декодер раскладки для аппаратных 2D USB-сканеров + отсечение URL до V1|
+  decodeScannerLayout(str) {
+    if (!str) return '';
+    let raw = '';
+    try { raw = decodeURIComponent(str.trim()); } catch (e) { raw = str.trim(); }
+
+    // Если в строке уже есть чистый V1| (например, со смартфона), сразу отрезаем URL-префикс
+    const directV1 = raw.match(/(v1[|\/\\].*)/i);
+    if (directV1) {
+      return directV1[1].replace(/[\/\\]/g, '|');
     }
 
-    // 7. Обработка расшифрованного кода IDuck
-    async handleScannedPassport(rawText) {
-        if (this._isScanning) return; // 🔒 Защита: строго 1 раз
-        this._isScanning = true;
-
-        let cleanText = (rawText || '').trim();
-        if (cleanText.startsWith('М1') || cleanText.startsWith('м1')) {
-            cleanText = this.decodeScannerLayout(cleanText);
-        }
-        cleanText = cleanText.replace(/[\/\\]/g, '|');
-
-        if (!cleanText.startsWith('V1|') && !cleanText.startsWith('v1|')) {
-            this._isScanning = false;
-            alert("Неверный формат! Это не паспорт IDuck.");
-            return;
-        }
-
-        this.playScanBeep(); // 🔊 Ровно один пик!
-        await this.stopQrScanner();
-
-        const parts = cleanText.split('|');
-        const rawRiderId = (parts[1] || '').trim();
-        const riderId = this.decodeScannerLayout(rawRiderId).replace(/[^a-zA-Z0-9]/g, '');
-
-        if (!riderId) {
-            this._isScanning = false;
-            alert("Ошибка: отсутствует ID спортсмена.");
-            return;
-        }
-
-        try {
-            await this.quickAddRiderFromQr(riderId);
-        } finally {
-            setTimeout(() => { this._isScanning = false; }, 800);
-        }
+    const ruToEn = {
+      'й':'q', 'ц':'w', 'у':'e', 'к':'r', 'е':'t', 'н':'y', 'г':'u', 'ш':'i', 'щ':'o', 'з':'p', 'х':'[', 'ъ':']',
+      'ф':'a', 'ы':'s', 'в':'d', 'а':'f', 'п':'g', 'р':'h', 'о':'j', 'л':'k', 'д':'l', 'ж':';', 'э':"'",
+      'я':'z', 'ч':'x', 'с':'c', 'м':'v', 'и':'b', 'т':'n', 'ь':'m', 'б':',', 'ю':'.', '№':'#',
+      'Й':'Q', 'Ц':'W', 'У':'E', 'К':'R', 'Е':'T', 'Н':'Y', 'Г':'U', 'Ш':'I', 'Щ':'O', 'З':'P', 'Х':'{', 'Ъ':'}',
+      'Ф':'A', 'Ы':'S', 'В':'D', 'А':'F', 'П':'G', 'Р':'H', 'О':'J', 'Л':'K', 'Д':'L', 'Ж':':', 'Э':'"',
+      'Я':'Z', 'Ч':'X', 'С':'C', 'М':'V', 'И':'B', 'Т':'N', 'Ь':'M', 'Б':'<', 'Ю':'>'
+    };
+    let res = '';
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i];
+      res += ruToEn[ch] !== undefined ? ruToEn[ch] : ch;
     }
 
-// 8. Быстрое добавление атлета в старт-лист (БЕЗ БЛОКИРУЮЩИХ ОКОН ALERT)
+    const v1Match = res.match(/(v1[|\/\\].*)/i);
+    if (v1Match) res = v1Match[1];
+
+    return res.replace(/[\/\\]/g, '|');
+  }
+
+  // 7. Обработка расшифрованного кода IDuck (поддерживает и URL https://iduck.sotka.one/#V1|..., и V1|...)
+  async handleScannedPassport(rawText) {
+    if (this._isScanning) return;
+    this._isScanning = true;
+
+    const cleanText = this.decodeScannerLayout(rawText || '');
+
+    if (!cleanText.startsWith('V1|') && !cleanText.startsWith('v1|')) {
+      this._isScanning = false;
+      alert("Неверный формат! Это не паспорт IDuck.");
+      return;
+    }
+
+    this.playScanBeep();
+    await this.stopQrScanner();
+
+    const parts = cleanText.split('|');
+    const rawRiderId = (parts[1] || '').trim();
+    const riderId = rawRiderId.replace(/[^a-zA-Z0-9]/g, '');
+
+    if (!riderId) {
+      this._isScanning = false;
+      alert("Ошибка: отсутствует ID спортсмена.");
+      return;
+    }
+
+    try {
+      await this.quickAddRiderFromQr(riderId);
+    } finally {
+      setTimeout(() => { this._isScanning = false; }, 800);
+    }
+  }
+
+// 8. Быстрое добавление атлета из QR через штатное окно выбора дистанции
     async quickAddRiderFromQr(riderId) {
         if (!riderId) return;
 
-        // 1. Ищем профиль атлета
+        // 1. Ищем профиль атлета в памяти или подгружаем из БД
         let rider = this.app?.ridersMap?.[riderId];
         if (!rider) {
             try {
                 rider = await pb.collection('riders').getOne(riderId, { requestKey: null });
                 if (this.app?.ridersMap) this.app.ridersMap[rider.id] = rider;
-            } catch(e) {}
+            } catch (e) {}
         }
 
-        const firstName = (rider?.first_name || '').trim().toLowerCase();
-        const lastName = (rider?.last_name || '').trim().toLowerCase();
+        if (!rider) {
+            alert("❌ Профиль спортсмена не найден в базе данных.");
+            return;
+        }
+
+        const firstName = (rider.first_name || '').trim().toLowerCase();
+        const lastName = (rider.last_name || '').trim().toLowerCase();
         const fullName = `${firstName} ${lastName}`.trim();
 
-        // 2. Проверяем наличие в старт-листе на экране
+        // 2. Если уже есть в старт-листе на экране — скроллим к нему и фокусируем BIB
         const alreadyIn = (this.currentLiveStartList || []).find(sl => {
             if (!sl.isRegistered) return false;
             if (sl.id === riderId || sl.rider_id === riderId) return true;
@@ -626,66 +647,348 @@ destroyAnalyticsCharts() {
             return;
         }
 
-        // 3. Определяем ID гонки и целевой заезд
-        let targetRace = (this.currentEventRaces || []).find(r => r.id === this.expandedRaceId) || this.currentEventRaces?.[0];
+        // 3. Собираем все дистанции текущего события
+        const eventRaces = (this.currentEventRaces && this.currentEventRaces.length > 0)
+            ? this.currentEventRaces
+            : (this.expandedRaceId ? [this.app?.racesMap?.[this.expandedRaceId]].filter(Boolean) : []);
+
+        // 4. Открываем штатное окно «ЗАЯВКА АТЛЕТА» (с полями BIB и ОПЛАЧЕНО)
+        if (typeof this.app?.openDistanceSelectorModal === 'function') {
+            this.app.openDistanceSelectorModal(eventRaces, riderId);
+        } else if (typeof window.app?.openDistanceSelectorModal === 'function') {
+            window.app.openDistanceSelectorModal(eventRaces, riderId);
+        }
+    }
+    // 📋 Модальное окно выбора дистанции, велосипеда и категории при сканировании IDuck
+    openQrAssignModal(rider) {
+        if (!rider) return;
+
+        const existingModal = document.getElementById('liveQrAssignModal');
+        if (existingModal) existingModal.remove();
+
+        const races = (this.currentEventRaces && this.currentEventRaces.length > 0)
+            ? this.currentEventRaces
+            : (this.expandedRaceId ? [this.app?.racesMap?.[this.expandedRaceId]].filter(Boolean) : []);
+
+        if (races.length === 0) {
+            alert("Ошибка: не найдены дистанции текущего соревнования.");
+            return;
+        }
+
+        // Определяем стартовую дистанцию (текущая открытая вкладка или первая дистанция)
+        let initialRace = races[0];
         if (this.liveDistanceFilter && this.liveDistanceFilter !== 'all') {
-            const matched = (this.currentEventRaces || []).find(r => r.distance == this.liveDistanceFilter || r.id === this.liveDistanceFilter);
-            if (matched) targetRace = matched;
+            const matched = races.find(r => r.id === this.liveDistanceFilter || String(r.distance) === String(this.liveDistanceFilter));
+            if (matched) initialRace = matched;
         }
 
-        const targetRaceId = targetRace?.id || this.expandedRaceId;
-        const targetDistance = targetRace?.distance || 0;
+        const teamName = typeof this.app?.crm?.getRiderTeamNames === 'function'
+            ? this.app.crm.getRiderTeamNames(rider)
+            : (rider.team || 'ONE TEAM');
 
-        if (!targetRace && targetRaceId) {
-            targetRace = this.app?.racesMap?.[targetRaceId] || (this.crm?.dataCalendar?.find(r => r.id === targetRaceId));
+        this._qrAssignState = {
+            rider: rider,
+            teamName: teamName,
+            races: races,
+            selectedRaceId: initialRace.id,
+            selectedGear: null,
+            selectedCategory: ''
+        };
+
+        const modal = document.createElement('div');
+        modal.id = 'liveQrAssignModal';
+        modal.className = 'modal-overlay';
+        modal.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.82);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            z-index: 10000060; display: flex; align-items: center; justify-content: center;
+            padding: 16px; box-sizing: border-box;
+        `;
+        modal.onclick = (e) => {
+            if (e.target.id === 'liveQrAssignModal') modal.remove();
+        };
+
+        const fullName = `${rider.last_name || ''} ${rider.first_name || ''}`.trim().toUpperCase();
+        const genderLabel = (String(rider.gender || 'M').toUpperCase() === 'F' || String(rider.gender || 'M').toUpperCase() === 'Ж') ? 'Ж' : 'М';
+        const clusterLabel = rider.base_cluster || 'B';
+        const yobLabel = rider.yob ? `${rider.yob} г.р.` : 'Г.р. не указан';
+
+        modal.innerHTML = `
+            <div class="modal-box" onclick="event.stopPropagation()" style="max-width: 440px; width: 100%; background: var(--bg-surface, #24262c); border: 1px solid var(--border, #333640); border-radius: 20px; padding: 20px; font-family: 'Manrope', sans-serif; color: var(--text-main, #f4f4f5); box-shadow: 0 25px 60px rgba(0,0,0,0.6); box-sizing: border-box;">
+                
+                <!-- Шапка со спортсменом -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 14px;">
+                    <div>
+                        <div style="font-family: 'Roboto Mono', monospace; font-size: 9.5px; font-weight: 800; color: var(--primary, #ffc107); text-transform: uppercase; letter-spacing: 0.5px;">
+                            IDUCK • ДОПУСК НА СТАРТ
+                        </div>
+                        <div style="font-family: 'Unbounded', sans-serif; font-size: 14px; font-weight: 900; color: var(--text-main); margin-top: 3px; line-height: 1.25;">
+                            ${this.app.escapeHTML(fullName)}
+                        </div>
+                        <div style="font-family: 'Roboto Mono', monospace; font-size: 10.5px; color: var(--text-muted); margin-top: 4px;">
+                            ${this.app.escapeHTML(teamName)} • ${yobLabel} • [${genderLabel}] Кластер ${this.app.escapeHTML(clusterLabel)}
+                        </div>
+                    </div>
+                    <button type="button" onclick="document.getElementById('liveQrAssignModal')?.remove()" style="background: var(--bg-body); border: 1px solid var(--border); color: var(--text-muted); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;">&times;</button>
+                </div>
+
+                <!-- 1. Выбор дистанции -->
+                <div style="margin-bottom: 14px;">
+                    <div style="font-family: 'Unbounded', sans-serif; font-size: 8.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
+                        1. ВЫБЕРИТЕ ДИСТАНЦИЮ
+                    </div>
+                    <div id="qrAssignDistancesWrap" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+                </div>
+
+                <!-- 2. Выбор велосипеда (показывается, если в дистанции включен use_gear) -->
+                <div id="qrAssignGearSection" style="display: none; margin-bottom: 14px;">
+                    <div style="font-family: 'Unbounded', sans-serif; font-size: 8.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
+                        2. ТИП ВЕЛОСИПЕДА / ТЕХНИКА
+                    </div>
+                    <div id="qrAssignGearsWrap" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+                </div>
+
+                <!-- 3. Выбор категории зачёта -->
+                <div style="margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-family: 'Unbounded', sans-serif; font-size: 8.5px; font-weight: 800; color: var(--primary, #ffc107); text-transform: uppercase;">
+                            КАТЕГОРИЯ ЗАЧЁТА
+                        </span>
+                        <span style="font-family: 'Roboto Mono', monospace; font-size: 9px; color: var(--text-muted);">
+                            кликните или впишите свою
+                        </span>
+                    </div>
+                    <div id="qrAssignCategoriesWrap" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;"></div>
+                    <input type="text" id="qrAssignCategoryInput" autocomplete="off"
+                        style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border); color: var(--primary, #ffc107); border-radius: 10px; padding: 9px 12px; font-family: 'Roboto Mono', monospace; font-size: 12px; font-weight: 800; outline: none;"
+                        oninput="if(window.app?.crm?.liveService?._qrAssignState) window.app.crm.liveService._qrAssignState.selectedCategory = this.value;">
+                </div>
+
+                <!-- 4. Стартовый номер BIB и оплата -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; padding-top: 12px; border-top: 1px dashed var(--border); margin-bottom: 16px;">
+                    <div>
+                        <span style="font-family: 'Roboto Mono', monospace; font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">СТАРТОВЫЙ НОМЕР (BIB)</span>
+                        <input type="text" id="qrAssignBibInput" placeholder="Напр. 42" maxlength="6" autocomplete="off"
+                            onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.app.crm.liveService.confirmQrAssignRider(); }"
+                            style="width: 100%; height: 38px; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); border-radius: 10px; padding: 0 12px; font-family: 'Roboto Mono', monospace; font-size: 14px; font-weight: 900; text-align: center; outline: none;">
+                    </div>
+                    <label style="height: 38px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: 'Unbounded', sans-serif; font-size: 9.5px; font-weight: 800; user-select: none;">
+                        <input type="checkbox" id="qrAssignPaidCheck" style="width: 16px; height: 16px; accent-color: var(--primary);">
+                        <span>ОПЛАЧЕНО</span>
+                    </label>
+                </div>
+
+                <!-- Кнопки подтверждения -->
+                <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px;">
+                    <button type="button" onclick="document.getElementById('liveQrAssignModal')?.remove()"
+                        style="height: 42px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 10px; font-family: 'Unbounded', sans-serif; font-size: 9.5px; font-weight: 800; cursor: pointer;">
+                        ОТМЕНА
+                    </button>
+                    <button type="button" id="qrAssignSubmitBtn" onclick="window.app.crm.liveService.confirmQrAssignRider()"
+                        style="height: 42px; background: var(--primary, #ffc107); color: #000000; border: none; border-radius: 10px; font-family: 'Unbounded', sans-serif; font-size: 10px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 14px rgba(255, 193, 7, 0.25);">
+                        + В СТАРТ-ЛИСТ
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        this.syncQrAssignModalState(true);
+
+        setTimeout(() => {
+            document.getElementById('qrAssignBibInput')?.focus();
+        }, 60);
+    }
+
+    // Переключение дистанции в модалке QR
+    selectQrAssignDistance(raceId) {
+        if (!this._qrAssignState) return;
+        this._qrAssignState.selectedRaceId = raceId;
+        this._qrAssignState.selectedGear = null;
+        this.syncQrAssignModalState(true);
+    }
+
+    // Переключение типа велосипеда в модалке QR
+    selectQrAssignGear(gearKey) {
+        if (!this._qrAssignState) return;
+        this._qrAssignState.selectedGear = gearKey;
+        this.syncQrAssignModalState(true);
+    }
+
+    // Выбор конкретной категории зачёта кликом по плашке
+    selectQrAssignCategory(catName) {
+        if (!this._qrAssignState) return;
+        this._qrAssignState.selectedCategory = catName;
+        const inp = document.getElementById('qrAssignCategoryInput');
+        if (inp) inp.value = catName;
+        this.syncQrAssignModalState(false);
+    }
+
+    // Пересчёт доступных велосипедов и категорий для выбранной дистанции
+    syncQrAssignModalState(recalcDefaultCategory = true) {
+        const st = this._qrAssignState;
+        if (!st) return;
+
+        const rider = st.rider;
+        const targetRace = st.races.find(r => r.id === st.selectedRaceId) || st.races[0];
+        if (!targetRace) return;
+
+        // 1. Рендер кнопок дистанций
+        const distWrap = document.getElementById('qrAssignDistancesWrap');
+        if (distWrap) {
+            distWrap.innerHTML = st.races.map(r => {
+                const isAct = r.id === targetRace.id;
+                const tag = r.name.includes('[')
+                    ? r.name.split('[')[1].replace(']', '').trim()
+                    : (r.distance ? `${r.distance} км` : r.name);
+                const kmSuffix = (r.distance && !tag.includes('км')) ? ` • ${r.distance} км` : '';
+                return `
+                    <button type="button" onclick="window.app.crm.liveService.selectQrAssignDistance('${r.id}')"
+                        style="padding: 8px 12px; border-radius: 10px; font-family: 'Unbounded', sans-serif; font-size: 9.5px; font-weight: 800; cursor: pointer; transition: 0.15s; border: 1.5px solid ${isAct ? 'var(--primary, #ffc107)' : 'var(--border)'}; background: ${isAct ? 'var(--primary, #ffc107)' : 'var(--bg-body)'}; color: ${isAct ? '#000000' : 'var(--text-main)'};">
+                        ${this.app.escapeHTML(tag + kmSuffix)}
+                    </button>
+                `;
+            }).join('');
         }
 
-        if (!targetRaceId) return;
+        // 2. Разбор регламента дистанции (cat_logic)
+        let cl = {};
+        try {
+            cl = typeof targetRace.cat_logic === 'string' ? JSON.parse(targetRace.cat_logic) : (targetRace.cat_logic || {});
+        } catch (e) { cl = {}; }
+
+        const GEAR_LABELS = {
+            'ROAD': 'ШОССЕ', 'TT': 'TT', 'GRAVEL': 'ГРЭВЕЛ', 'GRVL': 'ГРЭВЕЛ',
+            'CX': 'ЦИКЛОКРОСС', 'MTB': 'МТБ', 'FIX': 'ФИКС', 'FAT': 'ФЭТ',
+            'SS': 'СИНГЛСПИД', 'EBIKE': 'ЭЛЕКТРО'
+        };
+
+        const activeGears = (cl.use_gear && Array.isArray(cl.active_gears) && cl.active_gears.length > 0)
+            ? cl.active_gears.map(g => String(g).toUpperCase())
+            : [];
+
+        const gearSection = document.getElementById('qrAssignGearSection');
+        const gearsWrap = document.getElementById('qrAssignGearsWrap');
+
+        if (activeGears.length > 0) {
+            if (!st.selectedGear || !activeGears.includes(st.selectedGear)) {
+                st.selectedGear = activeGears[0];
+            }
+            if (gearSection) gearSection.style.display = 'block';
+            if (gearsWrap) {
+                gearsWrap.innerHTML = activeGears.map(gKey => {
+                    const isGAct = st.selectedGear === gKey;
+                    const label = GEAR_LABELS[gKey] || gKey;
+                    return `
+                        <button type="button" onclick="window.app.crm.liveService.selectQrAssignGear('${gKey}')"
+                            style="padding: 7px 11px; border-radius: 8px; font-family: 'Unbounded', sans-serif; font-size: 9px; font-weight: 800; cursor: pointer; transition: 0.15s; border: 1px solid ${isGAct ? 'var(--text-main)' : 'var(--border)'}; background: ${isGAct ? 'var(--text-main)' : 'var(--bg-body)'}; color: ${isGAct ? 'var(--bg-body)' : 'var(--text-muted)'};">
+                            ${this.app.escapeHTML(label)}
+                        </button>
+                    `;
+                }).join('');
+            }
+        } else {
+            st.selectedGear = null;
+            if (gearSection) gearSection.style.display = 'none';
+        }
+
+        // 3. Авторасчет рекомендуемой категории через штатный метод CRM
+        const genderCode = (String(rider.gender || 'M').toUpperCase() === 'F' || String(rider.gender || 'M').toUpperCase() === 'Ж') ? 'F' : 'M';
+        const rusG = genderCode === 'F' ? 'Ж' : 'М';
+        const yob = parseInt(rider.yob) || 1990;
+        const baseCluster = rider.base_cluster || 'B';
+
+        let autoCat = '';
+        if (typeof this.crm?.getRaceCategory === 'function') {
+            try {
+                autoCat = this.crm.getRaceCategory({
+                    gender: genderCode,
+                    yob: yob,
+                    base_cluster: baseCluster,
+                    gear: st.selectedGear,
+                    id: rider.id
+                }, targetRace);
+            } catch (e) {}
+        }
+        if (!autoCat || autoCat === '???') {
+            autoCat = `[${rusG}] АБСОЛЮТ`;
+        }
+
+        if (recalcDefaultCategory || !st.selectedCategory) {
+            st.selectedCategory = autoCat;
+            const catInp = document.getElementById('qrAssignCategoryInput');
+            if (catInp) catInp.value = autoCat;
+        }
+
+        // 4. Формируем список всех доступных категорий дистанции для быстрого переключения в 1 клик
+        const gearPrefix = (st.selectedGear && GEAR_LABELS[st.selectedGear]) ? `${GEAR_LABELS[st.selectedGear]} • ` : '';
+        const candidateCats = new Set();
+        candidateCats.add(autoCat);
+
+        if (targetRace.format === 'ttt' || targetRace.format === 'relay' || cl.has_team_genders) {
+            ['МУЖЧИНЫ', 'ЖЕНЩИНЫ', 'МИКСТ'].forEach(tc => candidateCats.add(gearPrefix + tc));
+        } else {
+            if (cl.has_absolute || Object.keys(cl).length === 0) {
+                candidateCats.add(`[${rusG}] ${gearPrefix}АБСОЛЮТ`);
+            }
+            if (cl.has_pro) {
+                candidateCats.add(`[${rusG}] ${gearPrefix}PRO • ELITE`);
+            }
+            if (cl.has_clusters || targetRace.cat_logic === 'clusters') {
+                ['A+', 'A', 'B', 'C', 'D'].forEach(c => candidateCats.add(`[${rusG}] ${gearPrefix}Кластер ${c}`));
+            }
+            if (cl.has_age && cl.age_bands) {
+                const bands = Array.isArray(cl.age_bands) ? cl.age_bands : (cl.age_bands[genderCode] || []);
+                bands.forEach(b => candidateCats.add(`[${rusG}] ${gearPrefix}${b}`));
+            }
+            if (Array.isArray(cl.custom_categories)) {
+                cl.custom_categories.forEach(cc => candidateCats.add(`${gearPrefix}${String(cc).toUpperCase()}`));
+            }
+        }
+
+        const catsWrap = document.getElementById('qrAssignCategoriesWrap');
+        if (catsWrap) {
+            catsWrap.innerHTML = Array.from(candidateCats).map(catName => {
+                const isCAct = st.selectedCategory === catName;
+                const isRec = catName === autoCat;
+                const safeCatAttr = this.app.escapeHTML(catName).replace(/'/g, "\\'");
+                return `
+                    <button type="button" onclick="window.app.crm.liveService.selectQrAssignCategory('${safeCatAttr}')"
+                        style="padding: 6px 10px; border-radius: 8px; font-family: 'Roboto Mono', monospace; font-size: 10.5px; font-weight: 800; cursor: pointer; transition: 0.15s; border: 1.5px solid ${isCAct ? 'var(--primary, #ffc107)' : 'var(--border)'}; background: ${isCAct ? 'rgba(255, 193, 7, 0.18)' : 'var(--bg-body)'}; color: ${isCAct ? 'var(--primary, #ffc107)' : 'var(--text-main)'};">
+                        ${this.app.escapeHTML(catName)}${isRec ? ' ★' : ''}
+                    </button>
+                `;
+            }).join('');
+        }
+    }
+
+    // ✅ Сохранение выбранной дистанции и категории в базу PocketBase
+    async confirmQrAssignRider() {
+        const st = this._qrAssignState;
+        if (!st || !st.rider) return;
+
+        const rider = st.rider;
+        const targetRace = st.races.find(r => r.id === st.selectedRaceId) || st.races[0];
+        if (!targetRace) return;
+
+        const catInp = document.getElementById('qrAssignCategoryInput');
+        const bibInp = document.getElementById('qrAssignBibInput');
+        const paidCheck = document.getElementById('qrAssignPaidCheck');
+        const submitBtn = document.getElementById('qrAssignSubmitBtn');
+
+        const finalCat = (catInp?.value || st.selectedCategory || 'B').trim();
+        const bibVal = (bibInp?.value || '').trim();
+        const isPaid = Boolean(paidCheck?.checked);
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'СОХРАНЕНИЕ...';
+        }
 
         try {
-            // 4. Проверка в базе данных
-            let filterConditions = [`rider_id="${riderId}"`];
-            if (rider?.first_name && rider?.last_name) {
-                const safeFn = rider.first_name.replace(/"/g, '\\"');
-                const safeLn = rider.last_name.replace(/"/g, '\\"');
-                filterConditions.push(`(rider_id.first_name="${safeFn}" && rider_id.last_name="${safeLn}")`);
-            }
-
-            const existingInDb = await pb.collection('race_rosters').getFullList({
-                filter: `race_id="${targetRaceId}" && status!="canceled" && (${filterConditions.join(' || ')})`,
-                requestKey: null
-            }).catch(() => []);
-
-            if (existingInDb.length > 0) {
-                const foundRoster = existingInDb[0];
-                const foundRiderId = foundRoster.rider_id || riderId;
-
-                await this.openLiveBoard(this.expandedRaceId);
-
-                const reloadedItem = (this.currentLiveStartList || []).find(sl => 
-                    sl.isRegistered && (sl.id === foundRiderId || sl.recordId === foundRoster.id)
-                );
-                this.showAndFocusExistingRider(reloadedItem, foundRiderId, fullName);
-                return;
-            }
-
-            // 5. Создаем запись
-            let calculatedCat = rider?.base_cluster || "B";
-            if (targetRace && typeof this.crm?.getRaceCategory === 'function' && rider) {
-                try {
-                    calculatedCat = this.crm.getRaceCategory({
-                        gender: rider.gender || 'M',
-                        yob: rider.yob || rider.year || 1990,
-                        base_cluster: rider.base_cluster || 'B',
-                        id: riderId
-                    }, targetRace);
-                } catch(e) {}
-            }
-
-            // ⏱️ РАЗДЕЛЕНИЕ: Назначаем время ТОЛЬКО для масс-старта (mass, crit). Разделки — строго пусто.
-            const isTimeTrial = targetRace?.format === 'itt' || targetRace?.format === 'ttt' || targetRace?.format === 'relay' || (targetRace?.name || '').toUpperCase().includes('DTT');
-            let autoPlannedStart = "";
-            if (!isTimeTrial && targetRace?.date) {
+            const isTimeTrial = targetRace.format === 'itt' || targetRace.format === 'ttt' || targetRace.format === 'relay' || (targetRace.name || '').toUpperCase().includes('DTT');
+            let autoPlannedStart = '';
+            if (!isTimeTrial && targetRace.date) {
                 const rDate = new Date(targetRace.date);
                 if (!isNaN(rDate.getTime())) {
                     const hh = String(rDate.getHours()).padStart(2, '0');
@@ -696,69 +999,86 @@ destroyAnalyticsCharts() {
             }
 
             const newRoster = await pb.collection('race_rosters').create({
-                race_id: targetRaceId,
-                rider_id: riderId,
-                bib: "",
+                race_id: targetRace.id,
+                rider_id: rider.id,
+                bib: bibVal,
                 status: 'registered',
-                is_paid: false,
+                is_paid: isPaid,
                 planned_start: autoPlannedStart,
-                final_cluster: calculatedCat || rider?.base_cluster || "B"
+                final_cluster: finalCat
             }, { requestKey: null });
 
-            const teamName = typeof this.app?.crm?.getRiderTeamNames === 'function' 
-                ? this.app.crm.getRiderTeamNames(rider) 
-                : (rider?.team || 'ONE TEAM');
+            const distTag = targetRace.name?.includes('[')
+                ? targetRace.name.split('[')[1].replace(']', '').trim()
+                : (targetRace.distance ? `${targetRace.distance} КМ` : '');
+
+            const fullName = `${rider.first_name || ''} ${rider.last_name || ''}`.trim();
 
             const newEntry = {
-                id: riderId,
+                id: rider.id,
                 recordId: newRoster.id,
-                rider_id: riderId,
-                name: rider?.first_name || '',
-                surname: rider?.last_name || '',
-                fullName: `${rider?.first_name || ''} ${rider?.last_name || ''}`.trim(),
-                gender: String(rider?.gender || 'M').toUpperCase().trim(),
-                year: rider?.yob || '',
-                yob: rider?.yob || '',
-                points: rider?.rating || 0,
-                team: teamName,
-                teamId: rider?.team_id,
-                group: calculatedCat || rider?.base_cluster || 'B',
-                computedCat: calculatedCat || rider?.base_cluster || 'B',
+                rider_id: rider.id,
+                name: rider.first_name || '',
+                surname: rider.last_name || '',
+                fullName: fullName,
+                gender: String(rider.gender || 'M').toUpperCase().trim(),
+                year: rider.yob || '',
+                yob: rider.yob || '',
+                points: rider.rating || 0,
+                team: st.teamName || 'ONE TEAM',
+                teamId: rider.team_id,
+                group: finalCat,
+                computedCat: finalCat,
+                final_cluster: finalCat,
+                base_cluster: rider.base_cluster || 'B',
                 isRegistered: true,
-                is_paid: false,
-                bib: "",
+                is_paid: isPaid,
+                bib: bibVal,
                 plannedStart: autoPlannedStart,
-                actualStart: "",
-                distance: targetDistance,
-                race_id: targetRaceId,
-                squad_name: "",
+                actualStart: '',
+                distance: targetRace.distance || 0,
+                distance_tag: distTag,
+                race_name: targetRace.name,
+                race_id: targetRace.id,
+                squad_name: '',
                 squad_id: null,
-                squad_max: targetRace?.squad_max || 1,
-                race_format: targetRace?.format || 'mass'
+                squad_max: targetRace.squad_max || 1,
+                race_format: targetRace.format || 'mass'
             };
 
-            this._lastScannedRiderId = riderId;
+            this._lastScannedRiderId = rider.id;
 
             const searchInput = document.getElementById('liveSearchInput');
             if (searchInput) searchInput.value = '';
             this.liveSearchQuery = '';
 
             if (!this.currentLiveStartList) this.currentLiveStartList = [];
-            this.currentLiveStartList = this.currentLiveStartList.filter(sl => sl.id !== riderId && sl.rider_id !== riderId);
+            this.currentLiveStartList = this.currentLiveStartList.filter(sl => !(sl.id === rider.id && sl.race_id === targetRace.id));
             this.currentLiveStartList.unshift(newEntry);
 
             if (this.crm) {
                 if (!this.crm.raceRosterList) this.crm.raceRosterList = [];
-                this.crm.raceRosterList = this.crm.raceRosterList.filter(sl => sl.id !== riderId && sl.rider_id !== riderId);
+                this.crm.raceRosterList = this.crm.raceRosterList.filter(sl => !(sl.id === rider.id && sl.race_id === targetRace.id));
                 this.crm.raceRosterList.unshift(newEntry);
             }
 
-            this.renderLiveBoard();
-            this.focusAndHighlightRider(riderId, fullName);
+            // Если судья стоял на вкладке другой дистанции — переключаем на добавленную дистанцию, чтобы карточка была перед глазами
+            if (this.liveDistanceFilter !== 'all' && this.liveDistanceFilter !== targetRace.id) {
+                this.liveDistanceFilter = targetRace.id;
+            }
 
+            document.getElementById('liveQrAssignModal')?.remove();
+            this._qrAssignState = null;
+
+            this.renderLiveBoard();
+            this.focusAndHighlightRider(rider.id, fullName);
         } catch (err) {
-            console.error("Ошибка добавления через QR:", err);
+            console.error("Ошибка сохранения через QR:", err);
             alert("❌ Ошибка при добавлении в базу: " + (err.message || "Сетевой сбой"));
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = '+ В СТАРТ-ЛИСТ';
+            }
         }
     }
     // 🎯 ПОКАЗАТЬ И ПОДСВЕТИТЬ УЖЕ СУЩЕСТВУЮЩЕГО СПОРТСМЕНА В СТАРТ-ЛИСТЕ
@@ -850,7 +1170,7 @@ destroyAnalyticsCharts() {
             }, 3500);
         }, 150);
     }
-    // 9. Слушатель аппаратных USB/Bluetooth 2D-сканеров с защитой от утечки в поля ввода
+// 9. Слушатель аппаратных USB/Bluetooth 2D-сканеров с защитой от утечки в поля ввода
     initHwScannerListener() {
         if (this._hwScannerAttached) return;
         this._hwScannerAttached = true;
@@ -872,10 +1192,8 @@ destroyAnalyticsCharts() {
                     cleanData = document.activeElement.value.trim();
                 }
 
-                if (cleanData.startsWith('М1') || cleanData.startsWith('м1')) {
-                    cleanData = this.decodeScannerLayout(cleanData);
-                }
-                cleanData = cleanData.replace(/[\/\\]/g, '|');
+                // Всегда прогоняем через декодер: он переводит раскладку (М1 / реезы) и отрезает https://... до V1|
+                cleanData = this.decodeScannerLayout(cleanData);
 
                 if (cleanData.startsWith('V1|') || cleanData.startsWith('v1|')) {
                     e.preventDefault();
@@ -890,7 +1208,12 @@ destroyAnalyticsCharts() {
                             const rId = activeInp.closest('.live-rider-card')?.getAttribute('data-rider-id');
                             const riderObj = (this.currentLiveStartList || []).find(r => r.id === rId || r.rider_id === rId);
                             const currentBib = riderObj?.bib || '';
-                            activeInp.value = (currentBib.startsWith('V1') || currentBib.startsWith('М1')) ? '' : currentBib;
+                            activeInp.value = (
+                                currentBib.startsWith('V1') ||
+                                currentBib.startsWith('М1') ||
+                                currentBib.toLowerCase().startsWith('http') ||
+                                currentBib.toLowerCase().startsWith('рее')
+                            ) ? '' : currentBib;
                         } else {
                             activeInp.value = '';
                         }
@@ -907,16 +1230,19 @@ destroyAnalyticsCharts() {
                 }
             } else if (e.key && e.key.length === 1) {
                 buffer += e.key;
+                const bLow = buffer.toLowerCase();
 
-                // 🛑 БЛОКИРОВКА ВВОДА В ИНПУТЫ: если сканер строчит паспорт (V1 или М1),
+                // 🛑 БЛОКИРОВКА ВВОДА В ИНПУТЫ: если сканер строчит паспорт (V1, М1 или ссылку http / рееp),
                 // глушим ввод, чтобы символы НЕ впечатывались в активное поле BIB!
-                if (buffer.startsWith('V1') || buffer.startsWith('v1') || 
-                    buffer.startsWith('М1') || buffer.startsWith('м1')) {
-                    
+                if (bLow.startsWith('v1') ||
+                    bLow.startsWith('м1') ||
+                    bLow.startsWith('http') ||
+                    bLow.startsWith('рее')) {
+
                     e.preventDefault();
                     e.stopPropagation();
 
-                    // Если первый символ успел попасть в активный инпут — затираем его
+                    // Если первые символы успели попасть в активный инпут — затираем их
                     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
                         const activeInp = document.activeElement;
                         if (activeInp.classList.contains('bib')) {
@@ -933,8 +1259,8 @@ destroyAnalyticsCharts() {
                 timer = setTimeout(() => { buffer = ''; }, 250);
             }
         }, true);
-    }  
-    setLiveDistanceFilter(dist) {
+    } 
+ setLiveDistanceFilter(dist) {
         this.liveDistanceFilter = dist;
         this.renderLiveBoard();
     }
@@ -1375,7 +1701,7 @@ applyLiveSearchDOMFilter(rawQuery) {
                     <div style="display:grid; grid-template-columns:1fr 1.3fr; gap:8px;">
                         <div>
                             <span style="font-size:8.5px; font-family:'Unbounded'; font-weight:800; color:var(--primary); text-transform:uppercase;">КАТЕГОРИЯ ЗАЧЁТА</span>
-                            <input type="text" id="qaCategory" placeholder="Авторасчет..." style="width:100%; box-sizing:border-box; background:var(--bg-body); border:1px solid var(--border); color:var(--primary); border-radius:8px; padding:8px 10px; font-size:11.5px; font-family:'Roboto Mono'; font-weight:800; outline:none; margin-top:3px;">
+                            <input type="text" id="qaCategory" placeholder="Авторасчет..." style="width:100%; box-sizing:border-box; background:var(--bg-body); border:1px solid var(--border); color:var(--primary); border-radius:8px; padding:8px 10px; font-size:11.5px; font-family:'Roboto Mono'; font-weight:800; outline:none; margin-top:3px;" oninput="this.dataset.manual='1'">
                         </div>
 
                         <div style="position:relative;">
@@ -1639,7 +1965,7 @@ applyLiveSearchDOMFilter(rawQuery) {
     // 💾 СОХРАНЕНИЕ С КОРРЕКТНЫМ distance_tag И СИНХРОНИЗАЦИЕЙ ТАБЛИЦ
     // =========================================================================
 async submitQuickAddRider() {
-	// 🛑 Страховка: если кто-то попытается вызвать метод напрямую
+        // 🛑 Страховка: если кто-то попытается вызвать метод напрямую
         if (!this.canManageLiveRoster()) {
             alert("Доступ ограничен: сохранение протокола доступно только судьям и организаторам.");
             return;
@@ -1650,13 +1976,14 @@ async submitQuickAddRider() {
         const fNameRaw = (document.getElementById('qaFirstName')?.value || '').trim();
         const yobStr = (document.getElementById('qaYob')?.value || '').trim();
         const gender = document.getElementById('qaGender')?.value || 'M';
+        const selectedGear = (document.getElementById('qaGearSelect')?.value || '').trim();
 
         // 🔍 Считываем данные умного поиска команды
         const teamIdVal = (document.getElementById('qaTeamId')?.value || document.getElementById('qaTeamSelect')?.value || '').trim();
         const teamNewName = (document.getElementById('qaTeamNewName')?.value || '').trim();
         const typedTeamText = (document.getElementById('qaTeamSearchInput')?.value || '').trim();
 
-        const finalCategory = (document.getElementById('qaCategory')?.value || '').trim();
+        const rawInputCategory = (document.getElementById('qaCategory')?.value || '').trim();
         const bib = (document.getElementById('qaBib')?.value || '').trim();
         const startTime = (document.getElementById('qaStartTime')?.value || '').trim();
         const isPaid = Boolean(document.getElementById('qaIsPaid')?.checked);
@@ -1671,13 +1998,14 @@ async submitQuickAddRider() {
         const lastName = cap(lNameRaw);
 
         // Находим целевую дистанцию в кэше события
-        const targetRace = (this.currentEventRaces || []).find(r => r.id === targetRaceId) 
-                        || this.app?.racesMap?.[targetRaceId] 
+        const targetRace = (this.currentEventRaces || []).find(r => r.id === targetRaceId)
+                        || this.app?.racesMap?.[targetRaceId]
+                        || (this.crm?.dataCalendar || []).find(r => r.id === targetRaceId)
                         || {};
 
         // 🏷️ Чистый тег дистанции: «Основная», «GRVL», «Фитнес»
-        const distTag = targetRace.name?.includes('[') 
-            ? targetRace.name.split('[')[1].replace(']', '').trim() 
+        const distTag = targetRace.name?.includes('[')
+            ? targetRace.name.split('[')[1].replace(']', '').trim()
             : (targetRace.distance ? `${targetRace.distance} км` : targetRace.name || 'Основная');
 
         if (btn) {
@@ -1694,7 +2022,7 @@ async submitQuickAddRider() {
                     const newTeam = await pb.collection('teams').create({ name: teamNewName }, { requestKey: null });
                     if (this.app?.teamsMap) this.app.teamsMap[newTeam.id] = newTeam;
                     assignedTeamId = newTeam.id;
-                } catch(e) {
+                } catch (e) {
                     console.warn("Ошибка создания команды:", e);
                 }
             } else if (teamIdVal && teamIdVal !== 'NEW') {
@@ -1708,7 +2036,7 @@ async submitQuickAddRider() {
                         const newTeam = await pb.collection('teams').create({ name: typedTeamText }, { requestKey: null });
                         if (this.app?.teamsMap) this.app.teamsMap[newTeam.id] = newTeam;
                         assignedTeamId = newTeam.id;
-                    } catch(e) {}
+                    } catch (e) {}
                 }
             }
 
@@ -1724,7 +2052,7 @@ async submitQuickAddRider() {
                     `first_name="${firstName}" && last_name="${lastName}" && yob=${yob}`,
                     { requestKey: null }
                 );
-            } catch(e) {}
+            } catch (e) {}
 
             let rider = existingRider;
 
@@ -1743,19 +2071,18 @@ async submitQuickAddRider() {
 
                 if (this.app.ridersMap) this.app.ridersMap[rider.id] = rider;
             } else {
-                // Если у существующего спортсмена не было команды, а мы её только что указали — обновляем
                 if (assignedTeamId && (!rider.team_id || rider.team_id.length === 0)) {
                     try {
                         await pb.collection('riders').update(rider.id, { team_id: [assignedTeamId] }, { requestKey: null });
                         rider.team_id = [assignedTeamId];
-                    } catch(e) {}
+                    } catch (e) {}
                 }
                 if (this.app.ridersMap) this.app.ridersMap[rider.id] = rider;
             }
 
             // 2. Проверка на дубликат в целевой дистанции
-            const existingInStartList = (this.currentLiveStartList || []).find(sl => 
-                sl.isRegistered && 
+            const existingInStartList = (this.currentLiveStartList || []).find(sl =>
+                sl.isRegistered &&
                 (sl.id === rider.id || sl.rider_id === rider.id) &&
                 (sl.race_id === targetRaceId)
             );
@@ -1766,6 +2093,27 @@ async submitQuickAddRider() {
                 this.showAndFocusExistingRider(existingInStartList, rider.id, `${firstName} ${lastName}`);
                 return;
             }
+
+            // 🎯 2.5. Авторасчёт категории строго по конструктору гонки (по году рождения и полу)
+            let computedByRules = "";
+            if (typeof this.crm?.getRaceCategory === 'function') {
+                try {
+                    computedByRules = this.crm.getRaceCategory({
+                        id: rider.id,
+                        gender: gender,
+                        yob: yob,
+                        base_cluster: rider.base_cluster || "",
+                        gear: selectedGear
+                    }, targetRace);
+                } catch (e) {}
+            }
+
+            // Если судья НЕ редактировал поле категории вручную — всегда берём точный расчёт по введённому году рождения (yob)
+            const catInputEl = document.getElementById('qaCategory');
+            const isManuallyEdited = catInputEl && catInputEl.dataset.manual === '1';
+            const finalCategory = (isManuallyEdited && rawInputCategory)
+                ? rawInputCategory
+                : (computedByRules || rawInputCategory || 'АБСОЛЮТ');
 
             // 3. Создание записи в race_rosters
             const newRoster = await pb.collection('race_rosters').create({
@@ -1834,7 +2182,6 @@ async submitQuickAddRider() {
 
             document.getElementById('liveQuickAddModal').style.display = 'none';
 
-            // Если был выбран фильтр другой дистанции — переключаем на «Все дистанции»
             if (this.liveDistanceFilter !== 'all' && this.liveDistanceFilter !== targetRaceId) {
                 this.liveDistanceFilter = 'all';
             }
@@ -2312,13 +2659,20 @@ renderStartRow(p, isOrganizer, rStr, myTeams, isTeamRace, squadCounts, raceObj) 
 
         // 1. Ветка для НЕЗАРЕГИСТРИРОВАННЫХ («ДОСТУПНЫ ДЛЯ ЗАЯВКИ»)
         if (!isRegistered) {
-            const soloName = p.fullName || `${p.name || ''} ${p.surname || ''}`.trim() || `Спортсмен`;
-            const searchData = app.escapeHTML(`${soloName} ${catVal} ${teamRawName}`.toLowerCase());
+            const firstPart = p.name || '';
+            const secondPart = p.surname || '';
+            const soloName = p.fullName || (firstPart + ' ' + secondPart).trim() || 'Спортсмен';
+            const riderSlug = p.slug || app.ridersMap?.[p.id]?.slug || '';
+            const yobPart = p.year || p.yob || '';
+            const rawSearch = [soloName, riderSlug, catVal, teamRawName, yobPart].join(' ').toLowerCase();
+            const searchData = app.escapeHTML(rawSearch);
             const regBtnText = isMe ? 'ЗАЯВИТЬСЯ' : 'ЗАЯВИТЬ';
 
             return `
                 <div class="live-rider-card unregistered-row ${isMe ? 'is-me' : ''}" 
                      data-rider-id="${p.id || p.rider_id || ''}"
+                     data-name="${app.escapeHTML(soloName.toLowerCase())}"
+                     data-team="${app.escapeHTML(teamRawName.toLowerCase())}"
                      data-search="${searchData}" 
                      onclick="window.app.crm.liveService.toggleRiderAccordion(this, event)">
                     
@@ -2681,7 +3035,10 @@ renderStartRow(p, isOrganizer, rStr, myTeams, isTeamRace, squadCounts, raceObj) 
             }
 
             // Обновляем глобальные кэши приложения свежими данными
-            if (this.app?.racesMap) this.app.racesMap[firstRace.id] = firstRace;
+            if (this.app) {
+                if (!this.app.racesMap) this.app.racesMap = {};
+                this.app.racesMap[firstRace.id] = firstRace;
+            }
             if (this.crm?.dataCalendar) {
                 const cIdx = this.crm.dataCalendar.findIndex(r => r.id === firstRace.id);
                 if (cIdx !== -1) this.crm.dataCalendar[cIdx] = firstRace;
@@ -2857,6 +3214,7 @@ renderStartRow(p, isOrganizer, rStr, myTeams, isTeamRace, squadCounts, raceObj) 
                     } else {
                         lb.startTime = validLiveStart || '-';
                     }
+                    lb.race_id = raceData.id;
                     lb.distance = raceData.distance;
                     lb.distance_tag = distTag;
                     return lb;
@@ -2874,25 +3232,77 @@ renderStartRow(p, isOrganizer, rStr, myTeams, isTeamRace, squadCounts, raceObj) 
                 }
             }
 
-            // Добавляем свободных гонщиков для организаторов
-            if (isOrganizer && racesData.length > 0) {
+            // Подгружаем профиль и права на ru.sotka.one (board.html), если они еще не инициализированы
+            if (pb.authStore.isValid && pb.authStore.model) {
+                const authEmail = (pb.authStore.model.email || '').toLowerCase().trim();
+                const authRoles = pb.authStore.model.role || [];
+                if (authEmail && (!this.app.usersMap || !this.app.usersMap[authEmail])) {
+                    if (!this.app.usersMap) this.app.usersMap = {};
+                    this.app.usersMap[authEmail] = Array.isArray(authRoles) ? authRoles : [authRoles];
+                }
+                if (!this.app.currentRider || this.app.currentRider.id === 'anonymous_guest') {
+                    try {
+                        const myR = await pb.collection('riders').getFirstListItem(
+                            `user_id="${pb.authStore.model.id}" || email="${authEmail}"`,
+                            { requestKey: null }
+                        );
+                        if (myR) {
+                            this.app.currentRider = myR;
+                            this.app.isGuest = false;
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            // Добавляем свободных гонщиков для организаторов (с автоподгрузкой базы на ru.sotka.one)
+            const authModelRoles = pb.authStore.model?.role || [];
+            const hasAdminAuth = JSON.stringify(authModelRoles).includes('admin') || JSON.stringify(authModelRoles).includes('judge');
+            const canManage = this.canManageLiveRoster() || isOrganizer || hasAdminAuth || (firstRace.creator_id === pb.authStore.model?.id);
+
+            if (canManage && racesData.length > 0) {
+                if (!this.app.ridersMap || Object.keys(this.app.ridersMap).length < 10) {
+                    try {
+                        const [allRiders, allTeams] = await Promise.all([
+                            pb.collection('riders').getFullList({
+                                fields: 'id,first_name,last_name,email,team_id,base_cluster,gender,yob,rating,slug',
+                                requestKey: null
+                            }),
+                            (!this.app.teamsMap || Object.keys(this.app.teamsMap).length === 0)
+                                ? pb.collection('teams').getFullList({ fields: 'id,name,peloton_id', requestKey: null })
+                                : Promise.resolve([])
+                        ]);
+                        if (!this.app.ridersMap) this.app.ridersMap = {};
+                        allRiders.forEach(r => { this.app.ridersMap[r.id] = r; });
+
+                        if (allTeams.length > 0) {
+                            if (!this.app.teamsMap) this.app.teamsMap = {};
+                            allTeams.forEach(t => { this.app.teamsMap[t.id] = t; });
+                        }
+                    } catch (err) {
+                        console.warn("Не удалось догрузить базу атлетов для старт-листа:", err);
+                    }
+                }
+
                 const primaryRace = racesData[0];
-                let racePelotonId = primaryRace.peloton_id ? (Array.isArray(primaryRace.peloton_id) ? primaryRace.peloton_id[0] : primaryRace.peloton_id) : null;
 
                 Object.values(this.app.ridersMap || {}).forEach(rider => {
-                    if (rider.email === 'bot@sotka.one') return;
-                    if (combinedList.some(x => x.id === rider.id)) return;
+                    if (!rider || rider.email === 'bot@sotka.one' || (rider.email && rider.email.startsWith('guest_'))) return;
+                    if (combinedList.some(x => x.id === rider.id || x.rider_id === rider.id)) return;
 
                     let tName = "";
                     try { tName = crmRef.getRiderTeamNames(rider); } catch (e) { tName = "ONE TEAM"; }
+
+                    const fName = rider.first_name || '';
+                    const lName = rider.last_name || '';
 
                     combinedList.push({
                         id: rider.id,
                         recordId: null,
                         rider_id: rider.id,
-                        name: rider.first_name || '',
-                        surname: rider.last_name || '',
-                        fullName: `${rider.first_name || ''} ${rider.last_name || ''}`.trim(),
+                        name: fName,
+                        surname: lName,
+                        fullName: (fName + ' ' + lName).trim(),
+                        slug: rider.slug || '',
                         year: rider.yob || '',
                         yob: rider.yob || '',
                         gender: String(rider.gender || 'M').toUpperCase().trim(),
@@ -2998,6 +3408,7 @@ renderStartRow(p, isOrganizer, rStr, myTeams, isTeamRace, squadCounts, raceObj) 
                 }
                 lb.distance = rData.distance;
                 lb.distance_tag = distTag;
+				lb.race_id = rData.id;
                 return lb;
             });
             newBoard.push(...formatted);
@@ -3050,38 +3461,83 @@ renderLiveBoard() {
             ? this.currentEventRaces
             : (typeof this.app?.getSisterRaces === 'function' && this.expandedRaceId ? this.app.getSisterRaces(this.expandedRaceId) : []);
 
+        const getDistCounterStr = (targetRace = null) => {
+            const matchDist = (item) => {
+                if (!targetRace) return true;
+                if (item.race_id && targetRace.id) return String(item.race_id) === String(targetRace.id);
+                if (item.distance !== undefined && targetRace.distance !== undefined) return Number(item.distance) === Number(targetRace.distance);
+                return String(item.id) === String(targetRace.id);
+            };
+
+            const hasValidBib = (bibVal) => {
+                const b = String(bibVal || '').trim();
+                return b !== '' && b !== '-' && b !== '—' && b !== '0' && !b.startsWith('NO_BIB');
+            };
+
+            const regList = (this.currentLiveStartList || []).filter(sl => sl.isRegistered && matchDist(sl));
+            const withBibCount = regList.filter(sl => hasValidBib(sl.bib)).length;
+
+            if (this.liveCurrentTab === 'start') {
+                return `${withBibCount}/${regList.length}`;
+            }
+
+            // Вкладка РЕЗУЛЬТАТЫ / АНАЛИТИКА
+            const resList = (this.currentLiveBoard || []).filter(b => matchDist(b));
+
+            const isFinisher = (b) => {
+                const t = String(b.timeStr || '').trim().toUpperCase();
+                const st = String(b.status || '').trim().toUpperCase();
+                if (!t || t === '-' || t === '—' || t === '0' || t === '00:00.00') return false;
+                if (t.includes('DNF') || t.includes('DSQ') || t.includes('DNS') || t.includes('НЕТ СТАРТА') || t.includes('NO START') || t === 'START' || t === 'НА ТРАССЕ') return false;
+                if (st === 'DNF' || st === 'DSQ' || st === 'DNS' || st === 'NO_START') return false;
+                return true;
+            };
+
+            const isDns = (b) => {
+                const t = String(b.timeStr || '').trim().toUpperCase();
+                const st = String(b.status || '').trim().toUpperCase();
+                return t.includes('DNS') || t.includes('НЕТ СТАРТА') || t.includes('NO START') || st === 'DNS' || st === 'NO_START';
+            };
+
+            const finishersCount = resList.filter(isFinisher).length;
+            const startedInBoard = resList.filter(b => !isDns(b)).length;
+            const totalStarters = Math.max(startedInBoard, withBibCount);
+
+            return `${finishersCount}/${totalStarters}`;
+        };
+
         if (eventRaces.length > 1) {
             filterHtml += `
                 <div id="liveDistFilterScrollWrap" style="display:flex; align-items:center; width:100%; box-sizing:border-box; background:var(--bg-surface-hover); border:1px solid var(--border); border-radius:50px; padding:3px 6px; margin-bottom:10px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;">
                     <div style="display:flex; background:var(--bg-body); border-radius:50px; padding:2px; border:1px solid var(--border); flex-shrink:0; gap:2px;">
             `;
-            
+
             const isAllActive = (this.liveDistanceFilter === 'all');
-            const totalCount = (this.currentLiveStartList || []).filter(sl => sl.isRegistered).length;
+            const totalCounterStr = getDistCounterStr(null);
 
             filterHtml += `
                 <button type="button" onclick="window.app.crm.liveService.setLiveDistanceFilter('all')" 
                         class="live-dist-pill ${isAllActive ? 'active' : ''}"
                         style="background:${isAllActive ? 'var(--text-main)' : 'transparent'}; color:${isAllActive ? 'var(--bg-body)' : 'var(--text-muted)'}; border:none; padding:5px 12px; border-radius:50px; font-family:'Unbounded', sans-serif; font-size:9px; font-weight:800; cursor:pointer; white-space:nowrap; transition:0.2s;">
-                    ВСЕ ДИСТАНЦИИ (${totalCount})
+                    ВСЕ ДИСТАНЦИИ (${totalCounterStr})
                 </button>
             `;
 
             eventRaces.forEach(r => {
                 const d = r.distance;
                 const tag = r.name.includes('[') ? r.name.split('[')[1].replace(']', '').trim() : `${d} КМ`;
-                const isDistActive = (this.liveDistanceFilter === r.id);
-                
+                const isDistActive = (this.liveDistanceFilter === r.id || this.liveDistanceFilter == d);
+
                 const isMyDist = Boolean(this.app?.myRosters && this.app.myRosters[r.id] && this.app.myRosters[r.id].status !== 'canceled');
-                const dCount = (this.currentLiveStartList || []).filter(sl => sl.isRegistered && sl.race_id === r.id).length;
-                
+                const dCounterStr = getDistCounterStr(r);
+
                 const myBadge = isMyDist ? `<span style="background:var(--primary); color:#000; padding:1px 4px; border-radius:4px; font-size:8px; margin-left:4px; font-weight:900;">✓</span>` : '';
 
                 filterHtml += `
                     <button type="button" onclick="window.app.crm.liveService.setLiveDistanceFilter('${r.id}')" 
                             class="live-dist-pill ${isDistActive ? 'active' : ''}"
                             style="background:${isDistActive ? 'var(--text-main)' : 'transparent'}; color:${isDistActive ? 'var(--bg-body)' : 'var(--text-muted)'}; border:none; padding:5px 12px; border-radius:50px; font-family:'Unbounded', sans-serif; font-size:9px; font-weight:800; cursor:pointer; white-space:nowrap; transition:0.2s; display:inline-flex; align-items:center; gap:4px;">
-                        <span>${this.app.escapeHTML(tag)} • ${d} КМ (${dCount})</span>
+                        <span>${this.app.escapeHTML(tag)} • ${d} КМ (${dCounterStr})</span>
                         ${myBadge}
                     </button>
                 `;
@@ -3190,26 +3646,50 @@ renderLiveBoard() {
         });
 
         this.currentLiveStartList.forEach(p => {
+            const targetRaceObj = (this.currentEventRaces || []).find(r => r.id === p.race_id)
+                               || (appRef.racesMap ? appRef.racesMap[p.race_id] : null)
+                               || raceObj;
+            const targetRider = appRef.ridersMap?.[p.id];
+            const realYob = parseInt(p.yob || p.year || targetRider?.yob || 0, 10);
             const existingCat = p.final_cluster || p.group;
+
+            // Если у гонщика есть реальный год рождения (не 1990), проверяем, не залипла ли у него категория "[М] 30-39" от дефолтного 1990 года
             if (p.isRegistered && existingCat && (existingCat.includes('[') || existingCat.includes('•'))) {
+                if (realYob > 1920 && realYob !== 1990 && targetRaceObj && typeof this.crm?.getRaceCategory === 'function') {
+                    const expectedByRealYob = this.crm.getRaceCategory({
+                        gender: p.gender,
+                        yob: realYob,
+                        base_cluster: targetRider?.base_cluster || '',
+                        final_cluster: existingCat,
+                        id: p.id
+                    }, targetRaceObj);
+                    const fake1990Cat = this.crm.getRaceCategory({
+                        gender: p.gender,
+                        yob: 1990,
+                        base_cluster: targetRider?.base_cluster || '',
+                        final_cluster: existingCat,
+                        id: p.id
+                    }, targetRaceObj);
+                    // Если сохранённая категория совпадает с расчётом для 1990 г.р., но реальный возраст другой — исправляем!
+                    if (existingCat === fake1990Cat && expectedByRealYob && expectedByRealYob !== fake1990Cat) {
+                        p.computedCat = expectedByRealYob;
+                        p.group = expectedByRealYob;
+                        p.final_cluster = expectedByRealYob;
+                        return;
+                    }
+                }
                 p.computedCat = existingCat;
                 return;
             }
 
             p.computedCat = existingCat || 'B';
-
-            const targetRaceObj = (this.currentEventRaces || []).find(r => r.id === p.race_id)
-                               || (appRef.racesMap ? appRef.racesMap[p.race_id] : null)
-                               || raceObj;
-
-            const targetRider = appRef.ridersMap?.[p.id];
-            const realBaseCluster = targetRider?.base_cluster || 'B';
+            const realBaseCluster = targetRider?.base_cluster || '';
 
             if (targetRaceObj && typeof this.crm?.getRaceCategory === 'function') {
                 try {
                     p.computedCat = this.crm.getRaceCategory({
                         gender: p.gender,
-                        yob: p.year || p.yob,
+                        yob: realYob || p.year || p.yob,
                         base_cluster: realBaseCluster,
                         final_cluster: p.final_cluster || p.group || '',
                         id: p.id,
@@ -3574,8 +4054,8 @@ renderLiveBoard() {
             this.initHwScannerListener();
         }
     }
-	// =======================================================
-    // 📊 HTML РАЗМЕТКА ДАШБОРДА АНАЛИТИКИ
+// =======================================================
+    // 📊 HTML РАЗМЕТКА ДАШБОРДА АНАЛИТИКИ (ЧЁРНЫЙ / ЖЁЛТЫЙ + ЧИСТЫЕ SVG)
     // =======================================================
     renderLiveAnalyticsHtml(board, maxLaps) {
         const finishers = board.filter(b => b.lapTimes && b.lapTimes.length > 0 && b.timeStr !== 'DNF' && b.timeStr !== 'DSQ');
@@ -3583,6 +4063,13 @@ renderLiveBoard() {
         if (finishers.length === 0) {
             return `
                 <div class="live-empty-state" style="padding: 50px 20px; text-align: center;">
+                    <div style="margin-bottom: 8px; color: var(--text-muted); display: flex; justify-content: center;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </div>
                     <div style="font-weight: 800; font-size: 13px;">НЕДОСТАТОЧНО ТЕЛЕМЕТРИИ</div>
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: 'Manrope';">
                         Графики построятся автоматически после финиша участников с отсечками по кругам.
@@ -3592,7 +4079,7 @@ renderLiveBoard() {
         }
 
         const speeds = finishers.map(f => parseFloat(f.speed) || 0).filter(s => s > 0);
-        const avgSpeed = speeds.length ? (speeds.reduce((a,b)=>a+b, 0) / speeds.length).toFixed(2) : '—';
+        const avgSpeed = speeds.length ? (speeds.reduce((a, b) => a + b, 0) / speeds.length).toFixed(2) : '—';
 
         let bestLapMs = Infinity;
         let bestLapRider = '—';
@@ -3635,25 +4122,25 @@ renderLiveBoard() {
                 <div class="live-kpi-grid">
                     <div class="live-kpi-card">
                         <span class="live-kpi-lbl">СРЕДНЯЯ ПЕЛОТОНА</span>
-                        <div class="live-kpi-val" style="color:var(--primary);">${avgSpeed} <span style="font-size:10px;">км/ч</span></div>
+                        <div class="live-kpi-val" style="color:#d97706;">${avgSpeed} <span style="font-size:10px;">км/ч</span></div>
                         <span class="live-kpi-sub">по всем финишерам</span>
                     </div>
                     
                     <div class="live-kpi-card">
                         <span class="live-kpi-lbl">РЕКОРД КРУГА</span>
-                        <div class="live-kpi-val">${bestLapStr}</div>
+                        <div class="live-kpi-val" style="color:var(--text-main);">${bestLapStr}</div>
                         <span class="live-kpi-sub">${this.app.escapeHTML(bestLapRider)} (Кр.${bestLapNum})</span>
                     </div>
 
                     <div class="live-kpi-card">
                         <span class="live-kpi-lbl">ЛУЧШИЙ ПЕЙСИНГ</span>
-                        <div class="live-kpi-val" style="color:#10b981;">${consistencyStr}</div>
+                        <div class="live-kpi-val" style="color:#d97706;">${consistencyStr}</div>
                         <span class="live-kpi-sub">${this.app.escapeHTML(bestConsistentRider)}</span>
                     </div>
 
                     <div class="live-kpi-card">
                         <span class="live-kpi-lbl">ФИНИШИРОВАЛИ</span>
-                        <div class="live-kpi-val">${finishers.length} <span style="font-size:10px; color:var(--text-muted);">участников</span></div>
+                        <div class="live-kpi-val" style="color:var(--text-main);">${finishers.length} <span style="font-size:10px; color:var(--text-muted);">участников</span></div>
                         <span class="live-kpi-sub">в текущем зачете</span>
                     </div>
                 </div>
@@ -3702,23 +4189,35 @@ renderLiveBoard() {
                             <canvas id="liveChartConsistencyScatter"></canvas>
                         </div>
                         
-                        <!-- 🧭 Подписи 4-х секторов матрицы -->
+                        <!-- Подписи 4-х секторов матрицы со строгими SVG-иконками -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--border);">
-                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;">
-                                <div style="font-family:'Unbounded'; font-size:7.5px; font-weight:800; color:var(--danger);">⚠️ КРИЗИС ПЕЙСИНГА</div>
+                            <div style="background: rgba(0,0,0,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;">
+                                <div style="font-family:'Unbounded'; font-size:7.5px; font-weight:800; color:var(--text-muted); display:flex; align-items:center; gap:4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    <span>КРИЗИС ПЕЙСИНГА</span>
+                                </div>
                                 <div style="font-size:8.5px; color:var(--text-muted); margin-top:2px;">Рваный темп / закисление</div>
                             </div>
-                            <div style="background: rgba(255,193,7,0.06); border: 1px solid rgba(255,193,7,0.25); border-radius: 8px; padding: 6px 8px;">
-                                <div style="font-family:'Unbounded'; font-size:7.5px; font-weight:800; color:var(--primary);">⚡ АГРЕССИВНЫЙ СТАРТ</div>
+                            <div style="background: rgba(255,193,7,0.08); border: 1px solid rgba(255,193,7,0.35); border-radius: 8px; padding: 6px 8px;">
+                                <div style="font-family:'Unbounded'; font-size:7.5px; font-weight:800; color:#d97706; display:flex; align-items:center; gap:4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                                    <span>АГРЕССИВНЫЙ СТАРТ</span>
+                                </div>
                                 <div style="font-size:8.5px; color:var(--text-muted); margin-top:2px;">Высокая скорость, спад к концу</div>
                             </div>
-                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;">
-                                <div style="font-family:'Unbounded'; font-size:7.5px; font-weight:800; color:var(--text-main);">🎯 ТЕМПОВИК</div>
+                            <div style="background: rgba(0,0,0,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;">
+                                <div style="font-family:'Unbounded'; font-size:7.5px; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg>
+                                    <span>ТЕМПОВИК</span>
+                                </div>
                                 <div style="font-size:8.5px; color:var(--text-muted); margin-top:2px;">Ровная раскладка без спада</div>
                             </div>
-                            <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; padding: 6px 8px;">
-                                <div style="font-family:'Unbounded'; font-size:7.5px; font-weight:800; color:#10b981;">👑 ТОП-ПЕЙСИНГ</div>
-                                <div style="font-size:8.5px; color:var(--text-muted); margin-top:2px;">Макс. скорость и стабильность</div>
+                            <div style="background: #111111; border: 1px solid #111111; border-radius: 8px; padding: 6px 8px;">
+                                <div style="font-family:'Unbounded'; font-size:7.5px; font-weight:800; color:#ffc107; display:flex; align-items:center; gap:4px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                    <span>ТОП-ПЕЙСИНГ</span>
+                                </div>
+                                <div style="font-size:8.5px; color:rgba(255,255,255,0.75); margin-top:2px;">Макс. скорость и стабильность</div>
                             </div>
                         </div>
                     </div>
@@ -3728,9 +4227,8 @@ renderLiveBoard() {
             </div>
         `;
     }
-	
-	// =======================================================
-    // 🎨 ИНИЦИАЛИЗАЦИЯ И РЕНДЕР CHART.JS
+    // =======================================================
+    // 🎨 ИНИЦИАЛИЗАЦИЯ И РЕНДЕР CHART.JS (ЧЁРНЫЙ / ЖЁЛТЫЙ СТИЛЬ)
     // =======================================================
     initAnalyticsCharts(board, maxLaps) {
         this.destroyAnalyticsCharts();
@@ -3740,46 +4238,57 @@ renderLiveBoard() {
 
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-        const textColor = isDark ? '#9ba1ad' : '#71717a';
-        const myId = this.app?.currentRider?.id;
+        const textColor = isDark ? '#a1a1aa' : '#52525b';
+        const myId = this.app?.currentRider?.id || null;
 
         // 1. График динамики кругов
         const canvas1 = document.getElementById('liveChartPaceEvolution');
         if (canvas1) {
-            const lapLabels = Array.from({length: maxLaps}, (_, i) => `Круг ${i + 1}`);
+            const lapLabels = Array.from({ length: maxLaps }, (_, i) => `Круг ${i + 1}`);
             
             const datasets = finishers.map((f, idx) => {
-                const isMe = (f.id === myId || f.rider_id === myId);
+                // Строгая проверка myId, чтобы в гостевом режиме undefined === undefined не красило всех участников
+                const isMe = Boolean(myId && ((f.id && f.id === myId) || (f.rider_id && f.rider_id === myId)));
                 const isRank1 = idx === 0;
                 const isRank2 = idx === 1;
                 const isRank3 = idx === 2;
 
-                let color = 'rgba(150, 155, 165, 0.25)';
+                // Базовые линии пелотона — полупрозрачный графит
+                let borderColor = isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(17, 17, 17, 0.16)';
+                let pointBgColor = borderColor;
                 let borderWidth = 1.5;
                 let pointRadius = 2;
                 let zIndex = 1;
 
                 if (isRank1) {
-                    color = '#FFC107';
-                    borderWidth = 3;
-                    pointRadius = 4;
+                    // 1 место — Фирменное золото Сотки
+                    borderColor = '#FFC107';
+                    pointBgColor = '#FFC107';
+                    borderWidth = 3.2;
+                    pointRadius = 4.5;
                     zIndex = 10;
                 } else if (isRank2) {
-                    color = '#E0E0E0';
-                    borderWidth = 2.5;
-                    pointRadius = 3.5;
+                    // 2 место — Глубокий чёрный (или светло-жёлтый в тёмной теме)
+                    borderColor = isDark ? '#FDE047' : '#111111';
+                    pointBgColor = borderColor;
+                    borderWidth = 2.6;
+                    pointRadius = 3.8;
                     zIndex = 9;
                 } else if (isRank3) {
-                    color = '#CD7F32';
-                    borderWidth = 2.5;
+                    // 3 место — Тёмный янтарь
+                    borderColor = '#D97706';
+                    pointBgColor = '#D97706';
+                    borderWidth = 2.4;
                     pointRadius = 3.5;
                     zIndex = 8;
                 }
 
                 if (isMe) {
-                    color = '#00E5FF';
+                    // Текущий пользователь — контрастная чёрная линия с золотыми точками
+                    borderColor = isDark ? '#FFFFFF' : '#111111';
+                    pointBgColor = '#FFC107';
                     borderWidth = 3.5;
-                    pointRadius = 5;
+                    pointRadius = 5.5;
                     zIndex = 20;
                 }
 
@@ -3788,10 +4297,13 @@ renderLiveBoard() {
                 return {
                     label: f.name || `BIB ${f.bib}`,
                     data: dataSec,
-                    borderColor: color,
-                    backgroundColor: color,
+                    borderColor: borderColor,
+                    backgroundColor: pointBgColor,
+                    pointBackgroundColor: pointBgColor,
+                    pointBorderColor: isMe ? '#111111' : borderColor,
                     borderWidth: borderWidth,
                     pointRadius: pointRadius,
+                    pointHoverRadius: pointRadius + 2,
                     tension: 0.25,
                     fill: false,
                     order: 100 - zIndex
@@ -3808,8 +4320,13 @@ renderLiveBoard() {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            backgroundColor: '#111111',
+                            titleColor: '#FFC107',
+                            bodyColor: '#FFFFFF',
+                            borderColor: '#FFC107',
+                            borderWidth: 1,
                             callbacks: {
-                                label: (ctx) => `${ctx.dataset.label}: ${window.app.formatMs(ctx.raw * 1000)}`
+                                label: (ctx) => `${ctx.dataset.label}: ${this.formatMs(ctx.raw * 1000)}`
                             }
                         }
                     },
@@ -3820,7 +4337,7 @@ renderLiveBoard() {
                             ticks: {
                                 color: textColor,
                                 font: { family: "'Roboto Mono', monospace", size: 10, weight: '700' },
-                                callback: (val) => window.app.formatMs(val * 1000)
+                                callback: (val) => this.formatMs(val * 1000)
                             }
                         }
                     }
@@ -3856,8 +4373,9 @@ renderLiveBoard() {
                     labels: Object.keys(bins),
                     datasets: [{
                         data: Object.values(bins),
-                        backgroundColor: 'rgba(255, 193, 7, 0.4)',
-                        borderColor: '#FFC107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.55)',
+                        hoverBackgroundColor: '#FFC107',
+                        borderColor: isDark ? '#FFC107' : '#111111',
                         borderWidth: 1.5,
                         borderRadius: 6
                     }]
@@ -3865,7 +4383,14 @@ renderLiveBoard() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#111111',
+                            titleColor: '#FFC107',
+                            bodyColor: '#FFFFFF'
+                        }
+                    },
                     scales: {
                         x: { grid: { display: false }, ticks: { color: textColor, font: { family: "'Roboto Mono', monospace", size: 9, weight: '700' } } },
                         y: { grid: { color: gridColor }, ticks: { color: textColor, stepSize: 1, font: { family: "'Roboto Mono', monospace", size: 9 } } }
@@ -3883,7 +4408,7 @@ renderLiveBoard() {
                 const validLaps = (f.lapTimes || []).filter(l => l > 0);
                 const deltaSec = validLaps.length >= 2 ? (Math.max(...validLaps) - Math.min(...validLaps)) / 1000 : 0;
                 const sp = parseFloat(f.speed) || 0;
-                const isMe = (f.id === myId || f.rider_id === myId);
+                const isMe = Boolean(myId && ((f.id && f.id === myId) || (f.rider_id && f.rider_id === myId)));
 
                 return {
                     x: sp,
@@ -3900,7 +4425,7 @@ renderLiveBoard() {
                     const { ctx, chartArea: { left, top, right, bottom } } = chart;
                     ctx.save();
                     ctx.font = 'bold 8px "Unbounded", sans-serif';
-                    ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.15)';
+                    ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(17, 17, 17, 0.2)';
 
                     // Верхний левый
                     ctx.textAlign = 'left';
@@ -3916,9 +4441,9 @@ renderLiveBoard() {
                     ctx.textBaseline = 'bottom';
                     ctx.fillText('ТЕМПОВИК', left + 8, bottom - 6);
 
-                    // Нижний правый
+                    // Нижний правый (тёмное золото вместо зелёного)
                     ctx.textAlign = 'right';
-                    ctx.fillStyle = isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.35)';
+                    ctx.fillStyle = '#D97706';
                     ctx.fillText('ТОП-КЛАСС', right - 8, bottom - 6);
 
                     ctx.restore();
@@ -3930,10 +4455,11 @@ renderLiveBoard() {
                 data: {
                     datasets: [{
                         data: scatterData,
-                        backgroundColor: (ctx) => ctx.raw?.isMe ? '#00E5FF' : '#FFC107',
-                        borderColor: (ctx) => ctx.raw?.isMe ? '#FFFFFF' : '#000000',
-                        borderWidth: 1.5,
-                        pointRadius: (ctx) => ctx.raw?.isMe ? 7 : 5
+                        backgroundColor: (ctx) => ctx.raw?.isMe ? '#111111' : '#FFC107',
+                        borderColor: (ctx) => ctx.raw?.isMe ? '#FFC107' : '#111111',
+                        borderWidth: (ctx) => ctx.raw?.isMe ? 2.5 : 1.5,
+                        pointRadius: (ctx) => ctx.raw?.isMe ? 7.5 : 5,
+                        pointHoverRadius: 8
                     }]
                 },
                 plugins: [quadrantPlugin],
@@ -3943,6 +4469,11 @@ renderLiveBoard() {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            backgroundColor: '#111111',
+                            titleColor: '#FFC107',
+                            bodyColor: '#FFFFFF',
+                            borderColor: '#FFC107',
+                            borderWidth: 1,
                             callbacks: {
                                 label: (ctx) => {
                                     const pt = ctx.raw;
@@ -3967,7 +4498,6 @@ renderLiveBoard() {
             });
         }
     }
-	
 	// 👥 МОДАЛЬНОЕ ОКНО УПРАВЛЕНИЯ И ПЕРЕСБОРКИ ЭКИПАЖА
 async openSquadManageModal(raceId, squadId, currentSquadName) {
         const app = window.app || this.app || this;
@@ -7450,6 +7980,23 @@ async updateBib(recordId, newBib, inputEl) {
         alert("Ошибка сохранения номера: " + e.message);
     }
 }
+
+async quickSetPaidFromModal(recordId, isPaid) {
+        if (!recordId) return;
+        try {
+            await pb.collection('race_rosters').update(recordId, { is_paid: Boolean(isPaid) }, { requestKey: null });
+            const p = this.raceRosterList?.find(r => (r.recordId || r.id) === recordId);
+            if (p) p.is_paid = Boolean(isPaid);
+            const lp = this.liveService?.currentLiveStartList?.find(r => (r.recordId || r.id) === recordId);
+            if (lp) lp.is_paid = Boolean(isPaid);
+            if (this.liveService && typeof this.liveService.renderLiveBoard === 'function') {
+                this.liveService.renderLiveBoard();
+            }
+        } catch (e) {
+            console.error("Ошибка сохранения статуса оплаты:", e);
+        }
+    }
+
 // =========================================================
     // 🔢 СОХРАНЕНИЕ BIB НОМЕРА ДЛЯ ВСЕГО ЭКИПАЖА / КОМАНДЫ
     // =========================================================
@@ -7576,9 +8123,12 @@ async togglePaymentStatus(recordId, currentStatus) {
     const myRole = appRef?.getUserMaxRole ? appRef.getUserMaxRole() : 'rider';
     const roleWeights = appRef?.ROLE_WEIGHTS || { superadmin: 100, admin: 80, judge: 60, captain: 40, rider: 20 };
     const isSuperOrAdmin = (roleWeights[myRole] || 20) >= (roleWeights['admin'] || 80);
-    const myRiderId = curRider.id;
-    const myUserId = pb.authStore.model?.id;
-    const isRaceCreator = Boolean(race && (race.creator_id === myRiderId || race.creator_id === myUserId));
+        const isJudge = (roleWeights[myRole] || 20) >= (roleWeights['judge'] || 60);
+        
+        const raceObj = (this.currentEventRaces || []).find(r => r.id === this.expandedRaceId)
+                     || (appRef.crm && appRef.crm.dataCalendar ? appRef.crm.dataCalendar.find(r => r.id === this.expandedRaceId) : null) 
+                     || (appRef.racesMap ? appRef.racesMap[this.expandedRaceId] : null);
+        const isRaceCreator = raceObj && (raceObj.creator_id === myId || raceObj.creator_id === pb.authStore.model?.id);
     const isPrivilegedOrganizer = isSuperOrAdmin || isRaceCreator;
 
     // Вспомогательная функция обновления интерфейса (CRM, LiveBoard и чат)
@@ -7855,47 +8405,80 @@ async updateCategory(recordId, newCat, inputEl) {
     // ==========================================
 async registerSingleRider(riderId, btn, event, targetRaceId = null, gear = null) {
         if (event) event.stopPropagation();
-        
+
         if (this.app.currentRider && this.app.currentRider.email && this.app.currentRider.email.startsWith('guest_')) {
             alert('Регистрация на гонку доступна только авторизованным спортсменам. Пожалуйста, войдите в свой аккаунт Сотка.');
-            return; 
+            return;
         }
 
         // 1. Получаем список всех заездов/дистанций текущего события
-        const eventRaces = (this.liveService?.currentEventRaces && this.liveService.currentEventRaces.length > 0)
+        let eventRaces = (this.liveService?.currentEventRaces && this.liveService.currentEventRaces.length > 0)
             ? this.liveService.currentEventRaces
             : (typeof this.app?.getSisterRaces === 'function' && this.openedEventId ? this.app.getSisterRaces(this.openedEventId) : []);
 
-        // 2. Если заездов несколько и конкретный заезд ещё не выбран:
-        if (!targetRaceId && eventRaces.length > 1) {
-            const activeFilter = this.liveService?.liveDistanceFilter;
+        if (eventRaces.length === 0) {
+            const fallbackId = this.openedEventId || this.liveService?.expandedRaceId;
+            const fallbackRace = (this.dataCalendar ? this.dataCalendar.find(r => r.id === fallbackId) : null)
+                               || (this.app?.racesMap ? this.app.racesMap[fallbackId] : null);
+            if (fallbackRace) eventRaces = [fallbackRace];
+        }
 
-            // Если открыта конкретная вкладка дистанции (например, «30 КМ») — заявляем именно в неё
-            if (activeFilter && activeFilter !== 'all') {
-                const matched = eventRaces.find(r => r.distance == activeFilter || r.id === activeFilter);
-                if (matched) targetRaceId = matched.id;
+        // 2. Если дистанция ещё явно не выбрана из модалки (!targetRaceId):
+        const isJudgeOrOrg = Boolean(this.liveService?.canManageLiveRoster?.());
+
+        if (!targetRaceId && (isJudgeOrOrg || eventRaces.length > 1)) {
+            if (!isJudgeOrOrg) {
+                const activeFilter = this.liveService?.liveDistanceFilter;
+                if (activeFilter && activeFilter !== 'all') {
+                    const matched = eventRaces.find(r => r.distance == activeFilter || r.id === activeFilter);
+                    if (matched) targetRaceId = matched.id;
+                }
             }
 
-            // Если активен просмотр «ВСЕ ДИСТАНЦИИ» — открываем окно выбора заезда
-            if (!targetRaceId) {
+            if (!targetRaceId && eventRaces.length > 0) {
                 this.openAssignDistanceModal(riderId, eventRaces, btn);
                 return;
             }
         }
 
         const finalRaceId = targetRaceId || this.openedEventId || this.liveService?.expandedRaceId;
-        let currentRace = (this.dataCalendar ? this.dataCalendar.find(r => r.id === finalRaceId) : null)
-                       || (this.app.racesMap ? this.app.racesMap[finalRaceId] : null)
-                       || (eventRaces.find(r => r.id === finalRaceId));
+        let currentRace = (eventRaces.find(r => r.id === finalRaceId))
+                       || (this.dataCalendar ? this.dataCalendar.find(r => r.id === finalRaceId) : null)
+                       || (this.app.racesMap ? this.app.racesMap[finalRaceId] : null);
+
+        // Если у выбранной дистанции нет своей матрицы cat_logic, наследуем от основной дистанции старта
+        if (currentRace && !currentRace.cat_logic) {
+            const fullFromMap = this.app?.racesMap?.[finalRaceId] || (this.dataCalendar || []).find(r => r.id === finalRaceId);
+            if (fullFromMap?.cat_logic) {
+                currentRace.cat_logic = fullFromMap.cat_logic;
+            } else {
+                const primaryWithLogic = eventRaces.find(r => r.cat_logic && (typeof r.cat_logic === 'object' || String(r.cat_logic).includes('{')));
+                if (primaryWithLogic) currentRace.cat_logic = primaryWithLogic.cat_logic;
+            }
+        }
 
         if (currentRace && currentRace.level === 'peloton') {
-            const targetRider = (this.raceRosterList ? this.raceRosterList.find(r => r.id === riderId) : null)
-                             || (this.app.ridersMap ? this.app.ridersMap[riderId] : null);
-            if (targetRider && (targetRider.group === 'O' || targetRider.base_cluster === 'O')) {
+            const checkRider = (this.app?.ridersMap ? this.app.ridersMap[riderId] : null)
+                            || (this.raceRosterList ? this.raceRosterList.find(r => r.id === riderId) : null);
+            if (checkRider && (checkRider.group === 'O' || checkRider.base_cluster === 'O')) {
                 alert(`❌ Официальные гонки недоступны для любителей (Кластер O).`);
                 return;
             }
         }
+
+        // 3. Проверяем, есть ли уже активная заявка у этого атлета (режим редактирования)
+        const existingInLive = (this.liveService?.currentLiveStartList || []).find(r => r.isRegistered && (r.id === riderId || r.rider_id === riderId));
+        const existingInCrm = (this.raceRosterList || []).find(r => r.isRegistered && (r.id === riderId || r.rider_id === riderId));
+        const existingEntry = existingInLive || existingInCrm || null;
+        const existingRecId = existingEntry?.recordId || existingEntry?.roster_id || null;
+
+        // 4. Считываем стартовый номер BIB и галочку ОПЛАЧЕНО из окна «ЗАЯВКА АТЛЕТА»
+        const modalBibInput = document.getElementById('distModalBibInput');
+        const modalPaidCheck = document.getElementById('distModalPaidCheck');
+        const assignedBib = modalBibInput ? modalBibInput.value.trim() : (existingEntry?.bib || '');
+        const assignedPaid = modalPaidCheck ? Boolean(modalPaidCheck.checked) : Boolean(existingEntry?.is_paid);
+        if (modalBibInput) modalBibInput.value = '';
+        if (modalPaidCheck) modalPaidCheck.checked = false;
 
         const oldText = btn?.innerText || '';
         if (btn) {
@@ -7904,28 +8487,45 @@ async registerSingleRider(riderId, btn, event, targetRaceId = null, gear = null)
             btn.style.opacity = '0.7';
         }
 
-        try { 
-            const targetRider = (this.raceRosterList ? this.raceRosterList.find(r => r.id === riderId) : null)
-                             || (this.app?.ridersMap ? this.app.ridersMap[riderId] : null);
+        try {
+            const rosterItem = (this.raceRosterList ? this.raceRosterList.find(r => r.id === riderId || r.rider_id === riderId) : null) || existingEntry;
+            let dbRider = this.app?.ridersMap ? this.app.ridersMap[riderId] : null;
 
-            let calculatedCategory = gear || "";
-            if (currentRace && typeof this.getRaceCategory === 'function' && targetRider) {
+            if (!dbRider || (!dbRider.yob && !rosterItem?.yob && !rosterItem?.year)) {
                 try {
-                    calculatedCategory = this.getRaceCategory({
-                        gender: targetRider.gender || 'M',
-                        yob: targetRider.yob || targetRider.year || 1990,
-                        base_cluster: targetRider.base_cluster || targetRider.group || 'B',
-                        id: targetRider.id,
-                        gear: gear
-                    }, currentRace);
-                } catch(e) {}
+                    dbRider = await pb.collection('riders').getOne(riderId, { requestKey: null });
+                    if (this.app?.ridersMap) this.app.ridersMap[dbRider.id] = dbRider;
+                } catch (e) {}
             }
 
-            const finalCat = calculatedCategory || gear || targetRider?.base_cluster || "B";
+            const targetRider = Object.assign({}, rosterItem || {}, dbRider || {});
+            const resolvedYob = targetRider.yob || targetRider.year || rosterItem?.yob || rosterItem?.year || 1990;
+            const resolvedGender = targetRider.gender || rosterItem?.gender || 'M';
+            const resolvedBaseCluster = dbRider?.base_cluster || targetRider.base_cluster || '';
+
+            let calculatedCategory = "";
+            if (currentRace && typeof this.getRaceCategory === 'function') {
+                try {
+                    calculatedCategory = this.getRaceCategory({
+                        gender: resolvedGender,
+                        yob: resolvedYob,
+                        base_cluster: resolvedBaseCluster,
+                        final_cluster: existingEntry?.final_cluster || existingEntry?.group || '',
+                        id: riderId,
+                        gear: gear
+                    }, currentRace);
+                } catch (e) {}
+            }
+
+            const prevValidCat = (existingEntry?.final_cluster && existingEntry.final_cluster !== 'B' && existingEntry.final_cluster !== '[М] B' && existingEntry.final_cluster !== '[Ж] B')
+                ? existingEntry.final_cluster
+                : '';
+
+            const finalCat = calculatedCategory || prevValidCat || gear || resolvedBaseCluster || "АБСОЛЮТ";
 
             // ⏱️ РАЗДЕЛЕНИЕ: Только для группового старта (mass, crit). Для разделок (ITT, TTT, Relay, DTT) — строго пусто!
             const isTimeTrial = currentRace?.format === 'itt' || currentRace?.format === 'ttt' || currentRace?.format === 'relay' || (currentRace?.name || '').toUpperCase().includes('DTT');
-            let autoPlannedStart = "";
+            let autoPlannedStart = existingEntry?.plannedStart || "";
             if (!isTimeTrial && (currentRace?.date || currentRace?.rawDate)) {
                 const rDate = new Date(currentRace.date || currentRace.rawDate);
                 if (!isNaN(rDate.getTime())) {
@@ -7936,57 +8536,132 @@ async registerSingleRider(riderId, btn, event, targetRaceId = null, gear = null)
                 }
             }
 
-            const newRecord = await pb.collection('race_rosters').create({ 
-                race_id: finalRaceId, 
-                rider_id: riderId, 
-                status: 'registered',
-                is_paid: false,
-                planned_start: autoPlannedStart,
-                final_cluster: finalCat
-            }, { requestKey: null });
-            
-            // 🎯 1. Обновляем статус, категорию и время старта в списке CRM
-            let p = this.raceRosterList?.find(r => r.id === riderId);
+            // 5. Если спортсмен уже был в старт-листе — обновляем его запись (update), иначе создаём новую (create)
+            let newRecord;
+            if (existingRecId) {
+                newRecord = await pb.collection('race_rosters').update(existingRecId, {
+                    race_id: finalRaceId,
+                    bib: assignedBib,
+                    is_paid: assignedPaid,
+                    planned_start: autoPlannedStart,
+                    final_cluster: finalCat
+                }, { requestKey: null });
+            } else {
+                newRecord = await pb.collection('race_rosters').create({
+                    race_id: finalRaceId,
+                    rider_id: riderId,
+                    bib: assignedBib,
+                    status: 'registered',
+                    is_paid: assignedPaid,
+                    planned_start: autoPlannedStart,
+                    final_cluster: finalCat
+                }, { requestKey: null });
+            }
+
+            const assignedRace = eventRaces.find(r => r.id === finalRaceId) || currentRace;
+            const distTag = assignedRace?.name?.includes('[')
+                ? assignedRace.name.split('[')[1].replace(']', '').trim()
+                : (assignedRace?.distance ? `${assignedRace.distance} КМ` : '');
+
+            const fName = targetRider?.first_name || targetRider?.name || '';
+            const lName = targetRider?.last_name || targetRider?.surname || '';
+            const fullName = `${fName} ${lName}`.trim();
+            const teamName = typeof this.getRiderTeamNames === 'function'
+                ? this.getRiderTeamNames(targetRider)
+                : (targetRider?.team || 'ONE TEAM');
+
+            // 🎯 6. Обновляем данные в списке CRM
+            let p = this.raceRosterList?.find(r => r.id === riderId || r.rider_id === riderId);
             if (p) {
                 p.isRegistered = true;
                 p.recordId = newRecord.id;
                 p.race_id = finalRaceId;
-                p.is_paid = false;
+                p.bib = assignedBib;
+                p.is_paid = assignedPaid;
                 p.plannedStart = autoPlannedStart;
                 p.group = finalCat;
                 p.computedCat = finalCat;
                 p.final_cluster = finalCat;
+                if (assignedRace) {
+                    p.distance = assignedRace.distance;
+                    p.distance_tag = distTag;
+                    p.race_name = assignedRace.name;
+                }
             }
 
-            // 🎯 2. Обновляем статус, категорию и время старта в открытом табло LiveBoard
+            // 🎯 7. Обновляем (или добавляем) карточку в открытом табло LiveBoard
             if (this.liveService && Array.isArray(this.liveService.currentLiveStartList)) {
-                let lp = this.liveService.currentLiveStartList.find(r => r.id === riderId);
+                let lp = this.liveService.currentLiveStartList.find(r => r.id === riderId || r.rider_id === riderId);
                 if (lp) {
                     lp.isRegistered = true;
                     lp.recordId = newRecord.id;
                     lp.race_id = finalRaceId;
-                    lp.is_paid = false;
+                    lp.bib = assignedBib;
+                    lp.is_paid = assignedPaid;
                     lp.plannedStart = autoPlannedStart;
                     lp.group = finalCat;
                     lp.computedCat = finalCat;
                     lp.final_cluster = finalCat;
-                    const assignedRace = eventRaces.find(r => r.id === finalRaceId);
                     if (assignedRace) {
                         lp.distance = assignedRace.distance;
-                        lp.distance_tag = assignedRace.name?.includes('[') 
-                            ? assignedRace.name.split('[')[1].replace(']', '').trim() 
-                            : `${assignedRace.distance} КМ`;
+                        lp.distance_tag = distTag;
+                        lp.race_name = assignedRace.name;
                     }
+                } else {
+                    this.liveService.currentLiveStartList.unshift({
+                        id: riderId,
+                        recordId: newRecord.id,
+                        rider_id: riderId,
+                        name: fName,
+                        surname: lName,
+                        fullName: fullName,
+                        gender: String(resolvedGender).toUpperCase().trim(),
+                        year: resolvedYob,
+                        yob: resolvedYob,
+                        points: targetRider?.rating || targetRider?.points || 0,
+                        team: teamName,
+                        teamId: targetRider?.team_id || targetRider?.teamId,
+                        group: finalCat,
+                        computedCat: finalCat,
+                        final_cluster: finalCat,
+                        base_cluster: resolvedBaseCluster,
+                        isRegistered: true,
+                        is_paid: assignedPaid,
+                        bib: assignedBib,
+                        plannedStart: autoPlannedStart,
+                        actualStart: '',
+                        distance: assignedRace?.distance || 0,
+                        distance_tag: distTag,
+                        race_name: assignedRace?.name || '',
+                        race_id: finalRaceId,
+                        squad_name: '',
+                        squad_id: null,
+                        squad_max: assignedRace?.squad_max || 1,
+                        race_format: assignedRace?.format || 'mass'
+                    });
+                }
+
+                this.liveService._lastScannedRiderId = riderId;
+
+                this.liveService.liveSearchQuery = '';
+                this.liveService._savedDistanceFilter = null;
+                const searchInput = document.getElementById('liveSearchInput');
+                if (searchInput) searchInput.value = '';
+
+                if (this.liveService.liveDistanceFilter !== 'all' && this.liveService.liveDistanceFilter !== finalRaceId) {
+                    this.liveService.liveDistanceFilter = finalRaceId;
                 }
             }
 
-            // 🎯 3. Если заявляется текущий спортсмен — обновляем личный кэш заявок
+            // 🎯 8. Очищаем старую дистанцию из myRosters
             if (riderId === this.app.currentRider?.id) {
                 if (!this.app.myRosters) this.app.myRosters = {};
+                eventRaces.forEach(er => {
+                    if (er && er.id) delete this.app.myRosters[er.id];
+                });
                 this.app.myRosters[finalRaceId] = newRecord;
             }
 
-            // 🎯 4. Возвращаем кнопку в активное состояние
             if (btn) {
                 btn.innerText = oldText;
                 btn.disabled = false;
@@ -7998,14 +8673,17 @@ async registerSingleRider(riderId, btn, event, targetRaceId = null, gear = null)
             }
             if (this.liveService && typeof this.liveService.renderLiveBoard === 'function') {
                 this.liveService.renderLiveBoard();
+                if (typeof this.liveService.focusAndHighlightRider === 'function') {
+                    this.liveService.focusAndHighlightRider(riderId, fullName);
+                }
             }
             if (this.app && typeof this.app.syncRaceButtonsState === 'function') {
                 this.app.syncRaceButtonsState();
             }
-            
-        } catch(e) { 
+
+        } catch (e) {
             console.error("Детали ошибки PB:", e);
-            alert(`❌ Ошибка заявки: ${e.message}`); 
+            alert(`❌ Ошибка заявки: ${e.message}`);
             if (btn) {
                 btn.innerText = oldText;
                 btn.disabled = false;
@@ -8022,7 +8700,16 @@ async registerSingleRider(riderId, btn, event, targetRaceId = null, gear = null)
         if (!confirm("Отозвать заявку этого гонщика?")) return; 
         try { 
             await pb.collection('race_rosters').delete(recordId, { requestKey: null }); 
-            
+
+            // Снимаем галочку ✓ с чипса дистанции в myRosters
+            if (this.app?.myRosters) {
+                Object.keys(this.app.myRosters).forEach(rId => {
+                    if (this.app.myRosters[rId]?.id === recordId) {
+                        delete this.app.myRosters[rId];
+                    }
+                });
+            }
+
             // 1. Снимаем статус локально в списке CRM
             let p = this.raceRosterList.find(r => r.recordId === recordId);
             if (p) {
@@ -8048,12 +8735,12 @@ async registerSingleRider(riderId, btn, event, targetRaceId = null, gear = null)
                 this.renderFilteredRaceRosterTable();
             }
 
-            // 🔥 4. Мгновенно перерисовываем открытое табло старт-листа
+            // 4. Мгновенно перерисовываем открытое табло старт-листа
             if (this.liveService && typeof this.liveService.renderLiveBoard === 'function') {
                 this.liveService.renderLiveBoard();
             }
 
-            // 🔥 5. Синхронизируем кнопки в чате (чтобы кнопка снова стала желтой "ЗАЯВИТЬСЯ")
+            // 5. Синхронизируем кнопки в чате (чтобы кнопка снова стала желтой "ЗАЯВИТЬСЯ")
             if (this.app && typeof this.app.syncRaceButtonsState === 'function') {
                 this.app.syncRaceButtonsState();
             }
@@ -9194,7 +9881,142 @@ showGuestAuthModal() {
     // =========================================================================
     // 4. ВЁРСТКА МОДАЛЬНОГО ОКНА КОНСТРУКТОРА
     // =========================================================================
-renderNeoConstructorModal() {
+// Вспомогательные методы для вида спорта, обложки пина, ссылок и удаления
+    syncNeoExtraInputsFromDom() {
+        const s = this.constructorState;
+        if (!s) return;
+        const nameEl = document.getElementById('ncRaceName');
+        if (nameEl) s.name = nameEl.value;
+        const dateEl = document.getElementById('ncRaceDate');
+        if (dateEl) s.date = dateEl.value;
+        const priceEl = document.getElementById('ncRacePrice');
+        if (priceEl) s.price = priceEl.value;
+        const slugEl = document.getElementById('ncChatSlug');
+        if (slugEl) s.slug = slugEl.value.trim().replace(/^#/, '');
+        const briefEl = document.getElementById('ncBriefingText');
+        if (briefEl) s.briefingText = briefEl.value;
+        const embedEl = document.getElementById('ncEmbedCode');
+        if (embedEl) s.embedCode = embedEl.value;
+
+        const btnRows = document.querySelectorAll('.nc-ext-btn-row');
+        if (btnRows.length > 0) {
+            const list = [];
+            btnRows.forEach(row => {
+                const lbl = (row.querySelector('.nc-ext-btn-lbl')?.value || '').trim();
+                const url = (row.querySelector('.nc-ext-btn-url')?.value || '').trim();
+                if (lbl || url) list.push({ label: lbl, url, blank: true });
+            });
+            s.buttons = list;
+        }
+        if (typeof this.saveCurrentDistInputsFromDom === 'function') {
+            this.saveCurrentDistInputsFromDom();
+        }
+    }
+
+    setNeoSport(sportKey) {
+        if (!this.constructorState) return;
+        this.syncNeoExtraInputsFromDom();
+        this.constructorState.sport = sportKey;
+        this.renderNeoConstructorModal();
+    }
+
+    handleNeoPosterSelect(inputEl) {
+        const s = this.constructorState;
+        if (!s || !inputEl?.files?.[0]) return;
+        this.syncNeoExtraInputsFromDom();
+        const file = inputEl.files[0];
+        s.posterFile = file;
+        s.removePoster = false;
+        s.posterUrl = URL.createObjectURL(file);
+        this.renderNeoConstructorModal();
+    }
+
+    removeNeoPoster() {
+        const s = this.constructorState;
+        if (!s) return;
+        this.syncNeoExtraInputsFromDom();
+        s.posterFile = null;
+        s.posterUrl = '';
+        s.removePoster = true;
+        this.renderNeoConstructorModal();
+    }
+
+    addNeoExtButton() {
+        const s = this.constructorState;
+        if (!s) return;
+        this.syncNeoExtraInputsFromDom();
+        if (!Array.isArray(s.buttons)) s.buttons = [];
+        if (s.buttons.length >= 5) return alert('Максимум 5 внешних кнопок');
+        s.buttons.push({ label: 'Регламент / Сайт', url: 'https://', blank: true });
+        this.renderNeoConstructorModal();
+    }
+
+    removeNeoExtButton(idx) {
+        const s = this.constructorState;
+        if (!s || !Array.isArray(s.buttons)) return;
+        this.syncNeoExtraInputsFromDom();
+        s.buttons.splice(idx, 1);
+        this.renderNeoConstructorModal();
+    }
+
+async deleteEventFromConstructor() {
+        const s = this.constructorState;
+        if (!s || !this.editEventId) return;
+        if (!confirm("Вы уверены, что хотите полностью удалить событие (все его дистанции и чат) безвозвратно?")) return;
+
+        try {
+            const idsToDelete = new Set(s.originalSisterIds || []);
+            idsToDelete.add(this.editEventId);
+            (s.activeDistances || []).forEach(d => {
+                if (d?.id && !String(d.id).startsWith('d_')) idsToDelete.add(d.id);
+            });
+
+            // 1. Удаляем все дистанции события из коллекции races
+            for (const id of idsToDelete) {
+                try {
+                    await pb.collection('races').delete(id, { requestKey: null });
+                } catch (e) {}
+                if (this.app?.racesMap) delete this.app.racesMap[id];
+            }
+
+            if (this.dataCalendar) this.dataCalendar = this.dataCalendar.filter(r => !idsToDelete.has(r.id));
+            if (this.app?.dataCalendar) this.app.dataCalendar = this.app.dataCalendar.filter(r => !idsToDelete.has(r.id));
+
+            // 2. Удаляем привязанные чаты из коллекции chats (в памяти и в БД)
+            const targetChatId = s.chatId || s.existingChatId;
+            const filterParts = Array.from(idsToDelete).map(id => `race_id="${id}"`);
+            if (targetChatId) filterParts.push(`id="${targetChatId}"`);
+
+            const dbChats = filterParts.length > 0
+                ? await pb.collection('chats').getFullList({ filter: filterParts.join(' || '), requestKey: null }).catch(() => [])
+                : [];
+
+            const chatIdsToDelete = new Set(dbChats.map(c => c.id));
+            if (targetChatId) chatIdsToDelete.add(targetChatId);
+            (this.app?.chats || []).forEach(c => {
+                if (idsToDelete.has(c.race_id) || (c.raceObj && idsToDelete.has(c.raceObj.id))) {
+                    chatIdsToDelete.add(c.id);
+                }
+            });
+
+            for (const cId of chatIdsToDelete) {
+                try {
+                    await pb.collection('chats').delete(cId, { requestKey: null });
+                } catch (chatErr) {}
+            }
+
+            if (this.app?.chats) {
+                this.app.chats = this.app.chats.filter(c => !chatIdsToDelete.has(c.id));
+            }
+
+            this.closeNeoConstructorModal();
+            if (typeof this.loadData === 'function') this.loadData();
+            if (this.app && typeof this.app.loadChats === 'function') await this.app.loadChats();
+        } catch (err) {
+            alert("Ошибка при удалении: " + err.message);
+        }
+    }	
+    renderNeoConstructorModal() {
         let modal = document.getElementById('createEventModal');
         
         let prevScroll = 0;
@@ -9219,12 +10041,66 @@ renderNeoConstructorModal() {
         const s = this.constructorState;
         const isEdit = Boolean(this.editEventId);
         const isPeloton = (s.eventType === 'peloton');
+
+        // Автоподгрузка вида спорта, обложки пина, короткой ссылки и текста положения
+        if (!s._extraHydrated) {
+            s._extraHydrated = true;
+            const editRace = isEdit
+                ? ((this.app?.racesMap?.[this.editEventId]) || (this.dataCalendar?.find(r => r.id === this.editEventId)))
+                : null;
+            s.sport = s.sport || editRace?.sport || 'cycling';
+            s.posterFile = null;
+            s.removePoster = false;
+            s.posterUrl = '';
+            s.slug = '';
+            s.briefingText = '';
+            s.embedCode = '';
+            s.buttons = [];
+
+            if (isEdit) {
+                const sisterIds = new Set([this.editEventId, ...(s.activeDistances || []).map(d => d.id)]);
+                const applyChatMeta = (chatObj) => {
+                    if (!chatObj) return;
+                    s.chatId = chatObj.id;
+                    s.slug = chatObj.slug || '';
+                    if (chatObj.panel_image) {
+                        const col = chatObj.collectionId || 'chats';
+                        s.posterUrl = `${pb.baseUrl}/api/files/${col}/${chatObj.id}/${chatObj.panel_image}`;
+                    }
+                    if (chatObj.panel_data) {
+                        try {
+                            const pData = typeof chatObj.panel_data === 'string' ? JSON.parse(chatObj.panel_data) : chatObj.panel_data;
+                            s.briefingText = pData.text || '';
+                            s.embedCode = pData.embed_code || pData.map_iframe || '';
+                            s.buttons = Array.isArray(pData.buttons) ? JSON.parse(JSON.stringify(pData.buttons)) : [];
+                        } catch (e) {}
+                    }
+                };
+
+                const foundChat = (this.app?.chats || []).find(c => c && sisterIds.has(c.race_id));
+                if (foundChat) {
+                    applyChatMeta(foundChat);
+                } else {
+                    pb.collection('chats').getFirstListItem(`race_id="${this.editEventId}"`, { requestKey: null }).then(dbChat => {
+                        if (dbChat && this.constructorState === s) {
+                            applyChatMeta(dbChat);
+                            this.renderNeoConstructorModal();
+                        }
+                    }).catch(() => {});
+                }
+            }
+        }
         
-        // 1. ПРОВЕРКА ПРАВ
+        // 1. ПРОВЕРКА ПРАВ (единая для Вилки и Борда)
         const myRiderId = this.app.currentRider?.id;
-        const myUserId = pb.authStore.model?.id || this.app.currentRider?.user_id;
-        const roles = (this.app.usersMap && this.app.currentRider?.email) ? (this.app.usersMap[this.app.currentRider.email] || []) : [];
-        const rStr = JSON.stringify(roles);
+        const authModel = pb.authStore.model || pb.authStore.record;
+        const myUserId = authModel?.id || this.app.currentRider?.user_id;
+        const rawRoles = [
+            ...((this.app.usersMap && this.app.currentRider?.email) ? (this.app.usersMap[this.app.currentRider.email] || []) : []),
+            ...(Array.isArray(authModel?.role) ? authModel.role : (authModel?.role ? [authModel.role] : [])),
+            ...(Array.isArray(this.app.currentRider?.roles) ? this.app.currentRider.roles : (this.app.currentRider?.roles ? [this.app.currentRider.roles] : []))
+        ];
+        const rStr = JSON.stringify(rawRoles).toLowerCase();
         const isGlobalAdmin = rStr.includes('superadmin') || rStr.includes('admin');
         const isCreator = Boolean(s.isCreator || (s.creatorId && (s.creatorId === myRiderId || s.creatorId === myUserId)));
 
@@ -9297,7 +10173,6 @@ renderNeoConstructorModal() {
                 const totalKm = Number(d.dist);
                 const laps = Number(d.laps) || 1;
                 if (laps > 1) {
-                    const lapLen = (totalKm / laps).toFixed(1).replace('.0', '');
                     distText = ` (${dTime} • ${totalKm} км • ${laps}к)`;
                 } else {
                     distText = ` (${dTime} • ${totalKm} км)`;
@@ -9315,6 +10190,27 @@ renderNeoConstructorModal() {
             distButtonsHtml += '<span id="ncDistPillText_' + idx + '">' + safeDName + distText + customBadge + '</span>' + removeSpan;
             distButtonsHtml += '</button>';
         });
+
+        // ВЫБОР ВИДА СПОРТА (учитывает sports выбранного пелотона)
+        const allSportsCatalog = [
+            { key: 'cycling', label: 'Вело', svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"></circle><circle cx="5.5" cy="17.5" r="3.5"></circle><circle cx="15" cy="5" r="1"></circle><path d="M12 17.5V14l-3-3 4-3 2 3h2"></path></svg>' },
+            { key: 'run', label: 'Бег', svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4" r="1"></circle><path d="M18 19l-4-4-3 3-3-1"></path><path d="M6 12l4-3 4 2 4-2"></path><path d="M10 15l-3 6"></path></svg>' },
+            { key: 'ski', label: 'Лыжи', svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="4" r="1"></circle><path d="M7 21l12-4"></path><path d="M3 17l18 4"></path><path d="M11 15l2-5-3-2 4-2 3 4"></path></svg>' },
+            { key: 'swim', label: 'Плавание', svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18c2 0 3-1 5-1s3 1 5 1 3-1 5-1 3 1 5 1"></path><path d="M2 22c2 0 3-1 5-1s3 1 5 1 3-1 5-1 3 1 5 1"></path><circle cx="16" cy="7" r="1.5"></circle><path d="M6 14l4-4 3 2 4-2"></path></svg>' },
+            { key: 'triathlon', label: 'Триатлон', svg: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>' }
+        ];
+        const activePelObj = s.pelotonId ? (this.app?.pelotonsMap?.[s.pelotonId]) : null;
+        let allowedSports = (activePelObj && Array.isArray(activePelObj.sports) && activePelObj.sports.length > 0)
+            ? activePelObj.sports.map(x => String(x).toLowerCase().trim())
+            : allSportsCatalog.map(x => x.key);
+        if (!allowedSports.includes(s.sport || 'cycling')) allowedSports.push(s.sport || 'cycling');
+
+        const sportButtonsHtml = allSportsCatalog
+            .filter(sp => allowedSports.includes(sp.key))
+            .map(sp => {
+                const isAct = ((s.sport || 'cycling') === sp.key) ? 'active' : '';
+                return `<button type="button" class="nc-pill-btn ${isAct}" style="display:inline-flex; align-items:center; gap:5px;" onclick="window.app.crm.setNeoSport('${sp.key}')">${sp.svg}<span>${sp.label}</span></button>`;
+            }).join('');
 
         // БАЗОВЫЕ СПИСКИ ПОКРЫТИЙ И ФОРМАТОВ
         const surfaces = [
@@ -9503,7 +10399,7 @@ renderNeoConstructorModal() {
         const curDistTrack = activeDist.trackData?.summary;
         const gpxStatusHtml = curDistTrack 
             ? `<span style="font-family:'Roboto Mono', monospace; font-size:9.5px; color:var(--primary, #ffc107); font-weight:800;">
-                   ✓ ${curDistTrack.distance} км • +${curDistTrack.gain}м / -${curDistTrack.loss}м • макс. ${curDistTrack.maxSlope}%
+                   ✓ ${curDistTrack.distance} км • +${curDistTrack.gain}м / -${curDistTrack.loss || 0}м • макс. ${curDistTrack.maxSlope}%
                </span>`
             : `<span style="font-family:'Roboto Mono', monospace; font-size:9px; opacity:0.5;">Файл .gpx не выбран</span>`;
 
@@ -9643,13 +10539,79 @@ renderNeoConstructorModal() {
             `;
         }
 
+        // БЛОК ВИТРИНЫ БОРДА: АФИША, КОРОТКАЯ ССЫЛКА, ПОЛОЖЕНИЕ И ВНЕШНИЕ КНОПКИ
+        const safeSlug = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(s.slug || '') : (s.slug || '');
+        const safeBriefing = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(s.briefingText || '') : (s.briefingText || '');
+        const safeEmbed = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(s.embedCode || '') : (s.embedCode || '');
+
+        const posterThumbHtml = s.posterUrl
+            ? `<div style="position:relative; width:64px; height:84px; border-radius:10px; overflow:hidden; border:1px solid var(--nc-border, #3f3f46); flex-shrink:0; background:#111;">
+                 <img src="${s.posterUrl}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                 <button type="button" onclick="window.app.crm.removeNeoPoster()" title="Удалить обложку" style="position:absolute; top:3px; right:3px; width:20px; height:20px; border-radius:50%; border:none; background:rgba(0,0,0,0.78); color:#fff; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center;">&times;</button>
+               </div>`
+            : `<div style="width:64px; height:84px; border-radius:10px; background:#ffc107; color:#111; display:flex; align-items:center; justify-content:center; text-align:center; padding:4px; font-family:'Unbounded', sans-serif; font-size:7.5px; font-weight:900; flex-shrink:0;">ПОСТЕР СОТКИ</div>`;
+
+        const extBtnsHtml = (s.buttons || []).map((b, bIdx) => {
+            const bLbl = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(b.label || '') : (b.label || '');
+            const bUrl = (this.app && typeof this.app.escapeHTML === 'function') ? this.app.escapeHTML(b.url || '') : (b.url || '');
+            return `
+                <div class="nc-ext-btn-row" style="display:grid; grid-template-columns:1fr 1.3fr auto; gap:6px; align-items:center;">
+                    <input type="text" class="nc-input nc-ext-btn-lbl" style="height:32px; font-size:11px;" value="${bLbl}" placeholder="Текст кнопки" oninput="window.app.crm.constructorState.buttons[${bIdx}].label = this.value">
+                    <input type="text" class="nc-input nc-ext-btn-url" style="height:32px; font-size:11px;" value="${bUrl}" placeholder="https://..." oninput="window.app.crm.constructorState.buttons[${bIdx}].url = this.value">
+                    <button type="button" class="nc-pill-btn" style="height:32px; padding:0 8px; color:#e60023;" onclick="window.app.crm.removeNeoExtButton(${bIdx})">&times;</button>
+                </div>
+            `;
+        }).join('');
+
+        const pinShowcaseBoxHtml = `
+            <div class="nc-box">
+                <span class="nc-box-title" style="margin-bottom:0;">Афиша пина, положение и ссылки</span>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    ${posterThumbHtml}
+                    <div style="flex:1; display:flex; flex-direction:column; gap:6px; min-width:0;">
+                        <input type="file" id="ncPosterFileInput" accept="image/*" style="display:none;" onchange="window.app.crm.handleNeoPosterSelect(this)">
+                        <button type="button" class="nc-pill-btn" style="height:32px; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:6px;" onclick="document.getElementById('ncPosterFileInput').click()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                            <span>${s.posterUrl ? 'ЗАМЕНИТЬ ОБЛОЖКУ ПИНА' : 'ЗАГРУЗИТЬ ОБЛОЖКУ ПИНА'}</span>
+                        </button>
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <span style="font-family:'Roboto Mono', monospace; font-size:10px; font-weight:800; opacity:0.65; white-space:nowrap;">sotka.one/#</span>
+                            <input type="text" id="ncChatSlug" class="nc-input" style="height:32px; font-family:'Roboto Mono', monospace; font-size:11.5px;" value="${safeSlug}" placeholder="spb-day" oninput="window.app.crm.constructorState.slug = this.value.trim().replace(/^#/, '')">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <span style="font-size:8.5px; font-family:'Roboto Mono', monospace; font-weight:700; opacity:0.7;">ПОЛОЖЕНИЕ, ПРОГРАММА И РЕГЛАМЕНТ</span>
+                    <textarea id="ncBriefingText" class="nc-input" style="min-height:84px; padding:8px 10px; line-height:1.4; resize:vertical; margin-top:3px;" placeholder="Расписание старта, выдача номеров, описание трассы..." oninput="window.app.crm.constructorState.briefingText = this.value">${safeBriefing}</textarea>
+                </div>
+                <div>
+                    <span style="font-size:8.5px; font-family:'Roboto Mono', monospace; font-weight:700; opacity:0.7;">КОД ИНТЕРАКТИВНОЙ КАРТЫ (IFRAME / ССЫЛКА)</span>
+                    <input type="text" id="ncEmbedCode" class="nc-input" style="height:32px; font-size:11px; margin-top:3px;" value="${safeEmbed}" placeholder='<iframe src="https://..."></iframe>' oninput="window.app.crm.constructorState.embedCode = this.value">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px; padding-top:4px; border-top:1px dashed var(--nc-border, #3f3f46);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:8.5px; font-family:'Roboto Mono', monospace; font-weight:700; opacity:0.7;">ВНЕШНИЕ КНОПКИ И ССЫЛКИ (${(s.buttons || []).length})</span>
+                        <button type="button" class="nc-pill-btn" style="height:26px; font-size:9.5px; padding:0 10px;" onclick="window.app.crm.addNeoExtButton()">+ Кнопка</button>
+                    </div>
+                    ${extBtnsHtml}
+                </div>
+            </div>
+        `;
+
         // ПОДВАЛ
         let footerButtonsHtml = '';
         const currentEventStatus = s.status || 'Registration';
+        const deleteEventBtnHtml = isEdit ? `
+            <button type="button" class="nc-pill-btn" style="height:36px; padding:0 12px; color:#e60023; border-color:rgba(230,0,35,0.3); margin-right:auto; display:inline-flex; align-items:center; gap:5px;" onclick="window.app.crm.deleteEventFromConstructor()" title="Удалить событие навсегда">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <span>Удалить</span>
+            </button>
+        ` : '';
 
         if (isEdit) {
             if (currentEventStatus === 'Registration') {
                 footerButtonsHtml = `
+                    ${deleteEventBtnHtml}
                     <button type="button" id="btnSubmitNeoSoon" class="nc-pill-btn" 
                             style="height:36px; padding:0 14px; font-family:Unbounded, sans-serif; font-size:9px; font-weight:800;" 
                             onclick="window.app.crm.submitNeoEvent('Скоро')">
@@ -9663,6 +10625,7 @@ renderNeoConstructorModal() {
                 `;
             } else if (currentEventStatus === 'Скоро') {
                 footerButtonsHtml = `
+                    ${deleteEventBtnHtml}
                     <button type="button" id="btnSubmitNeoSoon" class="nc-pill-btn" 
                             style="height:36px; padding:0 14px; font-family:Unbounded, sans-serif; font-size:9px; font-weight:800;" 
                             onclick="window.app.crm.submitNeoEvent('Скоро')">
@@ -9676,6 +10639,7 @@ renderNeoConstructorModal() {
                 `;
             } else {
                 footerButtonsHtml = `
+                    ${deleteEventBtnHtml}
                     <button type="button" id="btnSubmitNeoReg" class="nc-pill-btn active" 
                             style="height:36px; padding:0 20px; font-family:Unbounded, sans-serif; font-size:9.5px; font-weight:900; letter-spacing:0.3px;" 
                             onclick="window.app.crm.submitNeoEvent('${currentEventStatus}')">
@@ -9764,9 +10728,12 @@ renderNeoConstructorModal() {
                             </div>
                         </div>
 
-                        <!-- ОБЩИЕ ПАРАМЕТРЫ СОБЫТИЯ (ПО УМОЛЧАНИЮ) -->
+                        <!-- ОБЩИЕ ПАРАМЕТРЫ СОБЫТИЯ (ВИД СПОРТА, ПОКРЫТИЕ, ФОРМАТ) -->
                         <div class="nc-box">
                             <span class="nc-box-title" style="margin-bottom:0;">Базовый регламент события</span>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;" id="ncSportRow">
+                                ${sportButtonsHtml}
+                            </div>
                             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;" id="ncSurfaceRow">
                                 ${surfaceButtonsHtml}
                             </div>
@@ -9836,6 +10803,9 @@ renderNeoConstructorModal() {
 
                             </div>
                         </div>
+
+                        <!-- ВИТРИНА ПИНА: АФИША, КОРОТКАЯ ССЫЛКА, ПОЛОЖЕНИЕ И ВНЕШНИЕ КНОПКИ -->
+                        ${pinShowcaseBoxHtml}
 
                     </div>
 
@@ -10486,9 +11456,14 @@ async submitNeoEvent(targetStatus = 'Registration') {
         const isPeloton = (s.eventType === 'peloton');
 
         const myRiderId = this.app.currentRider?.id;
-        const myUserId = pb.authStore.model?.id || this.app.currentRider?.user_id;
-        const roles = (this.app.usersMap && this.app.currentRider?.email) ? (this.app.usersMap[this.app.currentRider.email] || []) : [];
-        const rStr = JSON.stringify(roles);
+        const authModel = pb.authStore.model || pb.authStore.record;
+        const myUserId = authModel?.id || this.app.currentRider?.user_id;
+        const rawRoles = [
+            ...((this.app.usersMap && this.app.currentRider?.email) ? (this.app.usersMap[this.app.currentRider.email] || []) : []),
+            ...(Array.isArray(authModel?.role) ? authModel.role : (authModel?.role ? [authModel.role] : [])),
+            ...(Array.isArray(this.app.currentRider?.roles) ? this.app.currentRider.roles : (this.app.currentRider?.roles ? [this.app.currentRider.roles] : []))
+        ];
+        const rStr = JSON.stringify(rawRoles).toLowerCase();
         const isGlobalAdmin = rStr.includes('superadmin') || rStr.includes('admin');
 
         const isCreator = Boolean(
@@ -10516,18 +11491,14 @@ async submitNeoEvent(targetStatus = 'Registration') {
         s.status = targetStatus;
         const isSoon = (s.status === 'Скоро');
 
-        const nameInput = document.getElementById('ncRaceName');
-        if (nameInput) s.name = nameInput.value;
-        const dateInput = document.getElementById('ncRaceDate');
-        if (dateInput) s.date = dateInput.value;
-        const priceInput = document.getElementById('ncRacePrice');
-        if (priceInput && isPelotonAdmin) s.price = priceInput.value;
-        const publicCheck = document.getElementById('ncIsPublicCheck');
-        if (publicCheck && s.eventType === 'personal') s.isPublic = publicCheck.checked;
-
-        if (typeof this.saveCurrentDistInputsFromDom === 'function') {
+        if (typeof this.syncNeoExtraInputsFromDom === 'function') {
+            this.syncNeoExtraInputsFromDom();
+        } else if (typeof this.saveCurrentDistInputsFromDom === 'function') {
             this.saveCurrentDistInputsFromDom();
         }
+
+        const publicCheck = document.getElementById('ncIsPublicCheck');
+        if (publicCheck && s.eventType === 'personal') s.isPublic = publicCheck.checked;
 
         if (!s.time && s.activeDistances?.[0]?.time) {
             s.time = s.activeDistances[0].time;
@@ -10658,6 +11629,7 @@ async submitNeoEvent(targetStatus = 'Registration') {
             const finalPrice = (isPelotonAdmin && s.price !== "" && s.price !== null && !isNaN(Number(s.price))) ? Math.max(0, Number(s.price)) : 0;
 
             const baseData = {
+                sport: s.sport || 'cycling',
                 price: finalPrice,
                 status: s.status,
                 level: isPeloton ? 'peloton' : 'personal',
@@ -10671,9 +11643,40 @@ async submitNeoEvent(targetStatus = 'Registration') {
                 s.activeDistances = [{ id: 'd_1', name: 'Основная', dist: 0, laps: 1, time: s.time || "11:00", scoring: this.createDefaultDistanceScoring() }];
             }
 
+            // Вспомогательная сборка FormData для чата и витрины пина (обложка, #slug, положение, ссылки)
+            const buildChatFormData = (chatName, primaryRaceId, existingChat = null) => {
+                let pData = {};
+                if (existingChat && existingChat.panel_data) {
+                    try {
+                        pData = typeof existingChat.panel_data === 'string' ? JSON.parse(existingChat.panel_data) : existingChat.panel_data;
+                    } catch (e) { pData = {}; }
+                }
+                pData.text = s.briefingText || '';
+                pData.embed_code = s.embedCode || '';
+                pData.buttons = Array.isArray(s.buttons) ? s.buttons.filter(b => b && (b.label || b.url)) : [];
+
+                const fd = new FormData();
+                fd.append('type', 'global');
+                fd.append('name', chatName);
+                fd.append('race_id', primaryRaceId);
+                fd.append('peloton_id', isPeloton ? s.pelotonId : '');
+                if (s.slug !== undefined) fd.append('slug', String(s.slug || '').trim().replace(/^#/, ''));
+                fd.append('panel_data', JSON.stringify(pData));
+
+                if (!existingChat && this.app.currentRider?.id) {
+                    fd.append('participants', this.app.currentRider.id);
+                }
+                if (s.posterFile) {
+                    fd.append('panel_image', s.posterFile);
+                } else if (s.removePoster) {
+                    fd.append('panel_image', '');
+                }
+                return fd;
+            };
+
             if (this.editEventId) {
                 const isMulti = s.activeDistances.length > 1;
-                const creatorId = pb.authStore.model?.id || this.app.currentRider?.user_id || this.app.currentRider?.id;
+                const creatorId = myUserId || myRiderId;
 
                 const currentRace = (this.dataCalendar ? this.dataCalendar.find(r => r.id === this.editEventId) : null)
                                  || (this.app?.racesMap ? this.app.racesMap[this.editEventId] : null)
@@ -10727,14 +11730,13 @@ async submitNeoEvent(targetStatus = 'Registration') {
                         distIsoDate = new Date(`${s.date}T${formattedDistTime}`).toISOString();
                     }
 
-                    // 🎯 ОПРЕДЕЛЕНИЕ ИНДИВИДУАЛЬНОГО ФОРМАТА И ПОКРЫТИЯ ДЛЯ ЭТОЙ ДИСТАНЦИИ
                     const distSurface = (distObj.customFormat && distObj.surface) ? distObj.surface : (s.surface || 'road');
                     const rawDistFormat = (distObj.customFormat && distObj.format) ? distObj.format : (s.format || 'mass');
                     const distFormat = isPelotonAdmin ? rawDistFormat : (rawDistFormat === 'ttt' ? 'mass' : rawDistFormat);
                     const isTimeTrial = distFormat === 'itt' || distFormat === 'ttt' || distFormat === 'relay' || (finalRaceName || '').toUpperCase().includes('DTT');
 
                     const catLogicPayload = JSON.stringify({
-                        has_absolute: isPelotonAdmin ? Boolean(sc.hasAbsolute) : false,
+                        has_absolute: isPelotonAdmin ? Boolean(sc.hasAbsolute) : true,
                         has_pro: isPelotonAdmin ? Boolean(sc.hasPro) : false,
                         has_age: isPelotonAdmin ? Boolean(sc.hasAge) : false,
                         age_bands: (isPelotonAdmin && sc.hasAge) ? sc.ageBands : null,
@@ -10769,7 +11771,7 @@ async submitNeoEvent(targetStatus = 'Registration') {
                         savedRace = await pb.collection('races').update(distObj.id, racePayload, { requestKey: null });
                         keptSisterIds.add(distObj.id);
                         synchronizedRaces.push(savedRace);
-                    } else if (distObj.id === this.editEventId || (!distObj.id.startsWith('d_') && existingSisterIds.has(this.editEventId) && keptSisterIds.size === 0)) {
+                    } else if (distObj.id === this.editEventId || (!String(distObj.id).startsWith('d_') && existingSisterIds.has(this.editEventId) && keptSisterIds.size === 0)) {
                         savedRace = await pb.collection('races').update(this.editEventId, racePayload, { requestKey: null });
                         keptSisterIds.add(this.editEventId);
                         distObj.id = this.editEventId;
@@ -10784,7 +11786,6 @@ async submitNeoEvent(targetStatus = 'Registration') {
                         synchronizedRaces.push(savedRace);
                     }
 
-                    // 🏁 Обновляем время старта участников ТОЛЬКО для групповых гонок
                     if (!isTimeTrial && savedRace?.id) {
                         try {
                             const rosters = await pb.collection('race_rosters').getFullList({
@@ -10835,18 +11836,26 @@ async submitNeoEvent(targetStatus = 'Registration') {
                 });
 
                 const primaryRace = synchronizedRaces[0] || currentRace;
-                const raceChat = (this.app?.chats || []).find(c => c.race_id === this.editEventId || c.race_id === primaryRace.id);
+                let raceChat = (this.app?.chats || []).find(c => c.id === s.chatId || c.race_id === this.editEventId || c.race_id === primaryRace.id);
+                if (!raceChat) {
+                    raceChat = await pb.collection('chats').getFirstListItem(`race_id="${this.editEventId}" || race_id="${primaryRace.id}"`, { requestKey: null }).catch(() => null);
+                }
+
+                const dObj = new Date(primaryRace.date || baseData.date);
+                const chatDate = dObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+                const chatTime = dObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                const chatName = `${s.name.toUpperCase()} ${chatDate} ${chatTime}`;
+                const chatFd = buildChatFormData(chatName, primaryRace.id, raceChat);
+
                 if (raceChat) {
-                    const dObj = new Date(primaryRace.date || baseData.date);
-                    const chatDate = dObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-                    const chatTime = dObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                    const chatName = `${s.name.toUpperCase()} ${chatDate} ${chatTime}`;
-
-                    await pb.collection('chats').update(raceChat.id, {
-                        name: chatName
-                    }, { requestKey: null }).catch(() => {});
-
-                    raceChat.name = chatName;
+                    const updatedChat = await pb.collection('chats').update(raceChat.id, chatFd, { requestKey: null }).catch(() => null);
+                    if (updatedChat) Object.assign(raceChat, updatedChat);
+                } else {
+                    const createdChat = await pb.collection('chats').create(chatFd, { requestKey: null }).catch(() => null);
+                    if (createdChat && Array.isArray(this.app?.chats)) {
+                        this.app.chats.unshift(createdChat);
+                        raceChat = createdChat;
+                    }
                 }
 
                 const wasSoon = (initialRaceStatus === 'Скоро');
@@ -10870,7 +11879,7 @@ async submitNeoEvent(targetStatus = 'Registration') {
                 alert(`Событие «${s.name}» успешно обновлено (дистанций: ${synchronizedRaces.length}).`);
 
             } else {
-                baseData.creator_id = pb.authStore.model?.id || this.app.currentRider?.user_id || this.app.currentRider?.id;
+                baseData.creator_id = myUserId || myRiderId;
 
                 const isMulti = s.activeDistances.length > 1;
                 const createdRaces = [];
@@ -10896,13 +11905,12 @@ async submitNeoEvent(targetStatus = 'Registration') {
                         distIsoDate = new Date(`${s.date}T${formattedDistTime}`).toISOString();
                     }
 
-                    // 🎯 ОПРЕДЕЛЕНИЕ ИНДИВИДУАЛЬНОГО ФОРМАТА И ПОКРЫТИЯ ДЛЯ ЭТОЙ ДИСТАНЦИИ
                     const distSurface = (distObj.customFormat && distObj.surface) ? distObj.surface : (s.surface || 'road');
                     const rawDistFormat = (distObj.customFormat && distObj.format) ? distObj.format : (s.format || 'mass');
                     const distFormat = isPelotonAdmin ? rawDistFormat : (rawDistFormat === 'ttt' ? 'mass' : rawDistFormat);
 
                     const catLogicPayload = JSON.stringify({
-                        has_absolute: isPelotonAdmin ? Boolean(sc.hasAbsolute) : false,
+                        has_absolute: isPelotonAdmin ? Boolean(sc.hasAbsolute) : true,
                         has_pro: isPelotonAdmin ? Boolean(sc.hasPro) : false,
                         has_age: isPelotonAdmin ? Boolean(sc.hasAge) : false,
                         age_bands: (isPelotonAdmin && sc.hasAge) ? sc.ageBands : null,
@@ -10944,19 +11952,8 @@ async submitNeoEvent(targetStatus = 'Registration') {
                 const timeLabel = isPrimaryTimeTrial ? 'Первый старт' : 'Старт';
                 const chatName = `${s.name.trim().toUpperCase()} ${chatDate} ${chatTime}`;
 
-                const cleanPanelData = {
-                    text: "",
-                    buttons: []
-                };
-
-                const newChat = await pb.collection('chats').create({
-                    type: 'global',
-                    name: chatName,
-                    race_id: primaryRace.id,
-                    peloton_id: isPeloton ? s.pelotonId : "",
-                    participants: this.app.currentRider?.id ? [this.app.currentRider.id] : [],
-                    panel_data: JSON.stringify(cleanPanelData)
-                }, { requestKey: null });
+                const chatFd = buildChatFormData(chatName, primaryRace.id, null);
+                const newChat = await pb.collection('chats').create(chatFd, { requestKey: null });
 
                 const bot = Object.values(this.app.ridersMap || {}).find(r => r.email === 'bot@sotka.one');
                 if (bot) {
@@ -11507,28 +12504,49 @@ async deleteRace(raceId) {
 	
    // 🔥 ГЕНЕРАТОР КАТЕГОРИЙ (С УЧЕТОМ ПОКРЫТИЯ ГОНКИ)
 getRaceCategory(rider, race) {
-        if (!rider || !race) return '???';
+        if (!rider || !race) return 'АБСОЛЮТ';
 
-        // 1. Проверяем, зашита ли в cat_logic новая JSON-матрица конструктора
-        let matrix = null;
-        if (race.cat_logic && typeof race.cat_logic === 'string' && race.cat_logic.trim().startsWith('{')) {
-            try { matrix = JSON.parse(race.cat_logic); } catch(e) {}
-        } else if (race.cat_logic && typeof race.cat_logic === 'object') {
-            matrix = race.cat_logic;
+        const hasCategoryRules = (m) => m && typeof m === 'object' && (
+            m.has_age || m.has_clusters || m.has_pro || m.has_team_genders || m.has_team_age || m.has_absolute || m.use_gear || m.model ||
+            (m.age_bands && (Array.isArray(m.age_bands) || Object.keys(m.age_bands).length > 0))
+        );
+
+        const parseMatrix = (rObj) => {
+            if (!rObj || !rObj.cat_logic) return null;
+            if (typeof rObj.cat_logic === 'string' && rObj.cat_logic.trim().startsWith('{')) {
+                try { return JSON.parse(rObj.cat_logic); } catch (e) { return null; }
+            }
+            if (typeof rObj.cat_logic === 'object') return rObj.cat_logic;
+            return null;
+        };
+
+        // 1. Читаем матрицу дистанции; если на сестринской дистанции ([Спорт]) она не задана — берём от основной дистанции старта
+        let matrix = parseMatrix(race);
+        if (!hasCategoryRules(matrix)) {
+            const sisters = (this.liveService?.currentEventRaces?.length ? this.liveService.currentEventRaces : null)
+                         || (typeof this.app?.getSisterRaces === 'function' ? this.app.getSisterRaces(race) : []);
+            for (const sr of (sisters || [])) {
+                const sm = parseMatrix(sr);
+                if (hasCategoryRules(sm)) {
+                    matrix = sm;
+                    break;
+                }
+            }
         }
 
-        const g = (rider.gender === 'F' || rider.gender === 'Ж') ? 'F' : 'M';
+        const gRaw = String(rider.gender || 'M').toUpperCase().trim();
+        const g = (gRaw === 'F' || gRaw === 'Ж') ? 'F' : 'M';
         const rusG = g === 'M' ? 'М' : 'Ж';
 
         // 2. Расчет возраста строго на год проведения гонки
         const dStr = race.rawDate || race.date;
         const dObj = dStr ? new Date(dStr) : new Date();
         const raceYear = isNaN(dObj.getFullYear()) ? new Date().getFullYear() : dObj.getFullYear();
-        const birthYear = parseInt(rider.yob || rider.year_of_birth || 1990);
-        const age = raceYear - birthYear;
+        const birthYear = parseInt(rider.yob || rider.year || rider.year_of_birth || 1990, 10);
+        const age = raceYear - (isNaN(birthYear) ? 1990 : birthYear);
 
         // =========================================================================
-        // 🌟 ВЕТКА 1: НОВАЯ 3D-МАТРИЦА (РЕГЛАМЕНТ 2026)
+        // 🌟 ВЕТКА 1: 3D-МАТРИЦА КОНСТРУКТОРА (РЕГЛАМЕНТ 2026)
         // =========================================================================
         if (matrix) {
             const parts = [];
@@ -11538,7 +12556,7 @@ getRaceCategory(rider, race) {
                 'SS': 'СИНГЛСПИД', 'EBIKE': 'ЭЛЕКТРО'
             };
 
-            // 1. Тип велосипеда (с поддержкой сырых кодов и готовых строк)
+            // 1. Тип велосипеда
             let rawGear = rider.gear;
             if (!rawGear) {
                 const combinedStr = `${rider.final_cluster || ''} ${rider.base_cluster || ''} ${rider.group || ''}`.toUpperCase();
@@ -11550,6 +12568,9 @@ getRaceCategory(rider, race) {
                     }
                 }
             }
+            if (!rawGear && matrix.use_gear && Array.isArray(matrix.active_gears) && matrix.active_gears.length === 1) {
+                rawGear = matrix.active_gears[0];
+            }
 
             if (matrix.use_gear && rawGear) {
                 const gUpper = String(rawGear).toUpperCase().trim();
@@ -11559,11 +12580,11 @@ getRaceCategory(rider, race) {
             // 2. Командные форматы (TTT / Эстафета)
             if (matrix.has_team_genders || matrix.has_team_age || race.format === 'ttt' || race.format === 'relay') {
                 let genders = rider.squad_genders || [];
-                if (genders.length === 0) genders.push(String(rider.gender || 'M').toUpperCase().trim());
+                if (genders.length === 0) genders.push(g);
                 const hasM = genders.some(x => x === 'M' || x === 'М');
                 const hasF = genders.some(x => x === 'F' || x === 'Ж');
                 let teamGenderLabel = (hasM && hasF) ? 'МИКСТ' : (hasF ? 'ЖЕНЩИНЫ' : 'МУЖЧИНЫ');
-                
+
                 if (matrix.has_team_genders && !matrix.has_team_age) {
                     return (parts.length ? parts.join(' • ') + ' • ' : '') + teamGenderLabel;
                 }
@@ -11576,7 +12597,7 @@ getRaceCategory(rider, race) {
                 return (parts.length ? parts.join(' • ') + ' • ' : '') + teamGenderLabel;
             }
 
-            // 3. Кластеры скорости Сотки (A+, A, B, C, D)
+            // 3. Кластеры скорости Сотки (ТОЛЬКО если явно включены в конструкторе гонки!)
             if (matrix.has_clusters || matrix.model === 'clusters') {
                 const surface = race.surface || 'road';
                 const surfClusterKey = `cluster_${surface}`;
@@ -11592,21 +12613,37 @@ getRaceCategory(rider, race) {
                 return `[${rusG}] ` + parts.join(' • ');
             }
 
-            // 5. Возрастная сетка из настроек гонки (только если включена!)
-            if (matrix.has_age || matrix.model === 'pure_age' || matrix.model === 'sport_age') {
-                const bands = (matrix.age_bands?.[g] || matrix.age_bands || ['18-29', '30-39', '40-49', '50-59', '60+']);
+            // 5. Возрастная сетка из настроек гонки
+            const hasAgeBandsObj = matrix.age_bands && (
+                (Array.isArray(matrix.age_bands) && matrix.age_bands.length > 0) ||
+                (Array.isArray(matrix.age_bands[g]) && matrix.age_bands[g].length > 0) ||
+                (Array.isArray(matrix.age_bands.M) && matrix.age_bands.M.length > 0)
+            );
+
+            if (matrix.has_age || matrix.model === 'pure_age' || matrix.model === 'sport_age' || hasAgeBandsObj) {
+                let bands = ['18-29', '30-39', '40-49', '50-59', '60+'];
+                if (Array.isArray(matrix.age_bands?.[g]) && matrix.age_bands[g].length > 0) {
+                    bands = matrix.age_bands[g];
+                } else if (Array.isArray(matrix.age_bands?.M) && matrix.age_bands.M.length > 0) {
+                    bands = matrix.age_bands.M;
+                } else if (Array.isArray(matrix.age_bands) && matrix.age_bands.length > 0) {
+                    bands = matrix.age_bands;
+                }
+
                 let matchedBand = bands[0] || '18+';
 
-                for (let b of bands) {
-                    if (b.startsWith('U')) {
-                        const limit = parseInt(b.replace('U', ''), 10);
+                for (let rawB of bands) {
+                    const b = String(rawB || '').trim();
+                    if (!b) continue;
+                    if (/^U\d+/i.test(b)) {
+                        const limit = parseInt(b.replace(/^U/i, ''), 10);
                         if (age <= limit) { matchedBand = b; break; }
-                    } else if (b.includes('-')) {
-                        const [min, max] = b.split('-').map(Number);
-                        if (age >= min && age <= max) { matchedBand = b; break; }
+                    } else if (/[-–—]/.test(b)) {
+                        const [min, max] = b.split(/[-–—]/).map(s => parseInt(s.trim(), 10));
+                        if (!isNaN(min) && !isNaN(max) && age >= min && age <= max) { matchedBand = b; break; }
                     } else if (b.includes('+')) {
                         const min = parseInt(b.replace('+', ''), 10);
-                        if (age >= min) { matchedBand = b; break; }
+                        if (!isNaN(min) && age >= min) { matchedBand = b; break; }
                     }
                 }
 
@@ -11614,7 +12651,7 @@ getRaceCategory(rider, race) {
                 return `[${rusG}] ` + parts.join(' • ');
             }
 
-            // 6. Абсолютный зачёт (по умолчанию)
+            // 6. Абсолютный зачёт
             if (matrix.has_absolute || matrix.model === 'absolute' || parts.length === 0) {
                 parts.push('АБСОЛЮТ');
                 return `[${rusG}] ` + parts.join(' • ');
@@ -11624,9 +12661,11 @@ getRaceCategory(rider, race) {
         }
 
         // =========================================================================
-        // 🛡️ ВЕТКА 2: ОБРАТНАЯ СОВМЕСТИМОСТЬ (СТАРЫЕ ГОНКИ)
+        // 🛡️ ВЕТКА 2: ОБРАТНАЯ СОВМЕСТИМОСТЬ (СТАРЫЕ ГОНКИ БЕЗ JSON-МАТРИЦЫ)
         // =========================================================================
-        let logic = race.cat_logic || 'clusters';
+        let logic = (typeof race.cat_logic === 'string' && !race.cat_logic.trim().startsWith('{') && race.cat_logic.trim() !== '')
+            ? race.cat_logic.trim()
+            : 'age';
         if (logic === 'Кластеры') logic = 'clusters';
         if (logic === 'Возрастные') logic = 'age';
         if (logic === 'Абсолют') logic = 'absolute';
@@ -11638,9 +12677,9 @@ getRaceCategory(rider, race) {
         const rawCluster = rider[surfClusterKey] || rider.base_cluster || 'B';
         const cluster = String(rawCluster).replace(/\[.*?\]\s*/g, '').trim() || 'B';
 
-        let ageIdx = ""; 
-        let ageLabel = ""; 
-        let isJunior = false; 
+        let ageIdx = "";
+        let ageLabel = "";
+        let isJunior = false;
         let isVet = false;
 
         if (age < 18) {
@@ -11651,12 +12690,11 @@ getRaceCategory(rider, race) {
             else if (age >= 10 && age <= 11) { ageIdx = "U12"; ageLabel = "10-11"; }
             else { ageIdx = "U10"; ageLabel = "до 10"; }
         } else {
-            if (age >= 18 && age <= 22) { ageIdx = "2"; ageLabel = "18-22"; }
-            else if (age >= 23 && age <= 34) { ageIdx = "3"; ageLabel = "23-34"; }
-            else if (age >= 35 && age <= 49) { ageIdx = "4"; ageLabel = "35-49"; }
-            else if (age >= 50 && age <= 59) { ageIdx = "5"; ageLabel = "50-59"; if (g === 'F') isVet = true; } 
-            else if (age >= 60 && age <= 69) { ageIdx = "6"; ageLabel = "60-69"; isVet = true; } 
-            else if (age >= 70) { ageIdx = "7"; ageLabel = "70+"; isVet = true; }
+            if (age >= 18 && age <= 29) { ageIdx = "2"; ageLabel = "18-29"; }
+            else if (age >= 30 && age <= 39) { ageIdx = "3"; ageLabel = "30-39"; }
+            else if (age >= 40 && age <= 49) { ageIdx = "4"; ageLabel = "40-49"; }
+            else if (age >= 50 && age <= 59) { ageIdx = "5"; ageLabel = "50-59"; if (g === 'F') isVet = true; }
+            else { ageIdx = "6"; ageLabel = "60+"; isVet = true; }
         }
 
         if (logic === 'clusters') {
@@ -11667,11 +12705,11 @@ getRaceCategory(rider, race) {
             if (isJunior) return `[${rusG}] ${ageIdx}`;
             return `[${rusG}] ${ageLabel}`;
         }
-        if (logic === 'absolute') return 'АБСОЛЮТ';
+        if (logic === 'absolute') return `[${rusG}] АБСОЛЮТ`;
 
         if (logic === 'teams') {
             let genders = rider.squad_genders || [];
-            if (genders.length === 0) genders.push(String(rider.gender || 'M').toUpperCase().trim());
+            if (genders.length === 0) genders.push(g);
             const hasM = genders.some(x => x === 'M' || x === 'М');
             const hasF = genders.some(x => x === 'F' || x === 'Ж');
             if (hasM && hasF) return 'МИКСТ';
@@ -11693,7 +12731,7 @@ getRaceCategory(rider, race) {
             }
         }
 
-        return cluster;
+        return `[${rusG}] ${ageLabel}`;
     }
     // ==========================================
     // ИМПОРТ РЕЗУЛЬТАТОВ ИЗ CSV
@@ -14247,7 +15285,7 @@ class MessengerApp {
         constructor() {
             this.currentUser = null; this.currentRider = null;
 			this.isGuest = !pb.authStore.isValid;
-            this.usersMap = {}; this.userIdMap = {}; this.ridersMap = {}; this.teamsMap = {}; this.pelotonsMap = {}; 
+            this.usersMap = {}; this.userIdMap = {}; this.ridersMap = {}; this.teamsMap = {}; this.racesMap = {}; this.pelotonsMap = {}; 
             this.chats = []; this.activeChatId = null; this.chatSessionToken = null; 
             this.profileChartInstance = null; this.modalChartInstance = null;
             this.unreadCounts = {};
@@ -17417,7 +18455,7 @@ applyChatPattern(chat) {
     mainArea.prepend(overlay);
 
     // 4. Гарантированный URL файла из PocketBase
-    const iconUrl = `https://db.sotka.one/api/files/chats/${chat.id}/${chat.pattern_icon}`;
+    const iconUrl = `${pb.baseUrl}/api/files/${chat.collectionId || 'chats'}/${chat.id}/${chat.pattern_icon}`;
 
     // 5. 8 крупных заметных элементов (размер 55–75px, прозрачность 0.22–0.30)
     const duckSpots = [
@@ -17456,7 +18494,6 @@ applyChatPattern(chat) {
         overlay.appendChild(img);
     });
 }
-
 // =========================================================================
     // 📻 РАЦИЯ: УПРАВЛЕНИЕ ВКЛАДКАМИ (НОВОСТИ / СПОРТСМЕНЫ / КОМАНДЫ)
     // =========================================================================
@@ -19350,7 +20387,7 @@ async processDeepLink(urlStr) {
                 
                 // 1. Стандартные монохромные стрелки перевода (вверх-вправо / вниз-влево)
                 let icon = isOutgoing 
-                    ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 7"></polyline></svg>` 
+                    ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>` 
                     : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;"><line x1="17" y1="7" x2="7" y2="17"></line><polyline points="17 17 7 17 7 7"></polyline></svg>`;
                 
                 let typeLabel = isOutgoing ? 'Перевод' : 'Пополнение';
@@ -22108,7 +23145,7 @@ async init() {
                 pb.collection('users').getFullList({ fields: 'id,email,role', requestKey: null }),
                 pb.collection('riders').getFullList({ fields: 'id,collectionId,collectionName,first_name,last_name,email,team_id,base_cluster,gender,yob,rating,avatar,roles,subscriptions,user_id,rating_road,cluster_road,rating_track,cluster_track,rating_offroad,cluster_offroad,rating_indoor,cluster_indoor,slug', requestKey: null }), 
                 pb.collection('teams').getFullList({ fields: 'id,name,peloton_id,points', sort: 'name', requestKey: null }), 
-                pb.collection('pelotons').getFullList({ fields: 'id,name,is_private,admin_id,allowed_teams,allowed_riders,avatar,slug', sort: 'name', requestKey: null }),
+                pb.collection('pelotons').getFullList({ fields: 'id,name,is_private,admin_id,allowed_teams,allowed_riders,avatar,slug,sports', sort: 'name', requestKey: null }),
                 pb.collection('races').getFullList({ sort: '-date', expand: 'rating_rule_id,cup_id', requestKey: null })
             ]).then(async (results) => {
                 const allUsers = results[0].status === 'fulfilled' ? results[0].value : [];
@@ -22822,10 +23859,10 @@ async init() {
                 }
 
             } catch (e) {
-                if (e.name !== 'ClientResponseError' || !e.isAbort) {
-                    console.error("Ошибка загрузки счетчиков", e);
-                }
+            if (!e?.isAbort && e?.status !== 0) {
+                console.error("Ошибка загрузки счетчиков", e);
             }
+        }
         }
 // 🧠 Подсчёт непрочитанных сообщений по категориям чатов
         getUnreadCountsByCategory() {
@@ -24255,331 +25292,20 @@ closeMonthCalendarView(skipRestore = false) {
     }
 	
 
-    openMonthCalendarView(targetDate = new Date(), animDirection = null) {
-        this.currentCalViewDate = new Date(targetDate);
-
-        if (this.activeChatId && this.activeChatId !== 'month_calendar') {
-            this.lastChatBeforeCalendar = this.activeChatId;
-        }
-        this.activeChatId = 'month_calendar';
-		
-        // Подсвечиваем кнопку "ОБЩИЙ" в пульте
-        document.querySelectorAll('.dock-seg-btn').forEach(b => b.classList.remove('active'));
-        const monthDockBtn = document.getElementById('dockBtn-month');
-        if (monthDockBtn) monthDockBtn.classList.add('active');
-
-        if (typeof this.openChatMobile === 'function') this.openChatMobile();
-
-        const mainArea = document.getElementById('mainChatArea') || document.querySelector('.chat-area');
-        if (!mainArea) return;
-		
-        const pillText = document.getElementById('searchCategoryPillText');
-        if (pillText) pillText.textContent = 'ОБЩИЙ';
-        this.hideFloatingDock();
-
-        // Скрываем элементы чата
-        ['chatHeader', 'curtainContainer', 'inputWrapper', 'recipientSelectorBar', 'pinnedMessageBar', 'readOnlyNotice'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.setProperty('display', 'none', 'important');
-        });
-
-        const emptyMsg = document.getElementById('emptyChatMsg');
-        if (emptyMsg) emptyMsg.style.display = 'none';
-
-        let calContainer = document.getElementById('monthCalendarViewContainer');
-        if (!calContainer) {
-            calContainer = document.createElement('div');
-            calContainer.id = 'monthCalendarViewContainer';
-            mainArea.appendChild(calContainer);
-        }
-        calContainer.style.setProperty('display', 'flex', 'important');
-
-        const year = this.currentCalViewDate.getFullYear();
-        const month = this.currentCalViewDate.getMonth();
-        const monthNames = ['ЯНВАРЬ', 'ФЕВРАЛЬ', 'МАРТ', 'АПРЕЛЬ', 'МАЙ', 'ИЮНЬ', 'ИЮЛЬ', 'АВГУСТ', 'СЕНТЯБРЬ', 'ОКТЯБРЬ', 'НОЯБРЬ', 'ДЕКАБРЬ'];
-
-        // 🔥 СОБИРАЕМ ВСЕ СОБЫТИЯ ИЗ ВСЕХ КЭШЕЙ БЕЗ ПОТЕРИ
-        const racesFromCrm = (this.crm && this.crm.dataCalendar) ? this.crm.dataCalendar : [];
-        const racesFromChats = this.chats ? this.chats.map(c => c.raceObj).filter(Boolean) : [];
-        const racesFromMap = this.racesMap ? Object.values(this.racesMap) : [];
-        const racesFromDirect = this.dataCalendar || [];
-
-        const allRacesMap = new Map();
-        [...racesFromDirect, ...racesFromCrm, ...racesFromChats, ...racesFromMap].forEach(r => {
-            if (r && r.id) allRacesMap.set(r.id, r);
-        });
-        let allRaces = Array.from(allRacesMap.values());
-		// Если открыли из вкладки "МОИ" — оставляем в сетке только события с PIN или регистрацией
-        if (this.chatListFilter === 'my') {
-            allRaces = allRaces.filter(r => {
-                const chat = this.chats ? this.chats.find(c => c.race_id === r.id || c.id === r.id) : null;
-                return typeof this.isMyPersonalEvent === 'function'
-                    ? this.isMyPersonalEvent(r, chat ? chat.id : r.id)
-                    : Boolean((this.currentRider?.pinned_chats || []).includes(r.id) || (this.myRosters && this.myRosters[r.id]));
-            });
-        }
-
-        // 🔥 ФИЛЬТРАЦИЯ СЕТКИ КАЛЕНДАРЯ ПО ХЭШТЕГУ И ПЕЛОТОНУ
-        const rawQ = (this.calendarSearchQuery || '').toLowerCase().trim();
-        const cleanQ = rawQ.replace(/^#/, '');
-
-        // 1. Фильтр по выбранному пелотону
-        if (this.currentPelotonFilter && this.currentPelotonFilter !== 'all') {
-            allRaces = allRaces.filter(r => {
-                let pId = r.peloton_id;
-                if (!pId) return false;
-                if (Array.isArray(pId)) return pId.includes(this.currentPelotonFilter);
-                return pId === this.currentPelotonFilter;
-            });
-        }
-
-        // 2. Фильтр по хэштегу / строке поиска
-        if (cleanQ) {
-            allRaces = allRaces.filter(r => {
-                const rName = (r.name || '').toLowerCase();
-                const rDesc = (r.description || '').toLowerCase();
-                const rTag = (r.slug || r.alias || r.hashtag || r.tag || r.series_tag || '').toLowerCase().replace(/^#/, '').trim();
-                const rSeries = (r.series || r.series_name || '').toLowerCase().replace(/^#/, '').trim();
-
-                // 🔗 ПОДТЯГИВАЕМ СВЯЗАННЫЙ ЧАТ ГОНКИ И ЕГО SLUG / АЛИАС
-                const chat = this.chats ? this.chats.find(c => c.race_id === r.id || c.id === r.id) : null;
-                const chatTag = (chat?.slug || chat?.alias || chat?.hashtag || '').toLowerCase().replace(/^#/, '').trim();
-
-                let pelotonMatch = false;
-                let pId = r.peloton_id;
-                if (Array.isArray(pId)) pId = pId[0];
-                if (pId && this.pelotonsMap?.[pId]) {
-                    const p = this.pelotonsMap[pId];
-                    const pName = (p.name || '').toLowerCase();
-                    const pSlug = (p.slug || p.hashtag || '').toLowerCase().replace(/^#/, '');
-                    pelotonMatch = pName.includes(cleanQ) || pSlug.includes(cleanQ) || pSlug === cleanQ;
-                }
-
-                // 🔥 Добавлена проверка chatTag
-                return rName.includes(cleanQ) || 
-                       rDesc.includes(cleanQ) || 
-                       rTag.includes(cleanQ) || 
-                       rTag === cleanQ || 
-                       rSeries.includes(cleanQ) || 
-                       pelotonMatch ||
-                       chatTag.includes(cleanQ) ||
-                       chatTag === cleanQ;
-            });
-
-            // 🎯 АВТОФОКУС: если открыли по хэштегу, сразу переключаем месяц календаря на дату первой гонки серии
-            if (allRaces.length > 0 && animDirection === null) {
-                const now = Date.now();
-                const upcoming = allRaces.filter(r => new Date(r.date || r.rawDate || 0).getTime() >= (now - 24 * 3600 * 1000));
-                upcoming.sort((a, b) => new Date(a.date || a.rawDate || 0) - new Date(b.date || b.rawDate || 0));
-                const targetRace = upcoming[0] || allRaces[0];
-                if (targetRace && (targetRace.date || targetRace.rawDate)) {
-                    const rDate = new Date(targetRace.date || targetRace.rawDate);
-                    if (!isNaN(rDate.getTime())) {
-                        this.currentCalViewDate = new Date(rDate.getFullYear(), rDate.getMonth(), 1);
-                    }
-                }
-            }
-        }
-
-        // 🦆 Объединяем сестринские дистанции: одно событие — одна уточка
-        const processedEventKeys = new Set();
-        const deduplicatedRaces = [];
-
-        // Сортируем дистанции по убыванию, чтобы главной стала основная/длинная дистанция
-        allRaces.sort((a, b) => (parseFloat(b.distance) || 0) - (parseFloat(a.distance) || 0));
-
-        allRaces.forEach(r => {
-            if (!r || !r.date) return;
-            const d = new Date(r.date);
-            if (isNaN(d.getTime())) return;
-
-            const baseName = r.name && r.name.includes('[') ? r.name.split('[')[0].trim() : (r.name || '').trim();
-            const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            const eventKey = `${dayKey}_${baseName.toLowerCase()}`;
-
-            if (processedEventKeys.has(eventKey)) return;
-            processedEventKeys.add(eventKey);
-
-            deduplicatedRaces.push({
-                ...r,
-                _baseName: baseName
-            });
-        });
-
-        const eventsByDate = {};
-        deduplicatedRaces.forEach(r => {
-            const d = new Date(r.date);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            if (!eventsByDate[key]) eventsByDate[key] = [];
-            eventsByDate[key].push(r);
-        });
-
-        const firstDayOfMonth = new Date(year, month, 1);
-        const lastDayOfMonth = new Date(year, month + 1, 0);
-        let startDayIndex = (firstDayOfMonth.getDay() + 6) % 7;
-        const totalDays = lastDayOfMonth.getDate();
-        const prevMonthLastDay = new Date(year, month, 0).getDate();
-
-        let daysHtml = '';
-        const todayStr = new Date().toISOString().split('T')[0];
-        const duckUrl = 'https://static.tildacdn.com/tild6161-6164-4233-b164-623462383865/__18.svg';
-
-        // Дни прошлого месяца
-        for (let i = startDayIndex - 1; i >= 0; i--) {
-            const dNum = prevMonthLastDay - i;
-            daysHtml += `<div class="month-cal-day other-month"><span class="month-cal-day-num">${dNum}</span></div>`;
-        }
-
-        // Дни текущего месяца (Сап-аквариум)
-        // Дни текущего месяца (Сап-аквариум + кнопки добавления)
-        // Дни текущего месяца (Сап-аквариум)
-        for (let day = 1; day <= totalDays; day++) {
-            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const isToday = (dateKey === todayStr);
-            const daysEvents = eventsByDate[dateKey] || [];
-            const hasRaces = daysEvents.length > 0;
-
-            let supsHtml = '';
-            let moreBadgeHtml = '';
-            let emptySlotHtml = '';
-
-            if (hasRaces) {
-                const visibleEvents = daysEvents.slice(0, 2);
-                const hiddenCount = daysEvents.length - 2;
-
-                if (hiddenCount > 0) {
-                    moreBadgeHtml = `
-                        <div class="cal-sup-more-badge" 
-                             onclick="event.stopPropagation(); window.app.openDayAgendaModal('${dateKey}')" 
-                             title="Показать все ${daysEvents.length} событий">
-                            +${hiddenCount}
-                        </div>
-                    `;
-                }
-
-                visibleEvents.forEach((r, idx) => {
-                    // Безопасные словари форматов и покрытий с fallback
-                    const safeFormats = (this.crm && this.crm.RACE_FORMATS) 
-                        ? this.crm.RACE_FORMATS 
-                        : { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
-                    const safeSurfaces = (this.crm && this.crm.RACE_SURFACES) 
-                        ? this.crm.RACE_SURFACES 
-                        : { 'road': 'Шоссе', 'offroad': 'Грунт', 'track': 'Трек', 'indoor': 'Индор' };
-
-                    // Спортивные метаданные (Шоссе, Команда, Дистанция)
-                    const formatName = r.format ? (safeFormats[r.format] || '') : '';
-                    const surfaceName = r.surface ? (safeSurfaces[r.surface] || '') : '';
-                    const distLabel = r.distance ? `${r.distance} КМ` : '';
-                    const typeLabel = [surfaceName, formatName, distLabel].filter(Boolean).join(' • ').toUpperCase();
-
-                    const upperRaceName = this.escapeHTML(r._baseName || (r.name && r.name.includes('[') ? r.name.split('[')[0].trim() : r.name) || '').toUpperCase();
-                    const tooltipText = typeLabel ? `${upperRaceName} • ${typeLabel}` : upperRaceName;
-
-                    const isMulti = visibleEvents.length > 1;
-                    const animClass = !isMulti ? 'cal-swim-center' : (idx === 0 ? 'cal-swim-top' : 'cal-swim-bottom');
-
-                    const chat = this.chats ? this.chats.find(c => (c.race_id === r.id || c.raceObj?.id === r.id || c.id === r.id)) : null;
-                    const clickAction = chat
-                        ? `window.app.openChat('${chat.id}')`
-                        : `window.app.closeMonthCalendarView(true); window.app.crm.openLiveBoard('${r.id}', event);`;
-
-                    supsHtml += `
-                        <div class="cal-sup-unit ${animClass}" 
-                             style="--duck-size: 28px;"
-                             onclick="event.stopPropagation(); ${clickAction}"
-                             title="${tooltipText}">
-                            
-                            <img src="${duckUrl}" class="cal-duck-rider" alt="Duck">
-                            
-                            <div class="cal-sup-board">
-                                <span class="cal-sup-text">${upperRaceName}</span>
-                            </div>
-                        </div>
-                    `;
-                });
-            } else {
-                emptySlotHtml = `
-                    <div class="cal-empty-slot">
-                        <div class="cal-empty-plus">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                        </div>
-                        <span class="cal-empty-label">добавь свою уточку</span>
-                    </div>
-                `;
-            }
-
-            const onDayClick = hasRaces
-                ? `if (window.innerWidth <= 600) { window.app.openDayAgendaModal('${dateKey}'); } else { window.app.openCreateEventSelector('${dateKey}'); }`
-                : `window.app.openCreateEventSelector('${dateKey}');`;
-
-            const todayBadgeStyle = isToday 
-                ? 'background: #000000 !important; color: #ffffff !important; font-weight: 900 !important; border-radius: 6px !important; width: 22px !important; height: 22px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; box-shadow: 0 0 0 2px var(--primary, #ffc107) !important;' 
-                : '';
-
-            daysHtml += `
-                <div class="month-cal-day ${isToday ? 'today' : ''} ${hasRaces ? 'has-race' : ''}" onclick="${onDayClick}">
-                    <span class="month-cal-day-num" style="position:relative; z-index:4; ${todayBadgeStyle}">${day}</span>
-                    ${moreBadgeHtml}
-                    ${hasRaces ? `<div class="cal-water-pond">${supsHtml}</div>` : emptySlotHtml}
-                </div>
-            `;
-        }
-
-        const totalRendered = startDayIndex + totalDays;
-        const nextDays = (7 - (totalRendered % 7)) % 7;
-        for (let n = 1; n <= nextDays; n++) {
-            daysHtml += `<div class="month-cal-day other-month"><span class="month-cal-day-num">${n}</span></div>`;
-        }
-
-        let animClass = '';
-        if (animDirection === 'next') animClass = 'slide-next';
-        if (animDirection === 'prev') animClass = 'slide-prev';
-
-        calContainer.innerHTML = `
-            <div class="month-cal-header" style="display: flex; align-items: center; justify-content: space-between; min-height: 65px; padding: 12px 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border); box-sizing: border-box; flex-shrink: 0; gap: 12px;">
-                <!-- Левая часть: навигация по месяцу -->
-                <div class="month-cal-nav" style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                    <button class="month-cal-btn-arrow" onclick="window.app.openMonthCalendarView(new Date(${year}, ${month - 1}, 1), 'prev')">‹</button>
-                    <div class="month-cal-title" style="font-family:'Unbounded', sans-serif; font-size:14px; font-weight:900; color:var(--text-main); text-transform:uppercase; white-space:nowrap; text-align:center; min-width:140px;">
-                        ${monthNames[month]} ${year}
-                    </div>
-                    <button class="month-cal-btn-arrow" onclick="window.app.openMonthCalendarView(new Date(${year}, ${month + 1}, 1), 'next')">›</button>
-                    <button class="month-cal-btn-today" onclick="window.app.openMonthCalendarView(new Date())">СЕГОДНЯ</button>
-                </div>
-
-                <!-- Правая часть: кнопка закрытия сетки календаря -->
-                <div class="month-cal-actions" style="display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0;">
-                    <button type="button" 
-                            onclick="window.app.closeMonthCalendarView()" 
-                            style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: 0.15s ease;"
-                            onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';"
-                            onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';"
-                            title="Закрыть сетку календаря">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="month-cal-weekdays">
-                <div>ПН</div><div>ВТ</div><div>СР</div><div>ЧТ</div><div>ПТ</div><div style="color:var(--primary);">СБ</div><div style="color:var(--primary);">ВС</div>
-            </div>
-
-            <div class="month-cal-grid ${animClass}">
-                ${daysHtml}
-            </div>
-        `;
-
-        this.attachCalendarSwipeGestures(calContainer, year, month);
-		if (typeof this.updateViewSwitcherUI === 'function') {
-            this.updateViewSwitcherUI('grid');
-        }
+openBoardView(targetId = null, event = null) {
+    if (event) event.stopPropagation();
+    if (targetId) {
+        const chat = (this.chats || []).find(c => c.id === targetId || c.race_id === targetId);
+        const slugOrId = chat?.slug || targetId;
+        window.location.href = `https://ru.sotka.one/#${slugOrId}`;
+        return;
     }
+    window.location.href = 'https://ru.sotka.one/';
+}
+
+openMonthCalendarView(targetDate = null) {
+    this.openBoardView();
+}
 
 // 🎛️ Двустороннее переключение режимов: Список ⇄ Сетка месяца
     switchCalendarViewMode(mode) {
@@ -25285,20 +26011,15 @@ renderChatList(filterText) {
                 <div style="display: flex; align-items: center; width: 100%; height: 40px; box-sizing: border-box; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 14px; padding: 3px 6px 3px 4px; gap: 6px;">
                     
                     <!-- Кнопка вызова сетки с уточками -->
-                    <button type="button" 
-                            onclick="window.app.openMonthCalendarView()" 
-                            style="height: 32px; padding: 0 10px; border-radius: 10px; background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); font-family: 'Unbounded', sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; transition: 0.15s ease;"
-                            onmouseover="this.style.borderColor='var(--text-main)';"
-                            onmouseout="this.style.borderColor='var(--border)';"
-                            title="Открыть календарь на месяц">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                        <span>СЕТКА</span>
-                    </button>
+                   <button type="button" onclick="window.app.openBoardView(null, event)" title="Перейти на главную витрину СОТКА (ru.sotka.one)" style="display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:20px; border:1.5px solid #111111; background:#ffffff; color:#111111; font-family:'Unbounded',sans-serif; font-size:9px; font-weight:900; cursor:pointer; flex-shrink:0; white-space:nowrap; transition:0.15s ease;" onmouseover="this.style.background='#ffc107'" onmouseout="this.style.background='#ffffff'">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+    </svg>
+    <span>БОРД</span>
+</button>
 
                     <!-- Поле текстового поиска -->
                     <input type="text" 
@@ -26364,42 +27085,59 @@ async startDirectChat(targetRiderId) {
                 }
                 if (!this.currentRider) return;
 
-                const myId = this.currentRider.id;
-                const targetId = targetRiderId || myId;
-                const isSelfChat = (targetId === myId);
-
                 const createMenu = document.getElementById('mobileCreateMenuModal');
                 if (createMenu) createMenu.style.display = 'none';
 
-                // 2. РАБОЧИЙ ПЕРЕХВАТ ГОСТЯ ИЗ test_3.js: создаем реальную запись в базе
+                // 2. СНАЧАЛА создаем или восстанавливаем реальный профиль гостя в БД
                 if (this.isGuest) {
                     try {
                         let savedGuestId = localStorage.getItem('vilka_guest_id');
-                        
+
+                        if (savedGuestId && (!this.currentRider || this.currentRider.id === 'anonymous_guest')) {
+                            try {
+                                const existingGuest = await pb.collection('riders').getOne(savedGuestId, { requestKey: null });
+                                this.currentRider = existingGuest;
+                                this.ridersMap[existingGuest.id] = existingGuest;
+                            } catch (err) {
+                                localStorage.removeItem('vilka_guest_id');
+                                savedGuestId = null;
+                            }
+                        }
+
                         if (!savedGuestId || !this.currentRider || this.currentRider.id === 'anonymous_guest') {
                             const randomNum = Math.floor(1000 + Math.random() * 9000);
                             const newGuest = await pb.collection('riders').create({
-                                first_name: "Гость", 
-                                last_name: `#${randomNum}`, 
-                                email: `guest_${Date.now()}@sotka.one`, 
+                                first_name: "Гость",
+                                last_name: `#${randomNum}`,
+                                email: `guest_${Date.now()}@sotka.one`,
                                 base_cluster: "O"
                             }, { requestKey: null });
-                            
+
                             localStorage.setItem('vilka_guest_id', newGuest.id);
                             this.currentRider = newGuest;
                             this.ridersMap[newGuest.id] = newGuest;
                         }
-                    } catch(e) {
+                    } catch (e) {
                         console.warn("Ошибка инициализации гостевого профиля:", e);
                     }
                 }
 
-                // 3. Подгрузка профиля собеседника
+                // 3. Теперь берем гарантированно реальный ID записи из коллекции riders
+                const myId = this.currentRider?.id;
+                if (!myId || myId === 'anonymous_guest') {
+                    console.warn("Не удалось получить валидный ID профиля для чата");
+                    return;
+                }
+
+                const targetId = targetRiderId || myId;
+                const isSelfChat = (targetId === myId);
+
+                // 4. Подгрузка профиля собеседника
                 if (!this.ridersMap[targetId]) {
                     try {
                         const targetRider = await pb.collection('riders').getOne(targetId, { requestKey: null });
                         this.ridersMap[targetRider.id] = targetRider;
-                        
+
                         if (targetRider.email && targetRider.roles) {
                             this.usersMap[targetRider.email] = Array.isArray(targetRider.roles) ? targetRider.roles : [targetRider.roles];
                         }
@@ -26410,14 +27148,12 @@ async startDirectChat(targetRiderId) {
                     }
                 }
 
-                // Хелпер: извлечение ID участников, даже если PocketBase вернул объекты
                 const extractParticipantIds = (chat) => {
                     const raw = chat.participants || [];
                     const arr = Array.isArray(raw) ? raw : [raw];
                     return arr.map(p => (typeof p === 'object' && p !== null ? p.id : String(p))).filter(Boolean);
                 };
 
-                // Проверка: соответствует ли чат нашему диалогу
                 const isMatchingChat = (chat) => {
                     if (chat.type !== 'direct') return false;
                     const parts = extractParticipantIds(chat);
@@ -26427,25 +27163,24 @@ async startDirectChat(targetRiderId) {
                     return parts.length === 2 && parts.includes(myId) && parts.includes(targetId);
                 };
 
-                // 4. Поиск существующего чата в локальной памяти приложения
+                // 5. Поиск существующего чата в памяти и на сервере
                 let existingChat = (this.chats || []).find(isMatchingChat);
-                
-                // 5. Точный поиск на сервере PocketBase (через оператор ?= для relation-полей)
+
                 if (!existingChat && navigator.onLine) {
                     try {
                         const filterQuery = isSelfChat
                             ? `type = "direct" && participants ?= "${myId}"`
                             : `type = "direct" && participants ?= "${myId}" && participants ?= "${targetId}"`;
 
-                        const serverChats = await pb.collection('chats').getFullList({ 
-                            filter: filterQuery, 
+                        const serverChats = await pb.collection('chats').getFullList({
+                            filter: filterQuery,
                             sort: '-created',
-                            requestKey: null 
+                            expand: 'participants',
+                            requestKey: null
                         });
-                        
+
                         existingChat = serverChats.find(isMatchingChat);
 
-                        // Страховка: если личный чат с собой найден в базе
                         if (!existingChat && isSelfChat && serverChats.length > 0) {
                             existingChat = serverChats.find(c => extractParticipantIds(c).length <= 2) || serverChats[0];
                         }
@@ -26453,42 +27188,40 @@ async startDirectChat(targetRiderId) {
                         if (existingChat && !this.chats.find(c => c.id === existingChat.id)) {
                             this.chats.push(existingChat);
                         }
-                    } catch(dbErr) { 
-                        console.warn("Ошибка проверки базы PocketBase:", dbErr); 
+                    } catch (dbErr) {
+                        console.warn("Ошибка проверки базы PocketBase:", dbErr);
                     }
                 }
 
-                // 6. Открытие существующего чата или создание нового ТОЛЬКО если чата действительно нет
-                if (existingChat) { 
-                    console.log("✅ Открываем существующий диалог:", existingChat.id);
-                    this.openChat(existingChat.id); 
-                } else { 
-                    try { 
-                        console.log("🆕 Создание нового прямого чата...");
+                // 6. Открытие существующего чата или создание нового
+                if (existingChat) {
+                    this.openChat(existingChat.id);
+                } else {
+                    try {
                         const newParticipants = isSelfChat ? [myId] : [myId, targetId];
 
-                        const newChat = await pb.collection('chats').create({ 
-                            type: 'direct', 
-                            name: 'Direct', 
+                        const newChat = await pb.collection('chats').create({
+                            type: 'direct',
+                            name: 'Direct',
                             participants: newParticipants,
-                            peloton_id: "" 
-                        }, { expand: 'participants', requestKey: null }); 
-                        
+                            peloton_id: ""
+                        }, { expand: 'participants', requestKey: null });
+
                         if (!this.chats) this.chats = [];
                         this.chats.push(newChat);
                         if (typeof this.renderChatList === 'function') {
                             this.renderChatList(document.getElementById('chatSearch')?.value || "");
                         }
-                        this.openChat(newChat.id); 
-                    } catch(e) { 
+                        this.openChat(newChat.id);
+                    } catch (e) {
                         console.error("Ошибка создания чата:", e);
-                        alert("Ошибка создания чата: " + (e.message || "")); 
-                    } 
+                        alert("Ошибка создания чата: " + (e.message || ""));
+                    }
                 }
             } finally {
-                this.isStartingDirectChat = false; 
+                this.isStartingDirectChat = false;
             }
-        } 
+        }
        openCreateGroupModal() {
             const roles = this.usersMap[this.currentRider.email] || []; const rStr = JSON.stringify(roles); const isManager = rStr.includes('admin') || rStr.includes('superadmin'); const isCap = rStr.includes('captain');
             // 🔥 ДОБАВЛЕН ВЫБОР ГРУППЕТТО
@@ -32535,7 +33268,7 @@ generateProfileHtml(rider, targetUserId, isModal = false) {
                 this.fillProfileData(rider, this.userIdMap[rider.email], false); 
             } catch(e) { console.error(e); } 
         }
-        async openProfile(targetRiderId, event) { 
+       async openProfile(targetRiderId, event) { 
         if (event) event.stopPropagation(); 
         
         const partModal = document.getElementById('participantsModal'); 
@@ -32545,10 +33278,18 @@ generateProfileHtml(rider, targetUserId, isModal = false) {
         const content = document.getElementById('profileModalContent'); 
         const headerActions = document.getElementById('profileHeaderActions');
         
-        if (modal) {
-            modal.style.zIndex = '2147483647'; 
+        // Если модалки профиля нет в DOM (вызов из протокола на Борде) — открываем домен или профиль гонщика
+        if (!modal || !content) {
+            const rObj = (this.ridersMap && this.ridersMap[targetRiderId]) || (window.sotkaHub?.ridersMap && window.sotkaHub.ridersMap[targetRiderId]);
+            if (rObj && rObj.slug) {
+                window.open(`https://${rObj.slug}.sotka.one`, '_blank');
+            } else {
+                window.open(`https://vilka.sotka.one/?user=${targetRiderId}`, '_blank');
+            }
+            return;
         }
-        
+
+        modal.style.zIndex = '2147483647'; 
         modal.style.display = 'flex'; 
         
         const rider = this.ridersMap[targetRiderId]; 
@@ -33721,258 +34462,217 @@ if (myReg) {
     // =========================================================================
     // 🏁 ВЫБОР ДИСТАНЦИИ И ТЕХНИКИ В ЕДИНОМ ОКНЕ
     // =========================================================================
-   openDistanceSelectorModal(racesList, targetRiderId = null, existingRosterId = null) {
-        if (!racesList || !Array.isArray(racesList) || racesList.length === 0) {
-            if (this.currentSisterRaces) racesList = this.currentSisterRaces;
-            else if (this.activeChatId) racesList = this.getSisterRaces(this.activeChatId);
-        }
-        if (!Array.isArray(racesList) || racesList.length === 0) return;
+openDistanceSelectorModal(racesList, targetRiderId = null, existingRecordId = null, currentRaceId = null) {
+        const riderId = targetRiderId || this.currentRider?.id;
+        if (!riderId) return;
 
-        // 🎯 Запоминаем контекст: заявляем/редактируем конкретного атлета или себя
-        this.pendingSelectorContext = {
-            riderId: targetRiderId,
-            rosterId: existingRosterId
-        };
+        const rider = this.ridersMap?.[riderId] || (this.currentRider?.id === riderId ? this.currentRider : null);
+        const startList = this.crm?.liveService?.currentLiveStartList || this.crm?.raceRosterList || [];
 
-        let modal = document.getElementById('raceDistancePickerModal');
+        // Ищем реальную активную заявку этого спортсмена в старт-листе
+        const existingEntry = startList.find(r =>
+            r.isRegistered && (
+                (existingRecordId && (r.recordId === existingRecordId || r.roster_id === existingRecordId)) ||
+                r.id === riderId ||
+                r.rider_id === riderId
+            )
+        );
+
+        const riderFullName = (
+            rider
+                ? `${rider.first_name || ''} ${rider.last_name || ''}`.trim()
+                : (existingEntry?.fullName || `${existingEntry?.name || ''} ${existingEntry?.surname || ''}`.trim())
+        ) || 'Спортсмен';
+
+        // Берем race_id СТРОГО из найденной заявки спортсмена (чтобы не подсвечивалась первая гонка CX по ошибке)
+        const activeRecId = existingEntry?.recordId || existingEntry?.roster_id || existingRecordId || null;
+        const activeRaceId = existingEntry?.race_id || (existingEntry ? currentRaceId : null);
+        const currentBib = existingEntry?.bib || '';
+        const currentPaid = Boolean(existingEntry?.is_paid);
+        const savedCatUpper = String(existingEntry?.final_cluster || existingEntry?.computedCat || existingEntry?.group || '').toUpperCase();
+
+        const isOrganizer = Boolean(this.crm?.liveService?.canManageLiveRoster?.());
+        const isMe = (riderId === this.currentRider?.id);
+        const canRevoke = Boolean(activeRecId && (isOrganizer || isMe));
+
+        let modal = document.getElementById('distanceSelectorModal');
         if (!modal) {
             modal = document.createElement('div');
-            modal.id = 'raceDistancePickerModal';
+            modal.id = 'distanceSelectorModal';
             modal.className = 'modal-overlay';
-            modal.style.cssText = 'position:fixed !important; inset:0 !important; background:rgba(0,0,0,0.85) !important; z-index:10000050 !important; display:flex !important; align-items:center !important; justify-content:center !important; backdrop-filter:blur(12px) !important; -webkit-backdrop-filter:blur(12px) !important; padding:16px !important; box-sizing:border-box !important;';
+            modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); z-index:10000060; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
             document.body.appendChild(modal);
         }
-
-        const GEAR_LABELS = {
-            'CX': 'ЦИКЛОКРОСС',
-            'MTB': 'МТБ',
-            'GRAVEL': 'ГРЭВЕЛ',
-            'GRVL': 'ГРЭВЕЛ',
-            'FIX': 'ФИКС',
-            'ROAD': 'ШОССЕ',
-            'TT': 'РАЗДЕЛКА (TT)',
-            'FAT': 'ФЭТБАЙК',
-            'SS': 'СИНГЛСПИД',
-            'EBIKE': 'ЭЛЕКТРО'
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.style.display = 'none';
         };
 
-        const safeFormats = (this.crm && this.crm.RACE_FORMATS) ? this.crm.RACE_FORMATS : { 'mass': 'Группа', 'itt': 'Разделка', 'ttt': 'Команда', 'crit': 'По очкам', 'relay': 'Эстафета' };
+        const GEAR_LABELS = {
+            'ROAD': 'ШОССЕ', 'TT': 'TT', 'GRAVEL': 'ГРЭВЕЛ', 'GRVL': 'ГРЭВЕЛ',
+            'CX': 'ЦИКЛОКРОСС', 'MTB': 'МТБ', 'FIX': 'ФИКС', 'FAT': 'ФЭТ',
+            'SS': 'СИНГЛСПИД', 'EBIKE': 'ЭЛЕКТРО'
+        };
+        const FORMAT_LABELS = this.crm?.RACE_FORMATS || {
+            'mass': 'ГРУППА', 'itt': 'РАЗДЕЛКА', 'ttt': 'КОМАНДА', 'crit': 'ПО ОЧКАМ', 'relay': 'ЭСТАФЕТА'
+        };
 
-        // Имя участника в шапке, если заявляет/редактирует судья
-        const targetRider = targetRiderId ? (this.ridersMap?.[targetRiderId] || {}) : null;
-        const targetRiderName = targetRider?.first_name ? `${targetRider.first_name} ${targetRider.last_name}`.trim() : null;
+        // Поля BIB и ОПЛАЧЕНО для судьи / организатора
+        const judgeBibBarHtml = isOrganizer ? `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px 12px; background:var(--bg-body); border:1px solid var(--border); border-radius:14px; margin-bottom:12px;">
+                <div>
+                    <span style="font-family:'Roboto Mono', monospace; font-size:8.5px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:3px; text-transform:uppercase;">СТАРТОВЫЙ НОМЕР (BIB)</span>
+                    <input type="text" id="distModalBibInput" value="${this.escapeHTML(currentBib)}" placeholder="Напр. 42" maxlength="6"
+                        inputmode="numeric" autocomplete="off" data-lpignore="true" data-form-type="other"
+                        ${activeRecId ? `onchange="window.app.crm.updateBib('${activeRecId}', this.value, this)" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.app.crm.updateBib('${activeRecId}', this.value, this); document.getElementById('distanceSelectorModal').style.display='none';}"` : ''}
+                        style="width:100%; height:34px; box-sizing:border-box; background:var(--bg-surface); border:1px solid var(--border); color:var(--text-main); border-radius:8px; padding:0 10px; font-family:'Roboto Mono', monospace; font-size:13px; font-weight:800; text-align:center; outline:none;">
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                    <label style="width:100%; height:34px; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; padding:0 10px; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer; font-family:'Unbounded', sans-serif; font-size:9px; font-weight:800; color:var(--text-main); user-select:none; box-sizing:border-box;">
+                        <input type="checkbox" id="distModalPaidCheck" ${currentPaid ? 'checked' : ''}
+                            ${activeRecId ? `onchange="window.app.crm.quickSetPaidFromModal('${activeRecId}', this.checked)"` : ''}
+                            style="width:15px; height:15px; accent-color:var(--primary);">
+                        <span>ОПЛАЧЕНО</span>
+                    </label>
+                </div>
+            </div>
+        ` : '';
 
-        const cardsHtml = racesList.map(r => {
-            // Если проверяем чужую заявку — смотрим по targetRiderId, если свою — по this.myRosters
-            let myReg = null;
-            if (targetRiderId) {
-                myReg = (this.crm?.liveService?.currentLiveStartList || []).find(sl => sl.isRegistered && (sl.id === targetRiderId || sl.rider_id === targetRiderId) && sl.race_id === r.id);
-            } else {
-                myReg = (this.myRosters && this.myRosters[r.id] && this.myRosters[r.id].status !== 'canceled') ? this.myRosters[r.id] : null;
-            }
+        const cardsHtml = (racesList || []).map(r => {
+            const isCurrentDist = Boolean(existingEntry && activeRaceId && String(r.id) === String(activeRaceId));
+            const borderCol = isCurrentDist ? 'var(--primary, #ffc107)' : 'var(--border)';
 
-            const isReg = Boolean(myReg);
-            const registeredGear = myReg?.final_cluster || null;
-
-            const distName = r.name.includes('[') 
-                ? r.name.split('[')[1].replace(']', '').trim() 
-                : (r.name || `${r.distance || ''} км`);
-            const distKm = r.distance ? `${r.distance} км` : '';
-            const formatStr = (r.format ? (safeFormats[r.format] || r.format) : 'Заезд').toUpperCase();
+            const distTag = r.name && r.name.includes('[')
+                ? r.name.split('[')[1].replace(']', '').trim()
+                : (r.name || 'Основная');
+            const fmtLabel = FORMAT_LABELS[r.format] || 'ГРУППА';
+            const subLine = `${r.distance || 0} КМ • ${fmtLabel}`;
 
             let cl = {};
             try {
                 cl = typeof r.cat_logic === 'string' ? JSON.parse(r.cat_logic) : (r.cat_logic || {});
-            } catch(e) { cl = {}; }
+            } catch (e) {}
 
-            let gears = [];
-            if (cl && cl.use_gear && Array.isArray(cl.active_gears) && cl.active_gears.length > 0) {
-                gears = cl.active_gears;
-            } else if (r.name && r.name.includes('[')) {
-                const tag = r.name.split('[')[1].replace(']', '').trim();
-                const parts = tag.split(/[\/,•|\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
-                const known = ['CX', 'MTB', 'GRAVEL', 'GRVL', 'FIX', 'ROAD', 'TT', 'FAT', 'SS', 'EBIKE'];
-                gears = parts.filter(p => known.includes(p));
-            }
+            const gears = (cl.use_gear && Array.isArray(cl.active_gears))
+                ? cl.active_gears.map(g => String(g).toUpperCase())
+                : [];
 
-            // -------------------------------------------------------------
-            // ВАРИАНТ 1: Несколько типов велосипедов (MTB / GRVL / FIX)
-            // -------------------------------------------------------------
             if (gears.length > 1) {
+                const gearBtns = gears.map(gKey => {
+                    const gTitle = GEAR_LABELS[gKey] || gKey;
+                    const isCurrentGear = isCurrentDist && (savedCatUpper.includes(gTitle.toUpperCase()) || savedCatUpper.includes(gKey.toUpperCase()));
+                    return `
+                        <button type="button"
+                            onclick="document.getElementById('distanceSelectorModal').style.display='none'; window.app.crm.registerSingleRider('${riderId}', null, event, '${r.id}', '${gKey}')"
+                            style="flex:1; min-width:80px; height:36px; background:${isCurrentGear ? 'var(--primary, #ffc107)' : 'var(--bg-surface)'}; border:1.5px solid ${isCurrentGear ? 'var(--primary, #ffc107)' : 'var(--border)'}; color:${isCurrentGear ? '#000000' : 'var(--text-main)'}; border-radius:10px; font-family:'Unbounded', sans-serif; font-size:9px; font-weight:800; cursor:pointer; transition:0.15s;"
+                            onmouseover="this.style.borderColor='var(--text-main)'"
+                            onmouseout="this.style.borderColor='${isCurrentGear ? 'var(--primary, #ffc107)' : 'var(--border)'}'">
+                            ${this.escapeHTML(gTitle)}
+                        </button>
+                    `;
+                }).join('');
+
                 return `
-                    <div style="background:var(--bg-body); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px; box-sizing:border-box;">
-                        
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                            <div>
-                                <div style="font-family:'Unbounded', sans-serif; font-size:13px; font-weight:900; color:var(--text-main); text-transform:uppercase; letter-spacing:-0.2px;">
-                                    ${this.escapeHTML(distName)}
-                                </div>
-                                <div style="font-family:'Roboto Mono', monospace; font-size:10px; font-weight:600; color:var(--text-muted); margin-top:3px; text-transform:uppercase;">
-                                    ${distKm} • ${formatStr}
-                                </div>
+                    <div style="background:var(--bg-body); border:1.5px solid ${borderCol}; border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:10px;">
+                        <div>
+                            <div style="font-family:'Unbounded', sans-serif; font-size:12.5px; font-weight:900; color:var(--text-main); text-transform:uppercase;">
+                                ${this.escapeHTML(distTag)}
                             </div>
-                            ${isReg ? `
-                                <span style="font-family:'Roboto Mono', monospace; font-size:9px; font-weight:800; color:var(--text-main); background:var(--bg-surface-hover); border:1px solid var(--border); padding:3px 8px; border-radius:6px; letter-spacing:0.5px;">
-                                    В СТАРТЕ ${registeredGear ? `[${registeredGear}]` : '✓'}
-                                </span>
-                            ` : ''}
+                            <div style="font-family:'Roboto Mono', monospace; font-size:10px; font-weight:700; color:var(--text-muted); margin-top:2px; text-transform:uppercase;">
+                                ${this.escapeHTML(subLine)}
+                            </div>
                         </div>
-
-                        <!-- Сетка кнопок выбора байка -->
-                        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
-                            ${gears.map(gearKey => {
-                                const cleanKey = gearKey.toUpperCase();
-                                const label = GEAR_LABELS[cleanKey] || cleanKey;
-                                const isChosen = isReg && (registeredGear?.toUpperCase() === cleanKey);
-
-                                return `
-                                    <button type="button" 
-                                            onclick="window.app.selectDistanceWithGear('${r.id}', '${cleanKey}', event);"
-                                            style="height:36px; padding:0 8px; border-radius:8px; font-family:'Unbounded', sans-serif; font-size:9px; font-weight:800; letter-spacing:0.3px; cursor:pointer; text-align:center; transition:0.15s ease; border:1px solid ${isChosen ? 'var(--text-main)' : 'var(--border)'}; background:${isChosen ? 'var(--text-main)' : 'var(--bg-surface)'}; color:${isChosen ? 'var(--bg-body)' : 'var(--text-main)'}; display:flex; align-items:center; justify-content:center;"
-                                            onmouseover="if(!${isChosen}){ this.style.borderColor='var(--text-main)'; this.style.background='var(--bg-surface-hover)'; }" 
-                                            onmouseout="if(!${isChosen}){ this.style.borderColor='var(--border)'; this.style.background='var(--bg-surface)'; }">
-                                        ${this.escapeHTML(label)}${isChosen ? '✓' : ''}
-                                    </button>
-                                `;
-                            }).join('')}
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            ${gearBtns}
                         </div>
                     </div>
                 `;
             }
 
-            // -------------------------------------------------------------
-            // ВАРИАНТ 2: Один тип техники (CX) — монолитная строка
-            // -------------------------------------------------------------
-            const singleGearKey = gears[0] || null;
-            const singleGearLabel = singleGearKey ? (GEAR_LABELS[singleGearKey.toUpperCase()] || singleGearKey.toUpperCase()) : null;
+            const singleGear = gears[0] || '';
+            const singleGearBadge = singleGear
+                ? `<span style="font-family:'Roboto Mono', monospace; font-size:8.5px; font-weight:800; padding:2px 6px; border-radius:5px; background:var(--bg-surface); border:1px solid var(--border); color:var(--text-muted); margin-left:6px; vertical-align:middle;">${this.escapeHTML(GEAR_LABELS[singleGear] || singleGear)}</span>`
+                : '';
 
             return `
-                <div onclick="window.app.selectDistanceWithGear('${r.id}', ${singleGearKey ? `'${singleGearKey}'` : 'null'}, event);" 
-                     style="background:var(--bg-body); border:1px solid ${isReg ? 'var(--text-main)' : 'var(--border)'}; border-radius:14px; padding:14px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:0.15s ease; box-sizing:border-box;"
-                     onmouseover="this.style.borderColor='var(--text-main)'; this.style.background='var(--bg-surface-hover)';" 
-                     onmouseout="this.style.borderColor='${isReg ? 'var(--text-main)' : 'var(--border)'}'; this.style.background='var(--bg-body)';">
-                    
-                    <div style="min-width:0; flex:1;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-family:'Unbounded', sans-serif; font-size:13px; font-weight:900; color:var(--text-main); text-transform:uppercase; letter-spacing:-0.2px;">
-                                ${this.escapeHTML(distName)}
-                            </span>
-                            ${singleGearLabel ? `
-                                <span style="font-family:'Roboto Mono', monospace; font-size:8.5px; font-weight:700; color:var(--text-muted); background:var(--bg-surface); border:1px solid var(--border); padding:2px 6px; border-radius:5px; text-transform:uppercase;">
-                                    ${this.escapeHTML(singleGearLabel)}
-                                </span>
-                            ` : ''}
+                <div onclick="document.getElementById('distanceSelectorModal').style.display='none'; window.app.crm.registerSingleRider('${riderId}', null, event, '${r.id}', ${singleGear ? `'${singleGear}'` : 'null'})"
+                    style="background:var(--bg-body); border:1.5px solid ${borderCol}; border-radius:14px; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; transition:0.15s;"
+                    onmouseover="this.style.borderColor='var(--text-main)'"
+                    onmouseout="this.style.borderColor='${borderCol}'">
+                    <div>
+                        <div style="font-family:'Unbounded', sans-serif; font-size:12.5px; font-weight:900; color:var(--text-main); text-transform:uppercase; display:flex; align-items:center; flex-wrap:wrap;">
+                            <span>${this.escapeHTML(distTag)}</span>
+                            ${singleGearBadge}
                         </div>
-                        <div style="font-family:'Roboto Mono', monospace; font-size:10px; font-weight:600; color:var(--text-muted); margin-top:3px; text-transform:uppercase;">
-                            ${distKm} • ${formatStr}
+                        <div style="font-family:'Roboto Mono', monospace; font-size:10px; font-weight:700; color:var(--text-muted); margin-top:3px; text-transform:uppercase;">
+                            ${this.escapeHTML(subLine)}
                         </div>
                     </div>
-
-                    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                        <span style="font-family:'Unbounded', sans-serif; font-size:9.5px; font-weight:800; color:${isReg ? 'var(--text-main)' : 'var(--text-muted)'}; letter-spacing:0.3px;">
-                            ${isReg ? 'В СТАРТЕ ✓' : 'ВЫБРАТЬ'}
-                        </span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6;">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
+                    <div style="font-family:'Unbounded', sans-serif; font-size:9px; font-weight:800; color:var(--text-main); display:inline-flex; align-items:center; gap:4px; flex-shrink:0;">
+                        <span>${isCurrentDist ? 'ВЫБРАНО ✓' : 'ВЫБРАТЬ'}</span>
+                        <span style="font-size:12px;">&rsaquo;</span>
                     </div>
                 </div>
             `;
         }).join('');
 
+        const revokeBtnHtml = canRevoke ? `
+            <button type="button"
+                onclick="document.getElementById('distanceSelectorModal').style.display='none'; window.app.crm.revokeRaceReg('${activeRecId}')"
+                style="width:100%; height:42px; margin-top:12px; background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); color:#ef4444; border-radius:12px; font-family:'Unbounded', sans-serif; font-size:9.5px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:0.15s;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>ОТОЗВАТЬ ЗАЯВКУ</span>
+            </button>
+        ` : '';
+
         modal.innerHTML = `
-            <div style="background:var(--bg-surface); border:1px solid var(--border); border-radius:22px; padding:24px; width:100%; max-width:420px; box-shadow:0 25px 60px rgba(0,0,0,0.5); box-sizing:border-box;">
-                
-                <!-- Шапка модального окна -->
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-                    <div>
-                        <div style="font-family:'Unbounded', sans-serif; font-size:13px; font-weight:900; color:var(--text-main); text-transform:uppercase; letter-spacing:0.4px;">
-                            ${targetRiderName ? 'ЗАЯВКА АТЛЕТА' : 'ВЫБОР ЗАЧЁТА'}
-                        </div>
-                        <div style="font-family:'Manrope', sans-serif; font-size:11px; color:var(--primary); font-weight:700; margin-top:2px;">
-                            ${targetRiderName ? this.escapeHTML(targetRiderName) : 'Дистанция и тип велосипеда'}
-                        </div>
+            <div class="modal-box" onclick="event.stopPropagation()" style="max-width:420px; width:100%; background:var(--bg-surface); border:1px solid var(--border); border-radius:22px; padding:20px; font-family:'Manrope', sans-serif; color:var(--text-main); box-shadow:0 25px 60px rgba(0,0,0,0.5); box-sizing:border-box;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
+                    <div style="font-family:'Unbounded', sans-serif; font-size:15px; font-weight:900; color:var(--text-main); text-transform:uppercase; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${this.escapeHTML(riderFullName)}
                     </div>
-                    
-                    <button type="button" onclick="document.getElementById('raceDistancePickerModal').style.display='none'" 
-                            style="width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:var(--bg-body); color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.15s ease;"
-                            onmouseover="this.style.borderColor='var(--text-main)'; this.style.color='var(--text-main)';"
-                            onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-muted)';">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <button type="button" onclick="document.getElementById('distanceSelectorModal').style.display='none'"
+                        style="width:32px; height:32px; min-width:32px; border-radius:50%; background:var(--bg-body); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:0.15s;"
+                        onmouseover="this.style.color='var(--text-main)'; this.style.borderColor='var(--text-main)';"
+                        onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)';"
+                        title="Закрыть">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
                 </div>
 
-                <!-- Список стартов -->
-                <div style="display:flex; flex-direction:column; gap:8px; max-height:65vh; overflow-y:auto;">
-                    ${cardsHtml}
-                </div>
-            </div>
-        `;
-
-        modal.style.display = 'flex';
-    }
-	
-	// 🎛️ Меню действий с заявкой (Сменить зачёт или Отозвать)
-    openManageRosterModal(recordId, riderId, raceId) {
-        const rider = this.ridersMap?.[riderId] || {};
-        const riderName = `${rider.first_name || ''} ${rider.last_name || ''}`.trim() || 'Спортсмен';
-
-        let modal = document.getElementById('manageRosterActionModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'manageRosterActionModal';
-            modal.className = 'modal-overlay';
-            modal.style.cssText = 'position:fixed !important; inset:0 !important; background:rgba(0,0,0,0.8) !important; z-index:10000060 !important; display:flex !important; align-items:center !important; justify-content:center !important; backdrop-filter:blur(10px) !important; padding:16px !important; box-sizing:border-box !important;';
-            document.body.appendChild(modal);
-        }
-
-        modal.onclick = (e) => {
-            if (e.target.id === 'manageRosterActionModal') modal.style.display = 'none';
-        };
-
-        modal.innerHTML = `
-            <div onclick="event.stopPropagation()" style="background:var(--bg-surface); border:1px solid var(--border); border-radius:20px; padding:22px; width:100%; max-width:350px; box-shadow:0 25px 60px rgba(0,0,0,0.6); box-sizing:border-box; text-align:center;">
-                <div style="font-family:'Unbounded', sans-serif; font-size:11px; font-weight:900; color:var(--text-main); text-transform:uppercase; margin-bottom:4px; letter-spacing:0.4px;">
-                    УПРАВЛЕНИЕ ЗАЯВКОЙ
-                </div>
-                <div style="font-family:'Manrope', sans-serif; font-size:12px; font-weight:700; color:var(--primary); margin-bottom:16px;">
-                    ${this.escapeHTML(riderName)}
-                </div>
+                ${judgeBibBarHtml}
 
                 <div style="display:flex; flex-direction:column; gap:8px;">
-                    <!-- Действие 1: Редактирование дистанции и велосипеда -->
-                    <button type="button" 
-                            onclick="document.getElementById('manageRosterActionModal').style.display='none'; window.app.openEditRiderRegModal('${recordId}', '${riderId}', '${raceId}')"
-                            style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); padding:12px 14px; border-radius:10px; font-family:'Unbounded', sans-serif; font-size:9.5px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.15s ease;"
-                            onmouseover="this.style.borderColor='var(--primary)';"
-                            onmouseout="this.style.borderColor='var(--border)';">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        <span>СМЕНИТЬ ДИСТАНЦИЮ / ЗАЧЁТ</span>
-                    </button>
-
-                    <!-- Действие 2: Отзыв заявки -->
-                    <button type="button" 
-                            onclick="document.getElementById('manageRosterActionModal').style.display='none'; window.app.crm.revokeRaceReg('${recordId}')"
-                            style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:var(--danger, #ef4444); padding:12px 14px; border-radius:10px; font-family:'Unbounded', sans-serif; font-size:9.5px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.15s ease;"
-                            onmouseover="this.style.borderColor='var(--danger)';"
-                            onmouseout="this.style.borderColor='rgba(239,68,68,0.25)';">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        <span>ОТОЗВАТЬ ЗАЯВКУ</span>
-                    </button>
+                    ${cardsHtml}
                 </div>
 
-                <button type="button" onclick="document.getElementById('manageRosterActionModal').style.display='none'" 
-                        style="margin-top:14px; background:none; border:none; color:var(--text-muted); font-family:'Unbounded', sans-serif; font-size:9px; font-weight:800; cursor:pointer;">
-                    ОТМЕНА
-                </button>
+                ${revokeBtnHtml}
             </div>
         `;
-        modal.style.display = 'flex';
-    }
 
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            document.getElementById('distModalBibInput')?.focus();
+        }, 50);
+    }
+	// 🎛️ Меню действий с заявкой (Сменить зачёт или Отозвать)
+    openManageRosterModal(recordId, riderId, raceId) {
+        const eventRaces = (this.crm?.liveService?.currentEventRaces && this.crm.liveService.currentEventRaces.length > 0)
+            ? this.crm.liveService.currentEventRaces
+            : (typeof this.getSisterRaces === 'function' && raceId ? this.getSisterRaces(raceId) : []);
+
+        const racesList = eventRaces.length > 0
+            ? eventRaces
+            : [this.racesMap?.[raceId] || this.crm?.dataCalendar?.find(r => r.id === raceId)].filter(Boolean);
+
+        this.openDistanceSelectorModal(racesList, riderId, recordId, raceId);
+    }
+	
     // ✏️ Открытие окна выбора дистанции/техники для редактируемого участника
     openEditRiderRegModal(rosterId, riderId, raceId) {
         const sisters = (typeof this.getSisterRaces === 'function') 
